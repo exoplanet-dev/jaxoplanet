@@ -1,0 +1,54 @@
+name: Python
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  release:
+    types:
+      - published
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - python-version: '3.9'
+            tox-env: 'py39'
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install tox
+        run: |
+          python -m pip install -U pip
+          python -m pip install -U tox
+
+      - name: Run tests
+        run: python -m tox -e ${{ matrix.tox-env }}
+
+      - name: Save coverage
+        uses: AndreMiras/coveralls-python-action@v20201129
+        with:
+          parallel: true
+
+  coverage:
+    needs: tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Combine and upload coverage
+        uses: AndreMiras/coveralls-python-action@v20201129
+        with:
+          parallel-finished: true

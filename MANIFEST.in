@@ -1,0 +1,3 @@
+recursive-exclude * CMakeLists.txt
+recursive-exclude * .gitignore
+prune .github

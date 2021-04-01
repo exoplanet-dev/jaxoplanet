@@ -1,0 +1,29 @@
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v3.4.0
+  hooks:
+  - id: trailing-whitespace
+    exclude: lib/vendor
+    exclude: docs
+  - id: end-of-file-fixer
+    exclude: lib/vendor
+    exclude_types: [json]
+    exclude: docs
+  - id: debug-statements
+    exclude: lib/vendor
+    exclude: docs
+
+- repo: https://github.com/PyCQA/isort
+  rev: "5.7.0"
+  hooks:
+  - id: isort
+    args: []
+    additional_dependencies: [toml]
+    exclude: docs
+    exclude: lib/vendor
+
+- repo: https://github.com/psf/black
+  rev: "20.8b1"
+  hooks:
+  - id: black
+    exclude: lib/vendor
