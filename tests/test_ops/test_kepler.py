@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-
-from jax import test_util
 from absl.testing import parameterized
-from jax import config
+from jax import config, test_util
 
 from exoplanet_jax.ops import kepler
 

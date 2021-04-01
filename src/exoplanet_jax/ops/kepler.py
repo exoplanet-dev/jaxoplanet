@@ -2,9 +2,8 @@
 
 __all__ = ["kepler"]
 
-import numpy as np
 import jax.numpy as jnp
-
+import numpy as np
 
 TWOPI = 2 * np.pi
 FACTOR1 = 3 * np.pi / (np.pi - 6 / np.pi)
