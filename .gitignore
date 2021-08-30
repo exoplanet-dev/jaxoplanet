@@ -1,3 +1,5 @@
 *_version.py
 .rendered.*
 *.so
+.tox
+.coverage

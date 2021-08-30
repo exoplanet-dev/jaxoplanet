@@ -4,12 +4,9 @@ on:
   push:
     branches:
       - main
+    tags:
+      - "*"
   pull_request:
-    branches:
-      - main
-  release:
-    types:
-      - published
 
 jobs:
   tests:
@@ -39,16 +36,82 @@ jobs:
       - name: Run tests
         run: python -m tox -e ${{ matrix.tox-env }}
 
-      - name: Save coverage
-        uses: AndreMiras/coveralls-python-action@v20201129
-        with:
-          parallel: true
+      - name: Combine and upload coverage
+        run: |
+          python -m coverage combine
+          python -m coverage xml -i
+          python -m coveralls --service=github
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COVERALLS_PARALLEL: true
+          COVERALLS_FLAG_NAME: py${{ matrix.python-version }}
 
   coverage:
     needs: tests
     runs-on: ubuntu-latest
     steps:
-      - name: Combine and upload coverage
-        uses: AndreMiras/coveralls-python-action@v20201129
+      - name: Setup Python
+        uses: actions/setup-python@v2
         with:
-          parallel-finished: true
+          python-version: "3.9"
+      - name: Finish coverage collection
+        run: |
+          python -m pip install -U pip
+          python -m pip install -U coveralls
+          python -m coveralls --finish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.9"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install -U pip
+          python -m pip install tox
+      - name: Lint the code
+        run: python -m tox -e lint
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v2
+        name: Install Python
+        with:
+          python-version: "3.9"
+      - name: Build sdist and wheel
+        run: |
+          python -m pip install -U pip
+          python -m pip install -U build
+          python -m build .
+      - uses: actions/upload-artifact@v2
+        with:
+          name: archive
+          path: dist/*
+
+  upload_pypi:
+    needs: [tests, lint, build]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: archive
+          path: dist
+
+      - uses: pypa/gh-action-pypi-publish@v1.4.2
+        with:
+          user: __token__
+          password: ${{ secrets.pypi_password }}

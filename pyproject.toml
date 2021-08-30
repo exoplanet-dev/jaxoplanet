@@ -17,3 +17,20 @@ multi_line_output = 3
 include_trailing_comma = true
 force_grid_wrap = 0
 use_parentheses = true
+
+[tool.coverage.run]
+parallel = true
+branch = true
+source = ["exoplanet_jax"]
+omit = [
+  "*_test.py",
+  "*__init__*",
+  "*/exoplanet_jax/exoplanet_jax_version.py",
+]
+
+[tool.coverage.paths]
+source = ["src", "*/site-packages"]
+
+[tool.coverage.report]
+show_missing = true
+exclude_lines = []
