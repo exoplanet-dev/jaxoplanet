@@ -35,7 +35,7 @@ class KeplerTest(jtu.JaxTestCase):
         self.assertArraysAllClose(cosf0, jnp.cos(f), atol=atol)
 
     def test_basic_low_e(self):
-        e = jnp.linspace(0, 0.7, 500)
+        e = jnp.linspace(0, 0.85, 500)
         E = jnp.linspace(-300, 300, 1001)
         e = e[None, :] + jnp.zeros((E.shape[0], e.shape[0]))
         E = E[:, None] + jnp.zeros_like(e)
@@ -46,7 +46,7 @@ class KeplerTest(jtu.JaxTestCase):
         "Kepler solver has numerical issues at single point precision",
     )
     def test_basic_high_e(self):
-        e = jnp.linspace(0.7, 1.0, 500)[:-1]
+        e = jnp.linspace(0.85, 1.0, 500)[:-1]
         E = jnp.linspace(-300, 300, 1001)
         e = e[None, :] + jnp.zeros((E.shape[0], e.shape[0]))
         E = E[:, None] + jnp.zeros_like(e)
