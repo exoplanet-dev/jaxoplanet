@@ -10,6 +10,7 @@ on:
 
 jobs:
   tests:
+    name: "Python ${{ matrix.python-version }}: x64=${{ matrix.enable-x64 }}"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

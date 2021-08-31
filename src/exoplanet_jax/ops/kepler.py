@@ -5,18 +5,14 @@ __all__ = ["kepler"]
 import jax.numpy as jnp
 import numpy as np
 
-TWOPI = 2 * np.pi
-FACTOR1 = 3 * np.pi / (np.pi - 6 / np.pi)
-FACTOR2 = 1.6 / (np.pi - 6 / np.pi)
-
 
 def kepler(M, ecc):
     # Wrap into the right range
-    M = M % TWOPI
+    M = M % (2 * jnp.pi)
 
     # We can restrict to the range [0, pi)
     high = M > jnp.pi
-    M = jnp.where(high, TWOPI - M, M)
+    M = jnp.where(high, 2 * np.pi - M, M)
 
     # Solve
     ome = 1.0 - ecc
@@ -24,7 +20,7 @@ def kepler(M, ecc):
     E = refine(M, ecc, ome, E)
 
     # Re-wrap back into the full range
-    E = jnp.where(high, TWOPI - E, E)
+    E = jnp.where(high, 2 * np.pi - E, E)
 
     # Convert to true anomaly; tan(0.5 * f)
     tan_half_f = jnp.sqrt((1 + ecc) / ome) * jnp.tan(0.5 * E)
@@ -42,7 +38,8 @@ def kepler(M, ecc):
 
 def starter(M, ecc, ome):
     M2 = jnp.square(M)
-    alpha = FACTOR1 + FACTOR2 * (jnp.pi - M) / (1 + ecc)
+    alpha = 3 * jnp.pi / (jnp.pi - 6 / jnp.pi)
+    alpha += 1.6 / (jnp.pi - 6 / jnp.pi) * (jnp.pi - M) / (1 + ecc)
     d = 3 * ome + alpha * ecc
     alphad = alpha * d
     r = (3 * alphad * (d - ome) + M2) * M
