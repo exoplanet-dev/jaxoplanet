@@ -1,29 +1,26 @@
 repos:
-- repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v3.4.0
-  hooks:
-  - id: trailing-whitespace
-    exclude: lib/vendor
-    exclude: docs
-  - id: end-of-file-fixer
-    exclude: lib/vendor
-    exclude_types: [json]
-    exclude: docs
-  - id: debug-statements
-    exclude: lib/vendor
-    exclude: docs
-
-- repo: https://github.com/PyCQA/isort
-  rev: "5.7.0"
-  hooks:
-  - id: isort
-    args: []
-    additional_dependencies: [toml]
-    exclude: docs
-    exclude: lib/vendor
-
-- repo: https://github.com/psf/black
-  rev: "20.8b1"
-  hooks:
-  - id: black
-    exclude: lib/vendor
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.1.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+        exclude_types: [json, binary]
+  - repo: https://github.com/PyCQA/isort
+    rev: "5.10.1"
+    hooks:
+      - id: isort
+        additional_dependencies: [toml]
+        exclude: docs/tutorials
+  - repo: https://github.com/psf/black
+    rev: "22.1.0"
+    hooks:
+      - id: black-jupyter
+  - repo: https://github.com/kynan/nbstripout
+    rev: "0.5.0"
+    hooks:
+      - id: nbstripout
+        exclude: docs/benchmarks.ipynb
+  - repo: https://github.com/hadialqattan/pycln
+    rev: "v1.2.5"
+    hooks:
+      - id: pycln

@@ -1,4 +1,4 @@
-name: Python
+name: Tests
 
 on:
   push:
@@ -10,35 +10,29 @@ on:
 
 jobs:
   tests:
-    name: "Python ${{ matrix.python-version }}: x64=${{ matrix.enable-x64 }}"
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9"]
+        python-version: ["3.8", "3.9", "3.10"]
         enable-x64: [0, 1]
 
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v2
         with:
           fetch-depth: 0
-          submodules: true
-
       - name: Setup Python
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-
-      - name: Install tox
+      - name: Install dependencies
         run: |
           python -m pip install -U pip
           python -m pip install -U coveralls coverage[toml] tox tox-gh-actions
-
       - name: Run tests
         run: python -m tox
         env:
           JAX_ENABLE_X64: ${{ matrix.enable-x64 }}
-
       - name: Combine and upload coverage
         run: |
           python -m coverage combine
@@ -47,7 +41,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COVERALLS_PARALLEL: true
-          COVERALLS_FLAG_NAME: py${{ matrix.python-version }}
+          COVERALLS_FLAG_NAME: ${{ matrix.python-version }}-${{ matrix.enable-x64 }}
 
   coverage:
     needs: tests
@@ -71,12 +65,10 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
-
       - name: Setup Python
         uses: actions/setup-python@v2
         with:
           python-version: "3.9"
-
       - name: Install dependencies
         run: |
           python -m pip install -U pip
@@ -101,7 +93,6 @@ jobs:
           python -m build .
       - uses: actions/upload-artifact@v2
         with:
-          name: archive
           path: dist/*
 
   upload_pypi:
@@ -111,7 +102,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v2
         with:
-          name: archive
+          name: artifact
           path: dist
 
       - uses: pypa/gh-action-pypi-publish@v1.4.2
