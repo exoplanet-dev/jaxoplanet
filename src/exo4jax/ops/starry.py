@@ -79,7 +79,7 @@ def q(l_max, lam):
     return jnp.stack(U)
 
 
-# @partial(jax.jit, static_argnums=(0, 1))
+@partial(jax.jit, static_argnums=(0, 1))
 def p(order, l_max, b, r, kappa0):
     b2 = jnp.square(b)
     r2 = jnp.square(r)

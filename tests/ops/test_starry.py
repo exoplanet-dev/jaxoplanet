@@ -1,5 +1,4 @@
 from functools import partial
-from operator import concat
 
 import numpy as np
 from scipy.integrate import quad
@@ -70,7 +69,7 @@ def test_q(l_max=10):
 
 
 @pytest.mark.parametrize(
-    "l,m", [(l, m) for l in range(3) for m in range(-l, l + 1)]
+    "l,m", [(l, m) for l in range(10) for m in range(-l, l + 1)]
 )
 def test_p(l, m):
     def _numerical_p(b, r, kappa):
@@ -134,5 +133,5 @@ def test_p(l, m):
 
     assert np.all(np.isfinite(p_calc)), f"n_nan = {np.sum(np.isnan(p_calc))}"
     np.testing.assert_allclose(
-        p_calc, p_expect, atol=1e-8, err_msg=f"l={l}, m={m}, mu={mu}, nu={nu}"
+        p_calc, p_expect, atol=5e-5, err_msg=f"l={l}, m={m}, mu={mu}, nu={nu}"
     )
