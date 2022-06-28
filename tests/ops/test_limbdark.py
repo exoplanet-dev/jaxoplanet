@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from jax.config import config
 
-from exoplanet_jax import ops
+from exo4jax import ops
 
 
 def check_limbdark(b, r, **kwargs):

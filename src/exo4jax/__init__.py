@@ -3,7 +3,7 @@
 __all__ = ["ops"]
 
 from . import ops
-from .exoplanet_jax_version import __version__  # noqa
+from .exo4jax_version import __version__  # noqa
 
 __uri__ = "https://github.com/exoplanet-dev/exoplanet-jax"
 __author__ = "Dan Foreman-Mackey"

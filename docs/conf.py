@@ -4,7 +4,7 @@
 from pkg_resources import DistributionNotFound, get_distribution
 
 try:
-    __version__ = get_distribution("exoplanet_jax").version
+    __version__ = get_distribution("exo4jax").version
 except DistributionNotFound:
     __version__ = "dev"
 
@@ -18,7 +18,7 @@ extensions = [
 ]
 autodoc_mock_imports = []
 
-project = "exoplanet-jax"
+project = "exo4jax"
 copyright = "2021 Dan Foreman-Mackey"
 version = __version__
 release = __version__
@@ -28,10 +28,10 @@ html_static_path = ["_static"]
 html_theme = "sphinx_book_theme"
 html_title = "exoplanet-jax"
 html_show_sourcelink = False
-html_baseurl = "https://exoplanet-jax.readthedocs.io/en/latest/"
+html_baseurl = "https://exo4jax.readthedocs.io/en/latest/"
 html_theme_options = {
     "path_to_docs": "docs",
-    "repository_url": "https://github.com/exoplanet-dev/exoplanet-jax",
+    "repository_url": "https://github.com/exoplanet-dev/exo4jax",
     "repository_branch": "main",
     "launch_buttons": {
         "binderhub_url": "https://mybinder.org",

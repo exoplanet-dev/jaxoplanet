@@ -1,10 +1,6 @@
 
 [build-system]
-requires = [
-    "setuptools>=40.6.0",
-    "wheel",
-    "setuptools_scm",
-]
+requires = ["setuptools>=40.6.0", "wheel", "setuptools_scm"]
 build-backend = "setuptools.build_meta"
 
 [tool.black]
@@ -17,16 +13,13 @@ multi_line_output = 3
 include_trailing_comma = true
 force_grid_wrap = 0
 use_parentheses = true
+known_first_party = ["exo4jax"]
 
 [tool.coverage.run]
 parallel = true
 branch = true
-source = ["exoplanet_jax"]
-omit = [
-  "*_test.py",
-  "*__init__*",
-  "*/exoplanet_jax/exoplanet_jax_version.py",
-]
+source = ["exo4jax"]
+omit = ["*_test.py", "*__init__*", "*/exo4jax/exo4jax.py"]
 
 [tool.coverage.paths]
 source = ["src", "*/site-packages"]

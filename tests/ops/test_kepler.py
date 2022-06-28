@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 from jax.config import config
 
-from exoplanet_jax import ops
+from exo4jax import ops
 
 
 def get_mean_and_true_anomaly(eccentricity, eccentric_anomaly):
