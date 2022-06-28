@@ -23,7 +23,7 @@ CLASSIFIERS = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
 ]
-INSTALL_REQUIRES = ["jax"]
+INSTALL_REQUIRES = ["jax", "jaxlib"]
 EXTRA_REQUIRE = {
     "docs": [
         "sphinx>=1.7.5",
@@ -31,9 +31,11 @@ EXTRA_REQUIRE = {
     ],
     "test": [
         "pytest",
+        "pytest-xdist",
         "coverage[toml]",
         "exoplanet-core",
     ],
+    "comparison": ["starry", "numpy<1.22", "tqdm"],
 }
 
 

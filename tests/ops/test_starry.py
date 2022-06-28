@@ -1,6 +1,7 @@
 from functools import partial
 
 import numpy as np
+import py
 from scipy.integrate import quad
 import jax
 import pytest
@@ -69,7 +70,8 @@ def test_q(l_max=10):
 
 
 @pytest.mark.parametrize(
-    "l,m", [(l, m) for l in range(10) for m in range(-l, l + 1)]
+    "l,m",
+    [(l, m) for l in range(10) for m in range(-l, l + 1) if (l, m) != (1, 0)],
 )
 def test_p(l, m):
     def _numerical_p(b, r, kappa):
@@ -122,7 +124,7 @@ def test_p(l, m):
     mu = l - m
     nu = l + m
     order = 20
-    b, r = np.meshgrid(np.linspace(0, 1e-2, 100), np.linspace(0.01, 1.5, 13))
+    b, r = np.meshgrid(np.linspace(0, 2, 100), np.linspace(0.01, 1.5, 13))
     b = np.concatenate((b.flatten(), [1.1, 0.9, 1e-3 / 3]))
     r = np.concatenate((r.flatten(), [0.1, 0.1, 1 + 1e-3 / 3]))
     kappa0, _ = jax.vmap(kappas)(b, r)
@@ -135,3 +137,32 @@ def test_p(l, m):
     np.testing.assert_allclose(
         p_calc, p_expect, atol=5e-5, err_msg=f"l={l}, m={m}, mu={mu}, nu={nu}"
     )
+
+
+def test_p_starry(l_max=5, r=0.1, order=100):
+    starry = pytest.importorskip("starry")
+
+    m = starry.Map(l_max)
+    b = np.linspace(0, 1 + r, 101)[:-1]
+    s = m.ops.sT(b, r)
+
+    kappa0, kappa1 = jax.vmap(kappas, in_axes=(0, None))(b, r)
+    q_calc = jax.vmap(partial(q, l_max))(0.5 * np.pi - kappa1)
+    p_calc = jax.vmap(partial(p, order, l_max), in_axes=(0, None, 0))(
+        b, r, kappa0
+    )
+    p_expect = q_calc - s
+
+    import matplotlib.pyplot as plt
+
+    for n in range(p_expect.shape[1]):
+        if not np.allclose(p_calc[:, n], p_expect[:, n], atol=1e-5):
+            l = np.floor(np.sqrt(n)).astype(int)
+            m = n - l**2 - l
+            print(n, l, m, l - m, l + m)
+
+        plt.clf()
+        plt.plot(b, p_expect[:, n] - p_calc[:, n], ":", label="calc")
+        plt.savefig(f"test_{n}.png")
+
+    assert 0

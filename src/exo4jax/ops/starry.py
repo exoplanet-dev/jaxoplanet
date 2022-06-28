@@ -157,4 +157,8 @@ def p(order, l_max, b, r, kappa0):
     P0 = rng * jnp.sum(jnp.stack(arg, axis=0) * weights[None, :], axis=1)
     P0 = jnp.where(jnp.stack(conds), 0, P0)
     P = jnp.zeros(l_max**2 + 2 * l_max + 1)
-    return P.at[np.stack(ind)].set(P0)
+
+    # Yes, using np not jnp here: 'ind' is always static.
+    ind = np.stack(ind)
+
+    return P.at[ind].set(P0)
