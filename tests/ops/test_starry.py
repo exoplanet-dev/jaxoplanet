@@ -1,12 +1,8 @@
-from functools import partial
-
 import numpy as np
-import py
-from scipy.integrate import quad
 import jax
 import pytest
 
-from exo4jax.ops.starry import p, q, kappas
+from exo4jax.ops.starry import kappas, solution_vector
 
 
 def test_kappas():
@@ -37,132 +33,42 @@ def test_kappas():
     np.testing.assert_allclose(kappa1, 0.5 * np.pi - lam)
 
 
-def test_q(l_max=10):
-    def _numerical_q(l, m, lam):
-        def calc(u, v, lam):
-            sol, _ = quad(
-                lambda phi: np.cos(phi) ** u * np.sin(phi) ** v,
-                np.pi - lam,
-                2 * np.pi + lam,
-            )
-            return sol
-
-        mu = l - m
-        nu = l + m
-        if mu // 2 % 2 == 0:
-            u = (mu + 4) // 2
-            v = nu // 2
-            return calc(u, v, lam)
-        return np.zeros_like(lam)
-
-    lam = np.linspace(-0.5 * np.pi, 0.5 * np.pi, 100)
-    q_calc = jax.vmap(q, in_axes=(None, 0))(l_max, lam)
-    assert np.all(np.isfinite(q_calc)), f"n_nan = {np.sum(np.isnan(q_calc))}"
-
-    n = 0
-    for l in range(l_max + 1):
-        for m in range(-l, l + 1):
-            q_expect = np.array([_numerical_q(l, m, lam_) for lam_ in lam])
-            np.testing.assert_allclose(
-                q_calc[:, n], q_expect, atol=1e-12, err_msg=f"l={l}, m={m}"
-            )
-            n += 1
-
-
-@pytest.mark.parametrize(
-    "l,m",
-    [(l, m) for l in range(10) for m in range(-l, l + 1) if (l, m) != (1, 0)],
-)
-def test_p(l, m):
-    def _numerical_p(b, r, kappa):
-        cond = (b > 0) & (r > 0)
-        delta = (b - r) / (2 * r)
-        k2 = (1 - r**2 - b**2 + 2 * b * r) / np.where(cond, 4 * b * r, 1)
-        if (mu / 2) % 2 == 0:
-            func = (
-                lambda x, l, mu, nu, delta, k2, b, r: 2
-                * (2 * r) ** (l + 2)
-                * (np.sin(x) ** 2 - np.sin(x) ** 4) ** (0.25 * (mu + 4))
-                * (delta + np.sin(x) ** 2) ** (0.5 * nu)
-            )
-            cond = np.ones_like(cond)
-        elif (mu == 1) and (l % 2 == 0):
-            func = (
-                lambda x, l, mu, nu, delta, k2, b, r: (2 * r) ** (l - 1)
-                * (4 * b * r) ** (3.0 / 2.0)
-                * (np.sin(x) ** 2 - np.sin(x) ** 4) ** (0.5 * (l - 2))
-                * np.maximum(0, k2 - np.sin(x) ** 2) ** (3.0 / 2.0)
-                * (1 - 2 * np.sin(x) ** 2)
-            )
-        elif (mu == 1) and (l != 1) and (l % 2 != 0):
-            func = (
-                lambda x, l, mu, nu, delta, k2, b, r: (2 * r) ** (l - 1)
-                * (4 * b * r) ** (3.0 / 2.0)
-                * (np.sin(x) ** 2 - np.sin(x) ** 4) ** (0.5 * (l - 3))
-                * (delta + np.sin(x) ** 2)
-                * np.maximum(0, k2 - np.sin(x) ** 2) ** (3.0 / 2.0)
-                * (1 - 2 * np.sin(x) ** 2)
-            )
-        elif ((mu - 1) % 2) == 0 and ((mu - 1) // 2 % 2 == 0) and (l != 1):
-            func = (
-                lambda x, l, mu, nu, delta, k2, b, r: 2
-                * (2 * r) ** (l - 1)
-                * (4 * b * r) ** (3.0 / 2.0)
-                * (np.sin(x) ** 2 - np.sin(x) ** 4) ** (0.25 * (mu - 1))
-                * (delta + np.sin(x) ** 2) ** (0.5 * (nu - 1))
-                * np.maximum(0, k2 - np.sin(x) ** 2) ** (3.0 / 2.0)
-            )
-        elif (mu == 1) and (l == 1):
-            raise ValueError("This case is treated separately.")
-        else:
-            return 0
-        res, _ = quad(
-            func, -kappa / 2, kappa / 2, args=(l, mu, nu, delta, k2, b, r)
-        )
-        return np.where(cond, res, 0)
-
-    mu = l - m
-    nu = l + m
-    order = 20
-    b, r = np.meshgrid(np.linspace(0, 2, 100), np.linspace(0.01, 1.5, 13))
-    b = np.concatenate((b.flatten(), [1.1, 0.9, 1e-3 / 3]))
-    r = np.concatenate((r.flatten(), [0.1, 0.1, 1 + 1e-3 / 3]))
-    kappa0, _ = jax.vmap(kappas)(b, r)
-    p_calc = jax.vmap(partial(p, order, l))(b, r, kappa0)[:, l**2 + l + m]
-    p_expect = np.array(
-        [_numerical_p(b_, r_, k_) for b_, r_, k_ in zip(b, r, kappa0)]
-    )
-
-    assert np.all(np.isfinite(p_calc)), f"n_nan = {np.sum(np.isnan(p_calc))}"
-    np.testing.assert_allclose(
-        p_calc, p_expect, atol=5e-5, err_msg=f"l={l}, m={m}, mu={mu}, nu={nu}"
-    )
-
-
-def test_p_starry(l_max=5, r=0.1, order=100):
+@pytest.mark.parametrize("r", [0.1, 1.1])
+def test_compare_starry(r, l_max=10, order=20):
+    # FIXME: Deal with r == 0.0 properly
     starry = pytest.importorskip("starry")
 
-    m = starry.Map(l_max)
-    b = np.linspace(0, 1 + r, 101)[:-1]
-    s = m.ops.sT(b, r)
+    b = np.linspace(0, 1 + r, 501)[:-1]
+    if np.allclose(r, 0):
+        s_expect = np.zeros((len(b), l_max**2 + 2 * l_max + 1))
+        s_expect[:, 0] = np.pi
+    else:
+        m = starry.Map(l_max)
+        s_expect = m.ops.sT(b, r)
+    s_calc = solution_vector(l_max, order=order)(b, r)
 
-    kappa0, kappa1 = jax.vmap(kappas, in_axes=(0, None))(b, r)
-    q_calc = jax.vmap(partial(q, l_max))(0.5 * np.pi - kappa1)
-    p_calc = jax.vmap(partial(p, order, l_max), in_axes=(0, None, 0))(
-        b, r, kappa0
-    )
-    p_expect = q_calc - s
+    for n in range(s_expect.shape[1]):
+        # For logging/debugging purposes, work out the case id
+        l = np.floor(np.sqrt(n)).astype(int)
+        m = n - l**2 - l
+        mu = l - m
+        nu = l + m
+        if mu == 1 and l == 1:
+            case = 1
+        elif mu % 2 == 0 and (mu // 2) % 2 == 0:
+            case = 2
+        elif mu == 1 and l % 2 == 0:
+            case = 3
+        elif mu == 1:
+            case = 4
+        elif (mu - 1) % 2 == 0 and ((mu - 1) // 2) % 2 == 0:
+            case = 5
+        else:
+            case = 0
 
-    import matplotlib.pyplot as plt
-
-    for n in range(p_expect.shape[1]):
-        if not np.allclose(p_calc[:, n], p_expect[:, n], atol=1e-5):
-            l = np.floor(np.sqrt(n)).astype(int)
-            m = n - l**2 - l
-            print(n, l, m, l - m, l + m)
-
-        plt.clf()
-        plt.plot(b, p_expect[:, n] - p_calc[:, n], ":", label="calc")
-        plt.savefig(f"test_{n}.png")
-
-    assert 0
+        np.testing.assert_allclose(
+            s_calc[:, n],
+            s_expect[:, n],
+            atol=1e-6,
+            err_msg=f"n={n}, l={l}, m={m}, mu={mu}, nu={nu}, case={case}",
+        )
