@@ -35,16 +35,11 @@ def test_kappas():
 
 @pytest.mark.parametrize("r", [0.1, 1.1])
 def test_compare_starry(r, l_max=10, order=20):
-    # FIXME: Deal with r == 0.0 properly
     starry = pytest.importorskip("starry")
 
     b = np.linspace(0, 1 + r, 501)[:-1]
-    if np.allclose(r, 0):
-        s_expect = np.zeros((len(b), l_max**2 + 2 * l_max + 1))
-        s_expect[:, 0] = np.pi
-    else:
-        m = starry.Map(l_max)
-        s_expect = m.ops.sT(b, r)
+    m = starry.Map(l_max)
+    s_expect = m.ops.sT(b, r)
     s_calc = solution_vector(l_max, order=order)(b, r)
 
     for n in range(s_expect.shape[1]):

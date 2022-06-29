@@ -121,9 +121,19 @@ def p_integral(order, l_max, b, r, kappa0):
 
             if mu == 1 and l == 1:
                 omz2 = r2 + b2 - 2 * b * r * c
+                cond = jnp.less(omz2, 10 * jnp.finfo(omz2.dtype).eps)
+                omz2 = jnp.where(cond, 1, omz2)
                 z2 = jnp.maximum(0, 1 - omz2)
                 arg.append(
-                    2 * r * (r - b * c) * (1 - z2 * jnp.sqrt(z2)) / (3 * omz2)
+                    jnp.where(
+                        cond,
+                        0,
+                        2
+                        * r
+                        * (r - b * c)
+                        * (1 - z2 * jnp.sqrt(z2))
+                        / (3 * omz2),
+                    )
                 )
 
             elif mu % 2 == 0 and (mu // 2) % 2 == 0:
