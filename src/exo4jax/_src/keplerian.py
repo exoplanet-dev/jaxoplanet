@@ -249,10 +249,8 @@ class KeplerianBody(NamedTuple):
 
         # Work out all the relevant reference times
         time_ref = -M0 * period / (2 * jnp.pi)
-        if (time_transit is None) != (time_peri is None):
-            raise ValueError(
-                "Must specify either time_transit or time_peri, but not both"
-            )
+        if time_transit is not None and time_peri is not None:
+            raise ValueError("Cannot specify both time_transit or time_peri")
         elif time_transit is not None:
             time_peri = time_transit + time_ref
         elif time_peri is not None:

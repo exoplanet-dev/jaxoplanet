@@ -1,8 +1,5 @@
 #!/usr/bin/env python
 
-# Inspired by:
-# https://hynek.me/articles/sharing-your-labor-of-love-pypi-quick-and-dirty/
-
 import codecs
 import os
 import re
@@ -34,6 +31,7 @@ EXTRA_REQUIRE = {
         "pytest-xdist",
         "coverage[toml]",
         "exoplanet-core",
+        "batman-package",
     ],
     "comparison": ["starry", "numpy<1.22", "tqdm"],
 }
@@ -45,12 +43,12 @@ EXTRA_REQUIRE = {
 HERE = os.path.dirname(os.path.realpath(__file__))
 
 
-def read(*parts):
+def read(*parts: str) -> str:
     with codecs.open(os.path.join(HERE, *parts), "rb", "utf-8") as f:
         return f.read()
 
 
-def find_meta(meta, meta_file=read(META_PATH)):
+def find_meta(meta: str, meta_file: str = read(META_PATH)) -> str:
     meta_match = re.search(
         r"^__{meta}__ = ['\"]([^'\"]*)['\"]".format(meta=meta), meta_file, re.M
     )
