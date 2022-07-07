@@ -12,7 +12,7 @@ def test(session):
 
 
 @nox.session(python=ALL_PYTHON_VS)
-def test_comparison(session):
+def comparison(session):
     session.install(".[test,comparison]")
     session.run(
         "pytest",
