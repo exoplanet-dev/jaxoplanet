@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 import nox
 
 ALL_PYTHON_VS = ["3.8", "3.9", "3.10"]

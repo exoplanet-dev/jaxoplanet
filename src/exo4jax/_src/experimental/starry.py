@@ -1,27 +1,34 @@
 from functools import partial
+from typing import Callable, Tuple
 
 import numpy as np
 import jax
 import jax.numpy as jnp
 from scipy.special import roots_legendre
 
+from exo4jax._src.types import Array
+from exo4jax._src.quad import kite_area
 
-def solution_vector(l_max, order=20):
+
+def solution_vector(
+    l_max: int, order: int = 20, limb_dark: bool = False
+) -> Callable[[Array, Array], Array]:
     n_max = l_max**2 + 2 * l_max + 1
 
+    @jax.jit
     @partial(jnp.vectorize, signature=f"(),()->({n_max})")
-    def impl(b, r):
+    def impl(b: Array, r: Array) -> Array:
         b = jnp.abs(b)
         r = jnp.abs(r)
         kappa0, kappa1 = kappas(b, r)
-        P = p_integral(order, l_max, b, r, kappa0)
-        Q = q_integral(l_max, 0.5 * jnp.pi - kappa1)
+        P = p_integral(limb_dark, order, l_max, b, r, kappa0)
+        Q = q_integral(limb_dark, l_max, 0.5 * jnp.pi - kappa1)
         return Q - P
 
     return impl
 
 
-def kappas(b, r):
+def kappas(b: Array, r: Array) -> Tuple[Array, Array]:
     b2 = jnp.square(b)
     factor = (r - 1) * (r + 1)
     b_cond = jnp.logical_and(
@@ -32,19 +39,7 @@ def kappas(b, r):
     return jnp.arctan2(area, b2 + factor), jnp.arctan2(area, b2 - factor)
 
 
-def kite_area(a, b, c):
-    def sort2(a, b):
-        return jnp.minimum(a, b), jnp.maximum(a, b)
-
-    a, b = sort2(a, b)
-    b, c = sort2(b, c)
-    a, b = sort2(a, b)
-
-    square_area = (a + (b + c)) * (c - (a - b)) * (c + (a - b)) * (a + (b - c))
-    return jnp.sqrt(jnp.maximum(square_area, 0.0))
-
-
-def q_integral(l_max, lam):
+def q_integral(limb_dark: bool, l_max: int, lam: Array) -> Array:
     zero = jnp.zeros_like(lam)
     c = jnp.cos(lam)
     s = jnp.sin(lam)
@@ -53,7 +48,7 @@ def q_integral(l_max, lam):
         (0, 1): -2 * c,
     }
 
-    def get(u, v):
+    def get(u: int, v: int) -> Array:
         if (u, v) in h:
             return h[(u, v)]
         if u >= 2:
@@ -67,7 +62,7 @@ def q_integral(l_max, lam):
 
     U = []
     for l in range(l_max + 1):
-        for m in range(-l, l + 1):
+        for m in [0] if limb_dark else range(-l, l + 1):
             if l == 1 and m == 0:
                 U.append((np.pi + 2 * lam) / 3)
                 continue
@@ -84,7 +79,9 @@ def q_integral(l_max, lam):
     return jnp.stack(U)
 
 
-def p_integral(order, l_max, b, r, kappa0):
+def p_integral(
+    limb_dark: bool, order: int, l_max: int, b: Array, r: Array, kappa0: Array
+) -> Array:
     b2 = jnp.square(b)
     r2 = jnp.square(r)
 
@@ -115,7 +112,7 @@ def p_integral(order, l_max, b, r, kappa0):
     n = 0
     for l in range(l_max + 1):
         fa3 = (2 * r) ** (l - 1) * f0
-        for m in range(-l, l + 1):
+        for m in [0] if limb_dark else range(-l, l + 1):
             mu = l - m
             nu = l + m
 
@@ -124,17 +121,10 @@ def p_integral(order, l_max, b, r, kappa0):
                 cond = jnp.less(omz2, 10 * jnp.finfo(omz2.dtype).eps)
                 omz2 = jnp.where(cond, 1, omz2)
                 z2 = jnp.maximum(0, 1 - omz2)
-                arg.append(
-                    jnp.where(
-                        cond,
-                        0,
-                        2
-                        * r
-                        * (r - b * c)
-                        * (1 - z2 * jnp.sqrt(z2))
-                        / (3 * omz2),
-                    )
+                result = (
+                    2 * r * (r - b * c) * (1 - z2 * jnp.sqrt(z2)) / (3 * omz2)
                 )
+                arg.append(jnp.where(cond, 0, result))
 
             elif mu % 2 == 0 and (mu // 2) % 2 == 0:
                 arg.append(
@@ -163,9 +153,9 @@ def p_integral(order, l_max, b, r, kappa0):
             n += 1
 
     P0 = rng * jnp.sum(jnp.stack(arg) * weights[None, :], axis=1)
-    P = jnp.zeros(l_max**2 + 2 * l_max + 1)
+    P = jnp.zeros((l_max + 1) if limb_dark else (l_max**2 + 2 * l_max + 1))
 
     # Yes, using np not jnp here: 'ind' is always static.
-    ind = np.stack(ind)
+    inds = np.stack(ind)
 
-    return P.at[ind].set(P0)
+    return P.at[inds].set(P0)

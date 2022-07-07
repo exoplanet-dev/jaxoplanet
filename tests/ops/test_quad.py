@@ -1,12 +1,10 @@
-# -*- coding: utf-8 -*-
+# mypy: ignore-errors
 
 import jax
 import jax.numpy as jnp
 import numpy as np
-import pytest
-from jax.config import config
 
-from exo4jax import ops
+from exo4jax._src.quad import quad_soln_impl
 
 
 def check_limbdark(b, r, **kwargs):
@@ -18,7 +16,7 @@ def check_limbdark(b, r, **kwargs):
             r + jnp.zeros_like(b, dtype=jnp.float64),
         )
 
-    calc = ops.quad_soln(b, r, **kwargs)
+    calc = quad_soln_impl(b, r, order=10, **kwargs)
     np.testing.assert_allclose(calc, expect, atol=1e-6)
 
 

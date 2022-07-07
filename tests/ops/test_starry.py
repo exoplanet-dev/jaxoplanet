@@ -1,8 +1,10 @@
+# mypy: ignore-errors
+
 import numpy as np
 import jax
 import pytest
 
-from exo4jax.ops.starry import kappas, solution_vector
+from exo4jax._src.experimental.starry import kappas, solution_vector
 
 
 def test_kappas():

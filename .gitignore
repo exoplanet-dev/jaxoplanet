@@ -1,7 +1,7 @@
 *_version.py
 .rendered.*
 *.so
-.tox
+.nox
 .coverage
 .coverage.*
 /*.ipynb

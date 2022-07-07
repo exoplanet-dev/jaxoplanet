@@ -1,11 +1,19 @@
-# -*- coding: utf-8 -*-
-
-__all__ = ["kepler"]
-
+from typing import Tuple
 import jax.numpy as jnp
 
+from exo4jax._src.types import Array
 
-def kepler(M, ecc):
+
+def kepler(M: Array, ecc: Array) -> Tuple[Array, Array]:
+    """Solve Kepler's equation to compute the true anomaly
+
+    Args:
+        M: Mean anomaly
+        ecc: Eccentricity
+
+    Returns:
+        The sine and cosine of the true anomaly
+    """
     # Wrap into the right range
     M = M % (2 * jnp.pi)
 
@@ -35,7 +43,7 @@ def kepler(M, ecc):
     return sinf, cosf
 
 
-def starter(M, ecc, ome):
+def starter(M: Array, ecc: Array, ome: Array) -> Array:
     M2 = jnp.square(M)
     alpha = 3 * jnp.pi / (jnp.pi - 6 / jnp.pi)
     alpha += 1.6 / (jnp.pi - 6 / jnp.pi) * (jnp.pi - M) / (1 + ecc)
@@ -48,7 +56,7 @@ def starter(M, ecc, ome):
     return (2 * r * w / (jnp.square(w) + w * q + q2) + M) / d
 
 
-def refine(M, ecc, ome, E):
+def refine(M: Array, ecc: Array, ome: Array, E: Array) -> Array:
     sE = E - jnp.sin(E)
     cE = 1 - jnp.cos(E)
 

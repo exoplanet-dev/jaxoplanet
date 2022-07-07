@@ -1,27 +1,41 @@
-# -*- coding: utf-8 -*-
-
-__all__ = ["quad_coeff", "quad_soln"]
-
-from functools import partial
+from typing import Tuple
 
 import jax
 import jax.numpy as jnp
 from scipy.special import roots_legendre
 
+from exo4jax._src.types import Array
+
+
+@jnp.vectorize
+def light_curve(
+    u1: Array, u2: Array, b: Array, r: Array, *, order: int = 10
+) -> Array:
+    """Compute a quadratically limb darkened light curve
+
+    Args:
+        u1: The first limb darkening parameter
+        u2: The second limb darkening parameter
+        b: The impact parameter r: The radius ratio
+        order: The order of the Legendre polynomial used for numerically
+            integrating the s1 term
+
+    Returns:
+        The light curve flux in relative units
+    """
+    c = quad_coeff(u1, u2)
+    s = quad_soln_impl(b, r, order)
+    return s @ c
+
 
 @jax.jit
-def quad_coeff(u1, u2):
+def quad_coeff(u1: Array, u2: Array) -> Array:
     c = jnp.array([1 - u1 - 1.5 * u2, u1 + 2 * u2, -0.25 * u2])
     c /= jnp.pi * (c[0] + c[1] / 1.5)
     return c
 
 
-@partial(jax.jit, static_argnames=("order",))
-def quad_soln(b, r, *, order=10):
-    return quad_soln_impl(b, r, order)
-
-
-def quad_soln_impl(b, r, order):
+def quad_soln_impl(b: Array, r: Array, order: int) -> Array:
     b = jnp.abs(b)
     r = jnp.abs(r)
     b2 = jnp.square(b)
@@ -69,7 +83,9 @@ def quad_soln_impl(b, r, order):
     return jnp.stack((s0, s1, s2), axis=-1)
 
 
-def s1_impl(b, r, kappa0, kappa1, *, order=5):
+def s1_impl(
+    b: Array, r: Array, kappa0: Array, kappa1: Array, *, order: int
+) -> Array:
     # Pre-compute this before broadcasting
     P0 = kappa0 * r
 
@@ -96,8 +112,8 @@ def s1_impl(b, r, kappa0, kappa1, *, order=5):
     return (Q - P) / 3
 
 
-def kite_area(a, b, c):
-    def sort2(a, b):
+def kite_area(a: Array, b: Array, c: Array) -> Array:
+    def sort2(a: Array, b: Array) -> Tuple[Array, Array]:
         return jnp.minimum(a, b), jnp.maximum(a, b)
 
     a, b = sort2(a, b)
