@@ -21,10 +21,7 @@ jobs:
         include:
           - os: "ubuntu-latest"
             python-version: "3.10"
-            session: "extras"
-          - os: "ubuntu-latest"
-            python-version: "3.10"
-            session: "doctest"
+            session: "comparison"
 
     steps:
       - name: Checkout
