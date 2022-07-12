@@ -50,4 +50,4 @@ jobs:
         run: |
           python -m nox --non-interactive --error-on-missing-interpreter \
             --session \
-            ${{matrix.session}}-${{matrix.python-version}}(x64=${{matrix.x64}})
+            "${{matrix.session}}-${{matrix.python-version}}(x64=${{matrix.x64}})"
