@@ -5,7 +5,7 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 
-from exo4jax.orbits import KeplerianBody, KeplerianCentral
+from exo4jax.orbits import KeplerianBody, KeplerianCentral, KeplerianOrbit
 
 
 def test_sky_coords():
@@ -64,26 +64,22 @@ def test_center_of_mass():
     m_planet = np.array([0.5, 0.1])
     m_star = 1.45
 
-    orbit = KeplerianBody.init(
+    orbit = KeplerianOrbit.init(
         central=KeplerianCentral.init(mass=m_star, radius=1.0),
-        t0=np.array([0.5, 17.4]),
+        time_transit=np.array([0.5, 17.4]),
         period=np.array([100.0, 37.3]),
-        ecc=np.array([0.1, 0.8]),
-        omega=np.array([0.5, 1.3]),
-        Omega=np.array([0.0, 1.0]),
-        incl=np.array([0.25 * np.pi, 0.3 * np.pi]),
-        m_planet=m_planet,
+        eccentricity=np.array([0.1, 0.8]),
+        omega_peri=np.array([0.5, 1.3]),
+        asc_node=np.array([0.0, 1.0]),
+        inclination=np.array([0.25 * np.pi, 0.3 * np.pi]),
+        mass=m_planet,
     )
 
-    planet_coords = theano.function([], orbit.get_planet_position(t))()
-    star_coords = theano.function([], orbit.get_star_position(t))()
-
+    coords = np.asarray(orbit.position(t))
+    central_coords = np.asarray(orbit.central_position(t))
     com = np.sum(
-        (
-            m_planet[None, :] * np.array(planet_coords)
-            + m_star * np.array(star_coords)
-        )
-        / (m_star + m_planet)[None, :],
+        (m_planet[..., None] * coords + m_star * central_coords)
+        / (m_star + m_planet)[..., None],
         axis=0,
     )
     assert np.allclose(com, 0.0)

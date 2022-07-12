@@ -1,5 +1,16 @@
-from typing import TYPE_CHECKING, Any, NamedTuple, Optional, Tuple
+from re import A
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    NamedTuple,
+    Optional,
+    Tuple,
+    TypeVar,
+)
+from functools import partial, wraps
 
+import jax
 import jax.numpy as jnp
 
 from exo4jax._src.types import Array
@@ -557,3 +568,67 @@ class KeplerianBody(NamedTuple):
         x, y, z = self._rotate_vector(r0 * cosf, r0 * sinf)
 
         return (x, y, z), (vx, vy, vz)
+
+
+class KeplerianOrbit(NamedTuple):
+    bodies: KeplerianBody
+
+    @classmethod
+    def init(
+        cls, central: Optional[KeplerianCentral] = None, **body_args: Array
+    ) -> "KeplerianOrbit":
+        names, values = zip(*body_args.items())
+        values = jnp.broadcast_arrays(*(jnp.atleast_1d(x) for x in values))
+        bodies = jax.vmap(partial(KeplerianBody.init, central=central))(
+            **dict(zip(names, values))
+        )
+        return cls(bodies=bodies)
+
+    def position(
+        self, t: Array, parallax: Optional[Array] = None
+    ) -> Tuple[Array, Array, Array]:
+        return jax.vmap(
+            partial(KeplerianBody.position, t=t, parallax=parallax)
+        )(self.bodies)
+
+    def central_position(
+        self, t: Array, parallax: Optional[Array] = None
+    ) -> Tuple[Array, Array, Array]:
+        return jax.vmap(
+            partial(KeplerianBody.central_position, t=t, parallax=parallax)
+        )(self.bodies)
+
+    def relative_position(
+        self, t: Array, parallax: Optional[Array] = None
+    ) -> Tuple[Array, Array, Array]:
+        return jax.vmap(
+            partial(KeplerianBody.relative_position, t=t, parallax=parallax)
+        )(self.bodies)
+
+    def velocity(
+        self, t: Array, parallax: Optional[Array] = None
+    ) -> Tuple[Array, Array, Array]:
+        return jax.vmap(
+            partial(KeplerianBody.velocity, t=t, parallax=parallax)
+        )(self.bodies)
+
+    def central_velocity(
+        self, t: Array, parallax: Optional[Array] = None
+    ) -> Tuple[Array, Array, Array]:
+        return jax.vmap(
+            partial(KeplerianBody.central_velocity, t=t, parallax=parallax)
+        )(self.bodies)
+
+    def relative_velocity(
+        self, t: Array, parallax: Optional[Array] = None
+    ) -> Tuple[Array, Array, Array]:
+        return jax.vmap(
+            partial(KeplerianBody.relative_velocity, t=t, parallax=parallax)
+        )(self.bodies)
+
+    def radial_velocity(
+        self, t: Array, parallax: Optional[Array] = None
+    ) -> Tuple[Array, Array, Array]:
+        return jax.vmap(
+            partial(KeplerianBody.radial_velocity, t=t, parallax=parallax)
+        )(self.bodies)
