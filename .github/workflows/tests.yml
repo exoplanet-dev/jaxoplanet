@@ -16,12 +16,18 @@ jobs:
       matrix:
         os: ["ubuntu-latest", "macos-latest"]
         python-version: ["3.9", "3.10"]
+        x64: [false]
         session:
           - "test"
         include:
           - os: "ubuntu-latest"
             python-version: "3.10"
             session: "comparison"
+            x64: true
+          - os: "ubuntu-latest"
+            python-version: "3.10"
+            session: "test"
+            x64: true
 
     steps:
       - name: Checkout
@@ -43,4 +49,5 @@ jobs:
       - name: Run tests
         run: |
           python -m nox --non-interactive --error-on-missing-interpreter \
-            --session ${{ matrix.session }}-${{ matrix.python-version }}
+            --session \
+            ${{matrix.session}}-${{matrix.python-version}}(x64=${{matrix.x64}})
