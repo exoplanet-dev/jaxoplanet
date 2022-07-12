@@ -6,9 +6,15 @@ ALL_PYTHON_VS = ["3.8", "3.9", "3.10"]
 
 
 @nox.session(python=ALL_PYTHON_VS)
-def test(session):
+@nox.parametrize("x64", [True, False])
+def test(session, x64):
     session.install(".[test]")
-    session.run("pytest", "-n", "auto", *session.posargs)
+    if x64:
+        env = {"JAX_ENABLE_X64": "1"}
+    else:
+        env = {}
+
+    session.run("pytest", "-n", "auto", *session.posargs, env=env)
 
 
 @nox.session(python=ALL_PYTHON_VS)

@@ -1,6 +1,5 @@
 # mypy: ignore-errors
 
-import jax
 import jax.numpy as jnp
 import numpy as np
 import pytest
@@ -80,14 +79,17 @@ def test_pi():
 #
 
 
+@pytest.mark.skipif(
+    not config.jax_enable_x64,
+    reason="Can only compare to exoplanet-core results at double precision",
+)
 def check_limbdark(b, r, **kwargs):
-    with jax.experimental.enable_x64():
-        from exoplanet_core.jax.ops import quad_solution_vector
+    from exoplanet_core.jax.ops import quad_solution_vector
 
-        expect = quad_solution_vector(
-            b + jnp.zeros_like(r, dtype=jnp.float64),
-            r + jnp.zeros_like(b, dtype=jnp.float64),
-        )
+    expect = quad_solution_vector(
+        b + jnp.zeros_like(r, dtype=jnp.float64),
+        r + jnp.zeros_like(b, dtype=jnp.float64),
+    )
 
     calc = quad_soln_impl(b, r, order=10, **kwargs)
     np.testing.assert_allclose(calc, expect, atol=1e-6)
