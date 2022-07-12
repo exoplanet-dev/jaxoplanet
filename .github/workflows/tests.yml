@@ -16,18 +16,18 @@ jobs:
       matrix:
         os: ["ubuntu-latest", "macos-latest"]
         python-version: ["3.9", "3.10"]
-        x64: [false]
+        x64: ["False"]
         session:
           - "test"
         include:
           - os: "ubuntu-latest"
             python-version: "3.10"
+            x64: "True"
             session: "comparison"
-            x64: true
           - os: "ubuntu-latest"
             python-version: "3.10"
+            x64: "True"
             session: "test"
-            x64: true
 
     steps:
       - name: Checkout

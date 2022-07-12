@@ -13,7 +13,6 @@ def test(session, x64):
         env = {"JAX_ENABLE_X64": "1"}
     else:
         env = {}
-
     session.run("pytest", "-n", "auto", *session.posargs, env=env)
 
 
