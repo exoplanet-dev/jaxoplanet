@@ -55,11 +55,7 @@ def test_sky_coords():
     )
 
     # Make sure that the in-transit impact parameter matches batman
-    assert_allclose(
-        r_batman[m],
-        r[m],
-        atol=1e-5 if jax.config.jax_enable_x64 else 1e-2,
-    )
+    assert_allclose(r_batman[m], r[m])
 
     # In-transit should correspond to positive z in our parameterization
     assert np.all(z[m] > 0)

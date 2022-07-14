@@ -12,7 +12,7 @@ from exo4jax._src.quad import quad_soln_impl
 
 assert_allclose = partial(
     np.testing.assert_allclose,
-    atol=1e-7 if jax.config.jax_enable_x64 else 1e-5,
+    atol=1e-6 if jax.config.jax_enable_x64 else 1e-5,
 )
 
 #
