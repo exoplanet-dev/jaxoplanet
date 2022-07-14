@@ -13,6 +13,7 @@ multi_line_output = 3
 include_trailing_comma = true
 force_grid_wrap = 0
 use_parentheses = true
+combine_as_imports = true
 known_first_party = ["exo4jax"]
 
 [tool.coverage.run]

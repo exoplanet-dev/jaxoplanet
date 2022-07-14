@@ -1,13 +1,13 @@
 from functools import partial
 from typing import Callable, Tuple
 
-import numpy as np
 import jax
 import jax.numpy as jnp
+import numpy as np
 from scipy.special import roots_legendre
 
-from exo4jax._src.types import Array
 from exo4jax._src.quad import kite_area
+from exo4jax._src.types import Array
 
 
 def solution_vector(

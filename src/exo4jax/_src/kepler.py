@@ -1,4 +1,5 @@
 from typing import Tuple
+
 import jax.numpy as jnp
 
 from exo4jax._src.types import Array

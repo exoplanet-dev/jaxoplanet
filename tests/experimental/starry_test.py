@@ -2,8 +2,8 @@
 
 from functools import partial
 
-import numpy as np
 import jax
+import numpy as np
 import pytest
 
 from exo4jax._src.experimental.starry import kappas, solution_vector

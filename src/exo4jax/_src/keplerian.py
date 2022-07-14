@@ -1,20 +1,11 @@
-from re import A
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    NamedTuple,
-    Optional,
-    Tuple,
-    TypeVar,
-)
-from functools import partial, wraps
+from functools import partial
+from typing import TYPE_CHECKING, Any, NamedTuple, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
 
-from exo4jax._src.types import Array
 from exo4jax._src.kepler import kepler
+from exo4jax._src.types import Array
 
 # FIXME: Switch to constants from astropy
 GRAVITATIONAL_CONSTANT = 2942.2062175044193 / (4 * jnp.pi**2)
