@@ -10,9 +10,9 @@ ALL_PYTHON_VS = ["3.8", "3.9", "3.10"]
 def test(session, x64):
     session.install(".[test]")
     if x64:
-        env = {"JAX_ENABLE_X64": "1"}
+        env = {"JAX_ENABLE_X64": "True"}
     else:
-        env = {}
+        env = {"JAX_ENABLE_X64": "False"}
     session.run("pytest", "-n", "auto", *session.posargs, env=env)
 
 

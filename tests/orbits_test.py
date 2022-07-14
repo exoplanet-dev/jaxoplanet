@@ -1,11 +1,18 @@
 # mypy: ignore-errors
 
+from functools import partial
+
 import jax
 import jax.numpy as jnp
 import numpy as np
 import pytest
 
 from exo4jax.orbits import KeplerianBody, KeplerianCentral, KeplerianOrbit
+
+assert_allclose = partial(
+    np.testing.assert_allclose,
+    atol=2e-5 if jax.config.jax_enable_x64 else 2e-4,
+)
 
 
 def test_sky_coords():
@@ -48,7 +55,11 @@ def test_sky_coords():
     )
 
     # Make sure that the in-transit impact parameter matches batman
-    assert np.allclose(r_batman[m], r[m], atol=2e-5)
+    assert_allclose(
+        r_batman[m],
+        r[m],
+        atol=1e-5 if jax.config.jax_enable_x64 else 1e-2,
+    )
 
     # In-transit should correspond to positive z in our parameterization
     assert np.all(z[m] > 0)
@@ -82,4 +93,4 @@ def test_center_of_mass():
         / (m_star + m_planet)[..., None],
         axis=0,
     )
-    assert np.allclose(com, 0.0)
+    assert_allclose(com, 0.0)

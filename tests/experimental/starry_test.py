@@ -1,10 +1,17 @@
 # mypy: ignore-errors
 
+from functools import partial
+
 import numpy as np
 import jax
 import pytest
 
 from exo4jax._src.experimental.starry import kappas, solution_vector
+
+assert_allclose = partial(
+    np.testing.assert_allclose,
+    atol=1e-6 if jax.config.jax_enable_x64 else 5e-5,
+)
 
 
 def test_kappas():
@@ -31,8 +38,8 @@ def test_kappas():
     phi = _phi(b, r)
     lam = _lam(b, r)
 
-    np.testing.assert_allclose(kappa0, phi + 0.5 * np.pi)
-    np.testing.assert_allclose(kappa1, 0.5 * np.pi - lam)
+    assert_allclose(kappa0, phi + 0.5 * np.pi)
+    assert_allclose(kappa1, 0.5 * np.pi - lam)
 
 
 @pytest.mark.parametrize("r", [0.1, 1.1])
@@ -63,9 +70,8 @@ def test_compare_starry(r, l_max=10, order=20):
         else:
             case = 0
 
-        np.testing.assert_allclose(
+        assert_allclose(
             s_calc[:, n],
             s_expect[:, n],
-            atol=1e-6,
             err_msg=f"n={n}, l={l}, m={m}, mu={mu}, nu={nu}, case={case}",
         )

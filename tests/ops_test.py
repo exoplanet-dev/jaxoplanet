@@ -1,12 +1,19 @@
 # mypy: ignore-errors
 
+from functools import partial
+
+import jax
 import jax.numpy as jnp
 import numpy as np
 import pytest
-from jax.config import config
 
 from exo4jax import ops
 from exo4jax._src.quad import quad_soln_impl
+
+assert_allclose = partial(
+    np.testing.assert_allclose,
+    atol=1e-7 if jax.config.jax_enable_x64 else 1e-5,
+)
 
 #
 # Kepler's equation
@@ -23,18 +30,11 @@ def get_mean_and_true_anomaly(eccentricity, eccentric_anomaly):
 
 
 def check_kepler(e, E):
-    atol = 1e-6
-
-    # At single point precision there are numerical issues in both
-    # the mod and the trig functions; wrap first
-    if e.dtype == jnp.float32:
-        E = E % (2 * jnp.pi)
-        atol = 1e-5
-
+    E = E % (2 * jnp.pi)
     M, f = get_mean_and_true_anomaly(e, E)
     sinf0, cosf0 = ops.kepler(M, e)
-    np.testing.assert_allclose(sinf0, jnp.sin(f), atol=atol)
-    np.testing.assert_allclose(cosf0, jnp.cos(f), atol=atol)
+    assert_allclose(sinf0, jnp.sin(f))
+    assert_allclose(cosf0, jnp.cos(f))
 
 
 def test_basic_low_e():
@@ -46,7 +46,7 @@ def test_basic_low_e():
 
 
 @pytest.mark.skipif(
-    not config.jax_enable_x64,
+    not jax.config.jax_enable_x64,
     reason="Kepler solver has numerical issues at single point precision",
 )
 def test_basic_high_e():
@@ -58,7 +58,7 @@ def test_basic_high_e():
 
 
 @pytest.mark.skipif(
-    not config.jax_enable_x64,
+    not jax.config.jax_enable_x64,
     reason="Kepler solver has numerical issues at single point precision",
 )
 def test_edge_cases():
@@ -80,7 +80,7 @@ def test_pi():
 
 
 @pytest.mark.skipif(
-    not config.jax_enable_x64,
+    not jax.config.jax_enable_x64,
     reason="Can only compare to exoplanet-core results at double precision",
 )
 def check_limbdark(b, r, **kwargs):
@@ -92,7 +92,7 @@ def check_limbdark(b, r, **kwargs):
     )
 
     calc = quad_soln_impl(b, r, order=10, **kwargs)
-    np.testing.assert_allclose(calc, expect, atol=1e-6)
+    assert_allclose(calc, expect)
 
 
 def test_b_grid():
