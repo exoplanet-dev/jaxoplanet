@@ -1,12 +1,12 @@
-from typing import NamedTuple
 from functools import partial
+from typing import NamedTuple
 
-import jax.numpy as jnp
 import jax
+import jax.numpy as jnp
 
-from exo4jax._src.types import Array
 from exo4jax._src.orbit_proto import LightCurveOrbit
 from exo4jax._src.quad import light_curve
+from exo4jax._src.types import Array
 
 
 class Quad(NamedTuple):
