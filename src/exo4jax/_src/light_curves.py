@@ -9,7 +9,7 @@ from exo4jax._src.quad import light_curve
 from exo4jax._src.types import Array
 
 
-class Quad(NamedTuple):
+class QuadLightCurve(NamedTuple):
     """A quadratically limb darkened light curve
 \
     Args:
@@ -21,7 +21,7 @@ class Quad(NamedTuple):
     u2: Array
 
     @classmethod
-    def init(cls, u1: Array, u2: Array) -> "Quad":
+    def init(cls, u1: Array, u2: Array) -> "QuadLightCurve":
         return cls(u1=u1, u2=u2)
 
     def radius_ratio_from_approx_transit_depth(
@@ -80,7 +80,7 @@ class Quad(NamedTuple):
             raise NotImplementedError(
                 "Exposure time integration is not yet implemented"
             )
-        r_star = orbit.central.radius
+        r_star = orbit.central_radius
         x, y, z = orbit.relative_position(t)
         b = jnp.sqrt(x**2 + y**2) / r_star
         r = orbit.radius / r_star

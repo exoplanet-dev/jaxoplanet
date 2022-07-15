@@ -16,7 +16,7 @@ class LightCurveOrbit(LightCurveBody):
         ...
 
     @property
-    def central(self) -> LightCurveBody:
+    def central_radius(self) -> Array:
         ...
 
 

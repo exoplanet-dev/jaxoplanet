@@ -323,6 +323,10 @@ class KeplerianBody(NamedTuple):
             **kwargs,
         )
 
+    @property
+    def central_radius(self) -> Array:
+        return self.central.radius
+
     def position(
         self, t: Array, parallax: Optional[Array] = None
     ) -> Tuple[Array, Array, Array]:
@@ -583,8 +587,8 @@ class KeplerianOrbit(NamedTuple):
         return self.bodies.radius
 
     @property
-    def central(self) -> KeplerianCentral:
-        return self.bodies.central
+    def central_radius(self) -> Array:
+        return self.bodies.central.radius
 
     @classmethod
     def init(
