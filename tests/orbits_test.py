@@ -90,3 +90,123 @@ def test_center_of_mass():
         axis=0,
     )
     assert_allclose(com, 0.0)
+
+
+def test_velocity():
+    t = np.linspace(0, 100, 1000)
+    m_planet = 0.1
+    m_star = 1.3
+    orbit = KeplerianOrbit.init(
+        central=KeplerianCentral.init(mass=m_star, radius=1.0),
+        time_transit=0.5,
+        period=100.0,
+        eccentricity=0.1,
+        omega_peri=0.5,
+        asc_node=1.0,
+        inclination=0.25 * np.pi,
+        mass=m_planet,
+    )
+
+    computed = orbit.central_velocity(t)
+    for n in range(3):
+        expected = jax.vmap(
+            jax.grad(lambda t: jnp.sum(orbit.central_position(t)[n]))
+        )(t)
+        assert_allclose(jnp.sum(computed[n], axis=0), expected)
+
+    computed = orbit.velocity(t)
+    for n in range(3):
+        for i in range(len(orbit)):
+            expected = jax.vmap(jax.grad(lambda t: orbit.position(t)[n][i]))(t)
+            assert_allclose(computed[n][i], expected)
+
+    computed = orbit.relative_velocity(t)
+    for n in range(3):
+        for i in range(len(orbit)):
+            expected = jax.vmap(
+                jax.grad(lambda t: orbit.relative_position(t)[n][i])
+            )(t)
+            assert_allclose(computed[n][i], expected)
+
+
+def test_radial_velocity():
+    t = np.linspace(0, 100, 1000)
+    m_planet = 0.1
+    m_star = 1.3
+    orbit = KeplerianOrbit.init(
+        central=KeplerianCentral.init(mass=m_star, radius=1.0),
+        time_transit=0.5,
+        period=100.0,
+        eccentricity=0.1,
+        omega_peri=0.5,
+        asc_node=1.0,
+        inclination=0.25 * np.pi,
+        mass=m_planet,
+    )
+
+    computed = orbit.radial_velocity(t)
+    expected = orbit.radial_velocity(
+        t,
+        semiamplitude=orbit.bodies._baseline_rv_semiamplitude
+        * orbit.bodies.mass
+        * orbit.bodies.sin_inclination,
+    )
+    assert_allclose(expected, computed)
+
+
+def test_small_star():
+    _rsky = pytest.importorskip("batman._rsky")
+
+    m_star = 0.151
+    r_star = 0.189
+    period = 0.4626413
+    t0 = 0.2
+    b = 0.5
+    ecc = 0.1
+    omega = 0.1
+    t = np.linspace(0, period, 500)
+
+    orbit = KeplerianOrbit.init(
+        central=KeplerianCentral.init(radius=r_star, mass=m_star),
+        period=period,
+        time_transit=t0,
+        impact_param=b,
+        eccentricity=ecc,
+        omega_peri=omega,
+    )
+    a = orbit.semimajor
+    incl = jnp.arctan2(
+        orbit.bodies.sin_inclination, orbit.bodies.cos_inclination
+    )
+
+    r_batman = _rsky._rsky(t, t0, period, a, incl, ecc, omega, 1, 1)
+    m = r_batman < 100.0
+    assert m.sum() > 0
+
+    x, y, _ = orbit.relative_position(t)
+    r = np.sqrt(x**2 + y**2)
+
+    # Make sure that the in-transit impact parameter matches batman
+    assert_allclose(r_batman[m], r[m])
+
+
+def test_impact():
+    m_star = 0.151
+    r_star = 0.189
+    period = 0.4626413
+    t0 = 0.2
+    b = 0.5
+    ecc = 0.8
+    omega = 0.1
+
+    orbit = KeplerianOrbit.init(
+        central=KeplerianCentral.init(radius=r_star, mass=m_star),
+        period=period,
+        time_transit=t0,
+        impact_param=b,
+        eccentricity=ecc,
+        omega_peri=omega,
+    )
+    x, y, z = orbit.relative_position(t0)
+    assert_allclose((jnp.sqrt(x**2 + y**2) / r_star), b)
+    assert jnp.all(z > 0)
