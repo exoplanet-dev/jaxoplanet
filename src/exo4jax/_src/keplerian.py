@@ -486,17 +486,22 @@ class KeplerianBody(NamedTuple):
             return jnp.sin(M), jnp.cos(M)
         return kepler(M, self.eccentricity)
 
-    def _rotate_vector(self, x: Array, y: Array) -> Tuple[Array, Array, Array]:
+    def _rotate_vector(
+        self, x: Array, y: Array, *, include_inclination: bool = True
+    ) -> Tuple[Array, Array, Array]:
         """Apply the rotation matrices to go from orbit to observer frame
+
         In order,
         1. rotate about the z axis by an amount omega -> x1, y1, z1
         2. rotate about the x1 axis by an amount -incl -> x2, y2, z2
         3. rotate about the z2 axis by an amount Omega -> x3, y3, z3
+
         Args:
             x: A tensor representing the x coodinate in the plane of the
                 orbit.
             y: A tensor representing the y coodinate in the plane of the
                 orbit.
+
         Returns:
             Three tensors representing ``(X, Y, Z)`` in the observer frame.
         """
@@ -510,10 +515,15 @@ class KeplerianBody(NamedTuple):
             y1 = self.sin_omega_peri * x + self.cos_omega_peri * y
 
         # 2) rotate about x1 axis by -incl
-        x2 = x1
-        y2 = self.cos_inclination * y1
         # z3 = z2, subsequent rotation by Omega doesn't affect it
-        Z = -self.sin_inclination * y1
+        if include_inclination:
+            x2 = x1
+            y2 = self.cos_inclination * y1
+            Z = -self.sin_inclination * y1
+        else:
+            x2 = x1
+            y2 = y1
+            Z = -y1
 
         # 3) rotate about z2 axis by Omega
         if self.cos_asc_node is None:
@@ -536,7 +546,6 @@ class KeplerianBody(NamedTuple):
         if semiamplitude is None:
             factor = 1 if mass is None else mass
             factor *= 1 if parallax is None else parallax * AU_PER_R_SUN
-            factor *= self.sin_inclination
             k0 = factor * self._baseline_rv_semiamplitude
         else:
             k0 = semiamplitude
@@ -550,13 +559,15 @@ class KeplerianBody(NamedTuple):
             )
 
         if self.eccentricity is None:
-            vx, vy, vz = self._rotate_vector(-k0 * sinf, k0 * cosf)
+            v1, v2 = -k0 * sinf, k0 * cosf
         else:
+            v1, v2 = -k0 * sinf, k0 * (cosf + self.eccentricity)
             r0 *= (1 - self.eccentricity**2) / (1 + self.eccentricity * cosf)
-            vx, vy, vz = self._rotate_vector(
-                -k0 * sinf, k0 * (cosf + self.eccentricity)
-            )
+
         x, y, z = self._rotate_vector(r0 * cosf, r0 * sinf)
+        vx, vy, vz = self._rotate_vector(
+            v1, v2, include_inclination=semiamplitude is None
+        )
 
         return (x, y, z), (vx, vy, vz)
 
@@ -566,6 +577,14 @@ class KeplerianOrbit(NamedTuple):
 
     def __len__(self) -> int:
         return len(self.bodies.period)
+
+    @property
+    def radius(self) -> Array:
+        return self.bodies.radius
+
+    @property
+    def central(self) -> KeplerianCentral:
+        return self.bodies.central
 
     @classmethod
     def init(

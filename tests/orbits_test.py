@@ -109,10 +109,11 @@ def test_velocity():
 
     computed = orbit.central_velocity(t)
     for n in range(3):
-        expected = jax.vmap(
-            jax.grad(lambda t: jnp.sum(orbit.central_position(t)[n]))
-        )(t)
-        assert_allclose(jnp.sum(computed[n], axis=0), expected)
+        for i in range(len(orbit)):
+            expected = jax.vmap(
+                jax.grad(lambda t: orbit.central_position(t)[n][i])
+            )(t)
+            assert_allclose(computed[n][i], expected)
 
     computed = orbit.velocity(t)
     for n in range(3):
@@ -174,7 +175,7 @@ def test_small_star():
         eccentricity=ecc,
         omega_peri=omega,
     )
-    a = orbit.semimajor
+    a = orbit.bodies.semimajor
     incl = jnp.arctan2(
         orbit.bodies.sin_inclination, orbit.bodies.cos_inclination
     )
@@ -185,9 +186,7 @@ def test_small_star():
 
     x, y, _ = orbit.relative_position(t)
     r = np.sqrt(x**2 + y**2)
-
-    # Make sure that the in-transit impact parameter matches batman
-    assert_allclose(r_batman[m], r[m])
+    assert_allclose(r_batman[m], r[0, m])
 
 
 def test_impact():

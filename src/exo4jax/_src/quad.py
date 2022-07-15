@@ -7,7 +7,6 @@ from scipy.special import roots_legendre
 from exo4jax._src.types import Array
 
 
-@jnp.vectorize
 def light_curve(
     u1: Array, u2: Array, b: Array, r: Array, *, order: int = 10
 ) -> Array:
@@ -25,7 +24,7 @@ def light_curve(
     """
     c = quad_coeff(u1, u2)
     s = quad_soln_impl(b, r, order)
-    return s @ c
+    return s @ c - 1
 
 
 @jax.jit
