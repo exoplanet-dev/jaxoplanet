@@ -1,4 +1,5 @@
-from typing import Optional, Protocol, Tuple
+from typing import Optional, Tuple
+from typing_extensions import Protocol
 
 from exo4jax._src.types import Array
 
