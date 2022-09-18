@@ -8,11 +8,7 @@ import numpy as np
 import pytest
 
 from exo4jax.orbits import KeplerianBody, KeplerianCentral, KeplerianOrbit
-
-assert_allclose = partial(
-    np.testing.assert_allclose,
-    atol=2e-5 if jax.config.jax_enable_x64 else 2e-4,
-)
+from exo4jax.test_utils import assert_allclose
 
 
 def test_sky_coords():

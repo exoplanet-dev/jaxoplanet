@@ -6,6 +6,10 @@ from exo4jax._src.types import Array
 
 class LightCurveBody(Protocol):
     @property
+    def shape(self) -> Tuple[int, ...]:
+        ...
+
+    @property
     def radius(self) -> Array:
         ...
 

@@ -11,7 +11,7 @@ from exo4jax._src.types import Array
 
 class QuadLightCurve(NamedTuple):
     """A quadratically limb darkened light curve
-\
+
     Args:
         u1: The first limb darkening coefficient
         u2: The second limb darkening coefficient
@@ -82,8 +82,13 @@ class QuadLightCurve(NamedTuple):
             )
         r_star = orbit.central_radius
         x, y, z = orbit.relative_position(t)
-        b = jnp.sqrt(x**2 + y**2) / r_star
+        b = jnp.sqrt(x**2 + y**2)
         r = orbit.radius / r_star
         lc_func = partial(light_curve, self.u1, self.u2, order=order)
-        lc = jax.vmap(lc_func)(b, r)
+        if orbit.shape == ():
+            b /= r_star
+            lc = lc_func(b, r)
+        else:
+            b /= r_star[..., None]
+            lc = jnp.vectorize(lc_func, signature="(k),()->(k)")(b, r)
         return jnp.where(z > 0, lc, 0)

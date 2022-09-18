@@ -14,6 +14,10 @@ class TransitOrbit(NamedTuple):
     impact_param: Array
     radius: Array
 
+    @property
+    def shape(self) -> Tuple[int, ...]:
+        return self.period.shape
+
     @classmethod
     def init(
         cls,
