@@ -41,7 +41,7 @@ def test_compare_starry_A2_inv(lmax):
         m = starry.Map(lmax)
         A2 = m.ops.A.eval().toarray() @ m.ops.A1Inv.eval().toarray()
     inv = A2_inv(lmax)
-    np.testing.assert_allclose(inv @ A2, np.eye(len(inv)), atol=1e-14)
+    np.testing.assert_allclose(inv @ A2, np.eye(len(inv)), atol=5e-12)
 
 
 def A1_symbolic(lmax):
