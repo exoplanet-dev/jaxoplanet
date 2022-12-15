@@ -1,17 +1,13 @@
 # mypy: ignore-errors
 
-from functools import partial
+import warnings
 
 import jax
 import numpy as np
 import pytest
 
-from exo4jax._src.experimental.starry import kappas, solution_vector
-
-assert_allclose = partial(
-    np.testing.assert_allclose,
-    atol=1e-6 if jax.config.jax_enable_x64 else 5e-5,
-)
+from exo4jax.test_utils import assert_allclose
+from exo4jax._src.experimental.starry.solution import kappas, solution_vector
 
 
 def test_kappas():
@@ -47,8 +43,10 @@ def test_compare_starry(r, l_max=10, order=20):
     starry = pytest.importorskip("starry")
 
     b = np.linspace(0, 1 + r, 501)[:-1]
-    m = starry.Map(l_max)
-    s_expect = m.ops.sT(b, r)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        m = starry.Map(l_max)
+        s_expect = m.ops.sT(b, r)
     s_calc = solution_vector(l_max, order=order)(b, r)
 
     for n in range(s_expect.shape[1]):
