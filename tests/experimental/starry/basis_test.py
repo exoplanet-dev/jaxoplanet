@@ -29,7 +29,6 @@ def test_compare_starry_A1(lmax):
         m = starry.Map(lmax)
         expect = m.ops.A1.eval().toarray() * (0.5 * np.sqrt(np.pi))
     calc = A1(lmax)
-    print(np.abs(calc).max(), np.abs(expect).max())
     np.testing.assert_allclose(calc, expect, atol=5e-12)
 
 
