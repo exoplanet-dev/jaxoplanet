@@ -11,7 +11,7 @@ from exo4jax._src.types import Array
 
 
 def solution_vector(
-    l_max: int, order: int = 20, limb_dark: bool = False
+    l_max: int, order: int = 20
 ) -> Callable[[Array, Array], Array]:
     n_max = l_max**2 + 2 * l_max + 1
 
@@ -21,8 +21,8 @@ def solution_vector(
         b = jnp.abs(b)
         r = jnp.abs(r)
         kappa0, kappa1 = kappas(b, r)
-        P = p_integral(limb_dark, order, l_max, b, r, kappa0)
-        Q = q_integral(limb_dark, l_max, 0.5 * jnp.pi - kappa1)
+        P = p_integral(order, l_max, b, r, kappa0)
+        Q = q_integral(l_max, 0.5 * jnp.pi - kappa1)
         return Q - P
 
     return impl
@@ -39,7 +39,7 @@ def kappas(b: Array, r: Array) -> Tuple[Array, Array]:
     return jnp.arctan2(area, b2 + factor), jnp.arctan2(area, b2 - factor)
 
 
-def q_integral(limb_dark: bool, l_max: int, lam: Array) -> Array:
+def q_integral(l_max: int, lam: Array) -> Array:
     zero = jnp.zeros_like(lam)
     c = jnp.cos(lam)
     s = jnp.sin(lam)
@@ -62,7 +62,7 @@ def q_integral(limb_dark: bool, l_max: int, lam: Array) -> Array:
 
     U = []
     for l in range(l_max + 1):
-        for m in [0] if limb_dark else range(-l, l + 1):
+        for m in range(-l, l + 1):
             if l == 1 and m == 0:
                 U.append((np.pi + 2 * lam) / 3)
                 continue
@@ -80,7 +80,7 @@ def q_integral(limb_dark: bool, l_max: int, lam: Array) -> Array:
 
 
 def p_integral(
-    limb_dark: bool, order: int, l_max: int, b: Array, r: Array, kappa0: Array
+    order: int, l_max: int, b: Array, r: Array, kappa0: Array
 ) -> Array:
     b2 = jnp.square(b)
     r2 = jnp.square(r)
@@ -112,7 +112,7 @@ def p_integral(
     n = 0
     for l in range(l_max + 1):
         fa3 = (2 * r) ** (l - 1) * f0
-        for m in [0] if limb_dark else range(-l, l + 1):
+        for m in range(-l, l + 1):
             mu = l - m
             nu = l + m
 
@@ -153,7 +153,7 @@ def p_integral(
             n += 1
 
     P0 = rng * jnp.sum(jnp.stack(arg) * weights[None, :], axis=1)
-    P = jnp.zeros((l_max + 1) if limb_dark else (l_max**2 + 2 * l_max + 1))
+    P = jnp.zeros(l_max**2 + 2 * l_max + 1)
 
     # Yes, using np not jnp here: 'ind' is always static.
     inds = np.stack(ind)

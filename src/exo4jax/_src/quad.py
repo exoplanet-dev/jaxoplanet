@@ -1,3 +1,4 @@
+from functools import partial
 from typing import Tuple
 
 import jax
@@ -7,6 +8,7 @@ from scipy.special import roots_legendre
 from exo4jax._src.types import Array
 
 
+@partial(jax.jit, static_argnames=("order",))
 def light_curve(
     u1: Array, u2: Array, b: Array, r: Array, *, order: int = 10
 ) -> Array:
