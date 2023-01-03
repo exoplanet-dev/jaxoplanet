@@ -29,7 +29,10 @@ def solution_vector(
         b = jnp.abs(b)
         r = jnp.abs(r)
         kappa0, kappa1 = kappas(b, r)
-        P = p_integral(order, l_max, b, r, kappa0)
+        cond = jnp.less(b, 1 + r)
+        b_ = jnp.where(cond, b, 1)
+        P = p_integral(order, l_max, b_, r, kappa0)
+        P = jnp.where(cond, P, 0)
 
         # Hardcoding the Q integral here because Q=0 for n>=2
         lam = 0.5 * jnp.pi - kappa1

@@ -99,7 +99,6 @@ def s1_impl(
     roots, weights = roots_legendre(order)
 
     # Set up the numerical integration grid
-    middle = 0.5 * kappa0
     theta = kappa0 * (0.5 * roots + 0.5)
     cos = jnp.cos(theta)
 

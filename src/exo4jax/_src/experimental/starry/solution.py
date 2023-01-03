@@ -61,7 +61,7 @@ def q_integral(l_max: int, lam: Array) -> Array:
         return comp
 
     U = []
-    for l in range(l_max + 1):
+    for l in range(l_max + 1):  # noqa
         for m in range(-l, l + 1):
             if l == 1 and m == 0:
                 U.append((np.pi + 2 * lam) / 3)
@@ -110,7 +110,7 @@ def p_integral(
     ind = []
     arg = []
     n = 0
-    for l in range(l_max + 1):
+    for l in range(l_max + 1):  # noqa
         fa3 = (2 * r) ** (l - 1) * f0
         for m in range(-l, l + 1):
             mu = l - m
