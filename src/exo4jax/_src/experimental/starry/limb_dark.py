@@ -29,9 +29,13 @@ def solution_vector(
         b = jnp.abs(b)
         r = jnp.abs(r)
         kappa0, kappa1 = kappas(b, r)
-        cond = jnp.logical_and(
-            jnp.greater(b, jnp.abs(1 - r)), jnp.less(b, 1 + r)
-        )
+
+        # TODO: handle case where b == r
+        # TODO: check cases:
+        #       b = 0
+        #       b = r = 0.5
+        #       b + r = 1
+        cond = jnp.less(jnp.abs(r - b), 1)
         b_ = jnp.where(cond, b, 1)
         P = p_integral(order, l_max, b_, r, kappa0)
         P = jnp.where(cond, P, 0)
