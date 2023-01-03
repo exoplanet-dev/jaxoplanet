@@ -1,19 +1,13 @@
 # mypy: ignore-errors
 
-from functools import partial
-
 import jax
 import jax.numpy as jnp
-import numpy as np
 import pytest
 
 from exo4jax import ops
 from exo4jax._src.quad import quad_soln_impl
+from exo4jax.test_utils import assert_allclose
 
-assert_allclose = partial(
-    np.testing.assert_allclose,
-    atol=1e-6 if jax.config.jax_enable_x64 else 1e-5,
-)
 
 #
 # Kepler's equation
@@ -30,6 +24,7 @@ def get_mean_and_true_anomaly(eccentricity, eccentric_anomaly):
 
 
 def check_kepler(e, E):
+    # TODO: Add check for gradients
     E = E % (2 * jnp.pi)
     M, f = get_mean_and_true_anomaly(e, E)
     sinf0, cosf0 = ops.kepler(M, e)
@@ -83,7 +78,7 @@ def test_pi():
     not jax.config.jax_enable_x64,
     reason="Can only compare to exoplanet-core results at double precision",
 )
-def check_limbdark(b, r, **kwargs):
+def check_limbdark(b, r, grad=True, **kwargs):
     from exoplanet_core.jax.ops import quad_solution_vector
 
     expect = quad_solution_vector(

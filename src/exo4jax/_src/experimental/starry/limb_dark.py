@@ -12,7 +12,7 @@ from exo4jax._src.types import Array
 
 @partial(jax.jit, static_argnames=("order",))
 def light_curve(u: Array, b: Array, r: Array, *, order: int = 10):
-    g = greens_basis_transform(u)
+    g = greens_basis_transform(jnp.atleast_1d(u))
     g /= jnp.pi * (g[0] + g[1] / 1.5)
     s = solution_vector(len(g) - 1, order=order)(b, r)
     return s @ g - 1
