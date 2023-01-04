@@ -20,7 +20,7 @@ def test_compare_exoplanet(r):
     assert_allclose(calc, expect)
 
 
-@pytest.mark.parametrize("u", [[0.2], [0.2, 0.3], [0.2, 0.3, 0.1, 0.5, 0.01]])
+@pytest.mark.parametrize("u", [[0.2], [0.2, 0.3], [0.2, 0.3, 0.1, 0.5, 0.02]])
 @pytest.mark.parametrize("r", [0.01, 0.1, 0.5, 1.1, 2.0])
 def test_edge_cases(u, r):
 
@@ -38,5 +38,4 @@ def test_edge_cases(u, r):
     for b in [0.0, 0.5, 1.0, r, 1 + 2 * r]:
         if np.allclose(b, r) or np.allclose(np.abs(b - r), 1):
             continue
-        print(b)
         check_grads(light_curve, (u, b, r), order=1)

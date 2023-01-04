@@ -18,12 +18,13 @@ def light_curve(u: Array, b: Array, r: Array, *, order: int = 10):
 
 
 def solution_vector(
-    l_max: int, order: int = 20
+    l_max: int, order: int = 10
 ) -> Callable[[Array, Array], Array]:
     n_max = l_max + 1
 
     @partial(jnp.vectorize, signature=f"(),()->({n_max})")
     def impl(b: Array, r: Array) -> Array:
+        # TODO: Are all of these conditions necessary?
         b = jnp.abs(b)
         r = jnp.abs(r)
         area, kappa0, kappa1 = kappas(b, r)
@@ -41,11 +42,6 @@ def solution_vector(
         s0 = jnp.where(full_occ, 0, s0)
         s2 = jnp.where(cond, 0, s2)
 
-        # TODO: handle case where b == r
-        # TODO: check cases:
-        #       b = 0
-        #       b = r = 0.5
-        #       b + r = 1
         P = p_integral(order, l_max, b_, r, b2, r2, kappa0)
         P = jnp.where(cond, 0, P)
 
