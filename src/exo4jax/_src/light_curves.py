@@ -1,11 +1,10 @@
 from functools import partial
 from typing import NamedTuple, Optional
 
-import jax
 import jax.numpy as jnp
 
 from exo4jax._src.proto import LightCurveOrbit
-from exo4jax._src.quad import light_curve
+from exo4jax._src.core.quad import light_curve
 from exo4jax._src.types import Array
 
 

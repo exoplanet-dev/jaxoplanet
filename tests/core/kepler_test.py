@@ -3,15 +3,10 @@
 import jax
 import jax.numpy as jnp
 import pytest
+from jax.test_util import check_grads
 
-from exo4jax import ops
-from exo4jax._src.quad import quad_soln_impl
+from exo4jax.core import kepler
 from exo4jax.test_utils import assert_allclose
-
-
-#
-# Kepler's equation
-#
 
 
 def get_mean_and_true_anomaly(eccentricity, eccentric_anomaly):
@@ -27,7 +22,7 @@ def check_kepler(e, E):
     # TODO: Add check for gradients
     E = E % (2 * jnp.pi)
     M, f = get_mean_and_true_anomaly(e, E)
-    sinf0, cosf0 = ops.kepler(M, e)
+    sinf0, cosf0 = kepler(M, e)
     assert_allclose(sinf0, jnp.sin(f))
     assert_allclose(cosf0, jnp.cos(f))
 
@@ -69,41 +64,9 @@ def test_pi():
     check_kepler(e, E)
 
 
-#
-# Quadratic limb darkening
-#
-
-
-@pytest.mark.skipif(
-    not jax.config.jax_enable_x64,
-    reason="Can only compare to exoplanet-core results at double precision",
-)
-def check_limbdark(b, r, grad=True, **kwargs):
-    from exoplanet_core.jax.ops import quad_solution_vector
-
-    expect = quad_solution_vector(
-        b + jnp.zeros_like(r, dtype=jnp.float64),
-        r + jnp.zeros_like(b, dtype=jnp.float64),
-    )
-
-    calc = quad_soln_impl(b, r, order=10, **kwargs)
-    assert_allclose(calc, expect)
-
-
-def test_b_grid():
-    b = jnp.linspace(-1.5, 1.5, 100_001)
-    r = 0.2
-    check_limbdark(b, r)
-
-
-def test_r_grid():
-    b = 0.345
-    r = jnp.linspace(1e-4, 10.0, 100_001)
-    check_limbdark(b, r)
-
-
-def test_full_grid():
-    b = jnp.linspace(-1.5, 1.5, 1001)
-    r = jnp.linspace(1e-4, 10.0, 1003)
-    b, r = jnp.meshgrid(b, r)
-    check_limbdark(b, r)
+@pytest.mark.parametrize("e", [0.01, 0.1, 0.5, 0.6])
+def test_grad(e):
+    E = jnp.linspace(-5, 5, 100)
+    M, _ = get_mean_and_true_anomaly(e, E)
+    for m in M:
+        check_grads(kepler, (m, e), order=1)

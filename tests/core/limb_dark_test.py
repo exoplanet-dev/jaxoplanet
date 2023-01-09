@@ -1,12 +1,14 @@
 # mypy: ignore-errors
 
+import warnings
+
 import jax
 import exoplanet_core
 import numpy as np
 import pytest
 from jax.test_util import check_grads
 
-from exo4jax._src.experimental.starry.limb_dark import light_curve
+from exo4jax._src.core.limb_dark import light_curve
 from exo4jax.test_utils import assert_allclose
 
 
@@ -39,3 +41,30 @@ def test_edge_cases(u, r):
             if np.allclose(b, r) or np.allclose(np.abs(b - r), 1):
                 continue
             check_grads(light_curve, (u, b, r), order=1)
+
+
+@pytest.mark.parametrize("u", [[0.2], [0.2, 0.3], [0.2, 0.3, 0.1, 0.5, 0.02]])
+@pytest.mark.parametrize("r", [0.01, 0.1, 0.5, 1.1, 2.0])
+def test_compare_starry(u, r):
+    starry = pytest.importorskip("starry")
+    theano = pytest.importorskip("theano")
+    theano.config.gcc__cxxflags += " -fexceptions"
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+
+        m = starry.Map(udeg=len(u))
+        m[1:] = u
+        b_ = theano.tensor.dscalar()
+        func = theano.function([b_], m.flux(xo=b_, yo=0.0, zo=1.0, ro=r) - 1)
+        for b in [0.0, 0.5, 1.0, r, np.abs(1 - r), 1 + r]:
+            expect = func(b)
+            if not np.isfinite(expect):
+                continue  # hack because starry doesn't handle all edge cases properly
+            calc = light_curve(u, b, r)
+            assert_allclose(calc, expect)
+
+        b = np.linspace(-1 - 2 * r, 1 + 2 * r, 5001)
+        expect = m.flux(xo=b, yo=0.0, zo=1.0, ro=r).eval() - 1
+        calc = light_curve(u, b, r)
+        assert_allclose(calc, expect)

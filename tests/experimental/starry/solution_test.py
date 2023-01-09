@@ -41,6 +41,8 @@ def test_kappas():
 @pytest.mark.parametrize("r", [0.1, 1.1])
 def test_compare_starry(r, l_max=10, order=20):
     starry = pytest.importorskip("starry")
+    theano = pytest.importorskip("theano")
+    theano.config.gcc__cxxflags += " -fexceptions"
 
     b = np.linspace(0, 1 + r, 501)[:-1]
     with warnings.catch_warnings():
@@ -51,7 +53,7 @@ def test_compare_starry(r, l_max=10, order=20):
 
     for n in range(s_expect.shape[1]):
         # For logging/debugging purposes, work out the case id
-        l = np.floor(np.sqrt(n)).astype(int)
+        l = np.floor(np.sqrt(n)).astype(int)  # noqa
         m = n - l**2 - l
         mu = l - m
         nu = l + m

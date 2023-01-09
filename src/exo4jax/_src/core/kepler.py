@@ -1,5 +1,6 @@
 from typing import Tuple
 
+import jax
 import jax.numpy as jnp
 
 from exo4jax._src.types import Array
@@ -15,6 +16,11 @@ def kepler(M: Array, ecc: Array) -> Tuple[Array, Array]:
     Returns:
         The sine and cosine of the true anomaly
     """
+    return _kepler(M, ecc)
+
+
+@jax.custom_jvp
+def _kepler(M: Array, ecc: Array) -> Tuple[Array, Array]:
     # Wrap into the right range
     M = M % (2 * jnp.pi)
 
@@ -42,6 +48,26 @@ def kepler(M: Array, ecc: Array) -> Tuple[Array, Array]:
     cosf = (1 - tan2_half_f) * denom
 
     return sinf, cosf
+
+
+@_kepler.defjvp
+def _(primals, tangents):
+    M, e = primals
+    M_dot, e_dot = tangents
+    sinf, cosf = _kepler(M, e)
+
+    # Pre-compute some things
+    ecosf = e * cosf
+    ome2 = 1 - e**2
+
+    # Propagate the derivatives
+    f_dot = 0.0
+    if type(M_dot) is not jax.interpreters.ad.Zero:
+        f_dot += M_dot * (1 + ecosf) ** 2 / ome2**1.5
+    if type(e_dot) is not jax.interpreters.ad.Zero:
+        f_dot += e_dot * (2 + ecosf) * sinf / ome2
+
+    return (sinf, cosf), (cosf * f_dot, -sinf * f_dot)
 
 
 def starter(M: Array, ecc: Array, ome: Array) -> Array:
