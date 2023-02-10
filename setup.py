@@ -33,6 +33,7 @@ EXTRA_REQUIRE = {
         "exoplanet-core",
         "batman-package",
     ],
+    "test-math": ["sympy"],
     "comparison": ["starry", "numpy<1.22", "tqdm"],
 }
 

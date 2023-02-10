@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, NamedTuple, Optional, Tuple
 import jax
 import jax.numpy as jnp
 
-from exo4jax._src.kepler import kepler
+from exo4jax._src.core.kepler import kepler
 from exo4jax._src.types import Array, Scalar
 
 # FIXME: Switch to constants from astropy
