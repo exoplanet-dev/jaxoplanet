@@ -5,8 +5,8 @@ import jax.numpy as jnp
 import pytest
 from jax.test_util import check_grads
 
-from exo4jax.core import kepler
-from exo4jax.test_utils import assert_allclose
+from jaxoplanet.core import kepler
+from jaxoplanet.test_utils import assert_allclose
 
 
 def get_mean_and_true_anomaly(eccentricity, eccentric_anomaly):

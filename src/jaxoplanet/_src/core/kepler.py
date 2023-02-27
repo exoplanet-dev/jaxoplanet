@@ -3,7 +3,7 @@ from typing import Tuple
 import jax
 import jax.numpy as jnp
 
-from exo4jax._src.types import Array
+from jaxoplanet._src.types import Array
 
 
 def kepler(M: Array, ecc: Array) -> Tuple[Array, Array]:

@@ -7,8 +7,8 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 
-from exo4jax.orbits import KeplerianBody, KeplerianCentral, KeplerianOrbit
-from exo4jax.test_utils import assert_allclose
+from jaxoplanet.orbits import KeplerianBody, KeplerianCentral, KeplerianOrbit
+from jaxoplanet.test_utils import assert_allclose
 
 
 def test_sky_coords():

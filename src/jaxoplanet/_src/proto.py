@@ -1,7 +1,7 @@
 from typing import Optional, Tuple
 from typing_extensions import Protocol
 
-from exo4jax._src.types import Array
+from jaxoplanet._src.types import Array
 
 
 class LightCurveBody(Protocol):

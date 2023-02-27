@@ -6,8 +6,8 @@ import jax.numpy as jnp
 import numpy as np
 from scipy.special import roots_legendre
 
-from exo4jax._src.core.quad import kite_area
-from exo4jax._src.types import Array
+from jaxoplanet._src.core.quad import kite_area
+from jaxoplanet._src.types import Array
 
 
 def solution_vector(
