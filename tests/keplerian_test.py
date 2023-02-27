@@ -1,5 +1,5 @@
 import jax.numpy as jnp
-from exo4jax import orbits
+from jaxoplanet import orbits
 
 
 def test_keplerian_central_shape():

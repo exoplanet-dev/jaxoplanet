@@ -1,7 +1,7 @@
 import jax.numpy as jnp
 
-from exo4jax import light_curves, orbits
-from exo4jax.test_utils import assert_allclose
+from jaxoplanet import light_curves, orbits
+from jaxoplanet.test_utils import assert_allclose
 
 
 def test_keplerian_basic():

@@ -8,9 +8,9 @@ from setuptools import find_packages, setup
 
 # PROJECT SPECIFIC
 
-NAME = "exo4jax"
+NAME = "jaxoplanet"
 PACKAGES = find_packages(where="src")
-META_PATH = os.path.join("src", "exo4jax", "__init__.py")
+META_PATH = os.path.join("src", "jaxoplanet", "__init__.py")
 CLASSIFIERS = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -62,7 +62,9 @@ if __name__ == "__main__":
     setup(
         name=NAME,
         use_scm_version={
-            "write_to": os.path.join("src", "exo4jax", "exo4jax_version.py"),
+            "write_to": os.path.join(
+                "src", "jaxoplanet", "jaxoplanet_version.py"
+            ),
             "write_to_template": '__version__ = "{version}"\n',
         },
         author=find_meta("author"),

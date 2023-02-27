@@ -3,9 +3,9 @@ from typing import NamedTuple, Optional
 
 import jax.numpy as jnp
 
-from exo4jax._src.proto import LightCurveOrbit
-from exo4jax._src.core.quad import light_curve
-from exo4jax._src.types import Array
+from jaxoplanet._src.proto import LightCurveOrbit
+from jaxoplanet._src.core.quad import light_curve
+from jaxoplanet._src.types import Array
 
 
 class QuadLightCurve(NamedTuple):
