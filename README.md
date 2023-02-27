@@ -1,9 +1,9 @@
-# exo4jax
+# jaxoplanet
 
 
 
 ## Installation
 
 ```python
-python -m pip install exo4jax
+python -m pip install jaxoplanet
 ```
