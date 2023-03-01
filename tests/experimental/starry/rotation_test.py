@@ -8,24 +8,13 @@ config.update("jax_enable_x64", True)
 
 
 @pytest.mark.parametrize("lmax", [10, 7, 5, 4, 3, 2, 1, 0])
-def test_R_lmax(lmax):
-    pytest.importorskip("sympy")
-    u = (0, 0, 1)
-    theta = np.pi / 4
-    expected = np.array(R_symbolic(lmax, u, theta)).astype(float)
-    calc = R(lmax, u)(np.array([theta]))[0]
-    np.testing.assert_allclose(calc, expected, atol=5e-12)
-
-
 @pytest.mark.parametrize("u", [(1, 0, 0), (0, 1, 0), (0, 0, 1), (0.5, 0.1, 0)])
-def test_R_u(u):
+def test_R(lmax, u):
     pytest.importorskip("sympy")
-    lmax = 5
     theta = np.pi / 4
     expected = np.array(R_symbolic(lmax, u, theta)).astype(float)
     calc = R(lmax, u)(np.array([theta]))[0]
     np.testing.assert_allclose(calc, expected, atol=5e-12)
-
 
 def R_symbolic(lmax, u, theta):
     import sympy as sm
