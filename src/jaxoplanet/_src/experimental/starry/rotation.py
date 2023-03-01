@@ -1,10 +1,11 @@
-from typing import Callable, Tuple
+from typing import Callable
 
-import numpy as np
 import jax
 import jax.numpy as jnp
+import numpy as np
 from jax.scipy.linalg import block_diag
 from scipy.special import factorial
+
 from jaxoplanet._src.types import Array
 
 
@@ -93,7 +94,6 @@ def Rl(l: int):
 
 def R(l_max: int, u: Array) -> Callable[[Array], Array]:
     Rls = [Rl(l) for l in range(l_max + 1)]
-    n = l_max * (l_max + 2) + 1
 
     # todo: use @partial(jnp.vectorize... with right signature
     @jax.vmap

@@ -1,8 +1,7 @@
 import numpy as np
 import pytest
-from jaxoplanet._src.experimental.starry.rotation import R
-
 from jax import config
+from jaxoplanet._src.experimental.starry.rotation import R
 
 config.update("jax_enable_x64", True)
 
@@ -15,6 +14,7 @@ def test_R(lmax, u):
     expected = np.array(R_symbolic(lmax, u, theta)).astype(float)
     calc = R(lmax, u)(np.array([theta]))[0]
     np.testing.assert_allclose(calc, expected, atol=5e-12)
+
 
 def R_symbolic(lmax, u, theta):
     import sympy as sm
