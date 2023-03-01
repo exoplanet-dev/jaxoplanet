@@ -5,12 +5,8 @@ import warnings
 import jax
 import numpy as np
 import pytest
-
+from jaxoplanet._src.experimental.starry.solution import kappas, solution_vector
 from jaxoplanet.test_utils import assert_allclose
-from jaxoplanet._src.experimental.starry.solution import (
-    kappas,
-    solution_vector,
-)
 
 
 def test_kappas():

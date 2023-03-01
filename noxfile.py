@@ -25,5 +25,5 @@ def comparison(session):
         "auto",
         "tests/experimental/starry",
         *session.posargs,
-        env={"JAX_ENABLE_X64": "True"}
+        env={"JAX_ENABLE_X64": "True"},
     )

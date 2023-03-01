@@ -1,12 +1,10 @@
 # mypy: ignore-errors
 
-from functools import partial
 
 import jax
 import jax.numpy as jnp
 import numpy as np
 import pytest
-
 from jaxoplanet.orbits import KeplerianBody, KeplerianCentral, KeplerianOrbit
 from jaxoplanet.test_utils import assert_allclose
 
@@ -106,9 +104,7 @@ def test_velocity():
     computed = orbit.central_velocity(t)
     for n in range(3):
         for i in range(len(orbit)):
-            expected = jax.vmap(
-                jax.grad(lambda t: orbit.central_position(t)[n][i])
-            )(t)
+            expected = jax.vmap(jax.grad(lambda t: orbit.central_position(t)[n][i]))(t)
             assert_allclose(computed[n][i], expected)
 
     computed = orbit.velocity(t)
@@ -120,9 +116,7 @@ def test_velocity():
     computed = orbit.relative_velocity(t)
     for n in range(3):
         for i in range(len(orbit)):
-            expected = jax.vmap(
-                jax.grad(lambda t: orbit.relative_position(t)[n][i])
-            )(t)
+            expected = jax.vmap(jax.grad(lambda t: orbit.relative_position(t)[n][i]))(t)
             assert_allclose(computed[n][i], expected)
 
 
@@ -172,9 +166,7 @@ def test_small_star():
         omega_peri=omega,
     )
     a = orbit.bodies.semimajor
-    incl = jnp.arctan2(
-        orbit.bodies.sin_inclination, orbit.bodies.cos_inclination
-    )
+    incl = jnp.arctan2(orbit.bodies.sin_inclination, orbit.bodies.cos_inclination)
 
     r_batman = _rsky._rsky(t, t0, period, a, incl, ecc, omega, 1, 1)
     m = r_batman < 100.0
