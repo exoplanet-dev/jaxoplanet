@@ -2,12 +2,11 @@
 
 import warnings
 
-import jax
 import exoplanet_core
+import jax
 import numpy as np
 import pytest
 from jax.test_util import check_grads
-
 from jaxoplanet._src.core.limb_dark import light_curve
 from jaxoplanet.test_utils import assert_allclose
 

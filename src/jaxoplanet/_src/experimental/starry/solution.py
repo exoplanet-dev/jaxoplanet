@@ -10,9 +10,7 @@ from jaxoplanet._src.core.quad import kite_area
 from jaxoplanet._src.types import Array
 
 
-def solution_vector(
-    l_max: int, order: int = 20
-) -> Callable[[Array, Array], Array]:
+def solution_vector(l_max: int, order: int = 20) -> Callable[[Array, Array], Array]:
     n_max = l_max**2 + 2 * l_max + 1
 
     @jax.jit
@@ -31,9 +29,7 @@ def solution_vector(
 def kappas(b: Array, r: Array) -> Tuple[Array, Array]:
     b2 = jnp.square(b)
     factor = (r - 1) * (r + 1)
-    b_cond = jnp.logical_and(
-        jnp.greater(b, jnp.abs(1 - r)), jnp.less(b, 1 + r)
-    )
+    b_cond = jnp.logical_and(jnp.greater(b, jnp.abs(1 - r)), jnp.less(b, 1 + r))
     b_ = jnp.where(b_cond, b, 1)
     area = jnp.where(b_cond, kite_area(r, b_, 1), 0)
     return jnp.arctan2(area, b2 + factor), jnp.arctan2(area, b2 - factor)
@@ -79,9 +75,7 @@ def q_integral(l_max: int, lam: Array) -> Array:
     return jnp.stack(U)
 
 
-def p_integral(
-    order: int, l_max: int, b: Array, r: Array, kappa0: Array
-) -> Array:
+def p_integral(order: int, l_max: int, b: Array, r: Array, kappa0: Array) -> Array:
     b2 = jnp.square(b)
     r2 = jnp.square(r)
 
@@ -121,17 +115,12 @@ def p_integral(
                 cond = jnp.less(omz2, 10 * jnp.finfo(omz2.dtype).eps)
                 omz2 = jnp.where(cond, 1, omz2)
                 z2 = jnp.maximum(0, 1 - omz2)
-                result = (
-                    2 * r * (r - b * c) * (1 - z2 * jnp.sqrt(z2)) / (3 * omz2)
-                )
+                result = 2 * r * (r - b * c) * (1 - z2 * jnp.sqrt(z2)) / (3 * omz2)
                 arg.append(jnp.where(cond, 0, result))
 
             elif mu % 2 == 0 and (mu // 2) % 2 == 0:
                 arg.append(
-                    2
-                    * (2 * r) ** (l + 2)
-                    * a1 ** (0.25 * (mu + 4))
-                    * a2 ** (0.5 * nu)
+                    2 * (2 * r) ** (l + 2) * a1 ** (0.25 * (mu + 4)) * a2 ** (0.5 * nu)
                 )
 
             elif mu == 1 and l % 2 == 0:
@@ -141,9 +130,7 @@ def p_integral(
                 arg.append(fa3 * a1 ** ((l - 3) // 2) * a2 * a4)
 
             elif (mu - 1) % 2 == 0 and ((mu - 1) // 2) % 2 == 0:
-                arg.append(
-                    2 * fa3 * a1 ** ((mu - 1) // 4) * a2 ** (0.5 * (nu - 1))
-                )
+                arg.append(2 * fa3 * a1 ** ((mu - 1) // 4) * a2 ** (0.5 * (nu - 1)))
 
             else:
                 n += 1

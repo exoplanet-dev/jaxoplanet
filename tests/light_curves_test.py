@@ -1,5 +1,4 @@
 import jax.numpy as jnp
-
 from jaxoplanet import light_curves, orbits
 from jaxoplanet.test_utils import assert_allclose
 
@@ -24,9 +23,7 @@ def test_keplerian_basic():
         impact_param=b,
         radius=r,
     )
-    lc_both = light_curves.QuadLightCurve(ld[0], ld[1]).light_curve(
-        orbit_both, t
-    )
+    lc_both = light_curves.QuadLightCurve(ld[0], ld[1]).light_curve(orbit_both, t)
 
     for n in range(2):
         orbit = orbits.KeplerianBody.init(

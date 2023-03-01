@@ -94,8 +94,6 @@ def refine(M: Array, ecc: Array, ome: Array, E: Array) -> Array:
     d_3 = -f_0 / (f_1 - 0.5 * f_0 * f_2 / f_1)
     d_4 = -f_0 / (f_1 + 0.5 * d_3 * f_2 + (d_3 * d_3) * f_3 / 6)
     d_42 = d_4 * d_4
-    dE = -f_0 / (
-        f_1 + 0.5 * d_4 * f_2 + d_4 * d_4 * f_3 / 6 - d_42 * d_4 * f_2 / 24
-    )
+    dE = -f_0 / (f_1 + 0.5 * d_4 * f_2 + d_4 * d_4 * f_3 / 6 - d_42 * d_4 * f_2 / 24)
 
     return E + dE

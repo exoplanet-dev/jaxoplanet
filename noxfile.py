@@ -18,12 +18,12 @@ def test(session, x64):
 
 @nox.session(python=ALL_PYTHON_VS)
 def comparison(session):
-    session.install(".[test,comparison]")
+    session.install(".[test,comparison]", "numpy<1.22")
     session.run(
         "pytest",
         "-n",
         "auto",
         "tests/experimental/starry",
         *session.posargs,
-        env={"JAX_ENABLE_X64": "True"}
+        env={"JAX_ENABLE_X64": "True"},
     )

@@ -8,6 +8,4 @@ def test_keplerian_central_shape():
 
 def test_casting_dtype():
     orbit = orbits.KeplerianBody.init(period=1)
-    assert (
-        orbit.period.dtype == jnp.float32 or orbit.period.dtype == jnp.float64
-    )
+    assert orbit.period.dtype == jnp.float32 or orbit.period.dtype == jnp.float64

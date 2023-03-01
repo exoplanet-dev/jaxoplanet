@@ -1,7 +1,7 @@
-import numpy as np
-import pytest
 import warnings
 
+import numpy as np
+import pytest
 from jaxoplanet._src.experimental.starry.basis import A1, A2_inv
 
 
@@ -46,6 +46,7 @@ def test_compare_starry_A2_inv(lmax):
 def A1_symbolic(lmax):
     """The sympy implementation of the A1 matrix from the starry paper"""
     import math
+
     import sympy as sm
     from sympy.functions.special.tensor_functions import KroneckerDelta
 
@@ -54,9 +55,7 @@ def A1_symbolic(lmax):
     def Coefficient(expression, term):
         """Return the coefficient multiplying `term` in `expression`."""
         coeff = expression.coeff(term)
-        coeff = (
-            coeff.subs(sm.sqrt(1 - x**2 - y**2), 0).subs(x, 0).subs(y, 0)
-        )
+        coeff = coeff.subs(sm.sqrt(1 - x**2 - y**2), 0).subs(x, 0).subs(y, 0)
         return coeff
 
     def ptilde(n, x, y):
@@ -107,9 +106,7 @@ def A1_symbolic(lmax):
     def C(p, q, k):
         """Return the binomial theorem coefficient `C`."""
         return sm.factorial(k / 2) / (
-            sm.factorial(q / 2)
-            * sm.factorial((k - p) / 2)
-            * sm.factorial((p - q) / 2)
+            sm.factorial(q / 2) * sm.factorial((k - p) / 2) * sm.factorial((p - q) / 2)
         )
 
     def Y(l, m, x, y):
@@ -170,7 +167,6 @@ def A1_symbolic(lmax):
         return res
 
     def p_Y(l, m, lmax):
-        """Return the polynomial basis representation of the spherical harmonic `Y_{lm}`."""
         ylm = Y(l, m, x, y)
         res = [ylm.subs(sm.sqrt(1 - x**2 - y**2), 0).subs(x, 0).subs(y, 0)]
         for n in range(1, (lmax + 1) ** 2):
@@ -178,7 +174,6 @@ def A1_symbolic(lmax):
         return res
 
     def A1(lmax):
-        """Return the change of basis matrix A1. The columns of this matrix are given by `p_Y`."""
         res = sm.zeros((lmax + 1) ** 2, (lmax + 1) ** 2)
         n = 0
         for l in range(lmax + 1):
@@ -193,6 +188,7 @@ def A1_symbolic(lmax):
 def A2_inv_symbolic(lmax):
     """The sympy implementation of the A2 matrix from the starry paper"""
     import math
+
     import sympy as sm
 
     x, y = sm.symbols("x y")
@@ -200,9 +196,7 @@ def A2_inv_symbolic(lmax):
     def Coefficient(expression, term):
         """Return the coefficient multiplying `term` in `expression`."""
         coeff = expression.coeff(term)
-        coeff = (
-            coeff.subs(sm.sqrt(1 - x**2 - y**2), 0).subs(x, 0).subs(y, 0)
-        )
+        coeff = coeff.subs(sm.sqrt(1 - x**2 - y**2), 0).subs(x, 0).subs(y, 0)
         return coeff
 
     def ptilde(n, x, y):
@@ -269,7 +263,7 @@ def A2_inv_symbolic(lmax):
         res = sm.zeros((lmax + 1) ** 2, (lmax + 1) ** 2)
         n = 0
         for l in range(lmax + 1):
-            for m in range(-l, l + 1):
+            for _m in range(-l, l + 1):
                 res[n] = p_G(n, lmax)
                 n += 1
         return res

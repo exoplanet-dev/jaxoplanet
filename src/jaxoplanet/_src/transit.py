@@ -31,9 +31,7 @@ class TransitOrbit(NamedTuple):
     ) -> "TransitOrbit":
         if duration is None:
             if speed is None:
-                raise ValueError(
-                    "Either 'speed' or 'duration' must be provided"
-                )
+                raise ValueError("Either 'speed' or 'duration' must be provided")
             period, speed = jnp.broadcast_arrays(
                 jnp.atleast_1d(period), jnp.atleast_1d(speed)
             )

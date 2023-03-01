@@ -17,9 +17,7 @@ def light_curve(u: Array, b: Array, r: Array, *, order: int = 10):
     return s @ g - 1
 
 
-def solution_vector(
-    l_max: int, order: int = 10
-) -> Callable[[Array, Array], Array]:
+def solution_vector(l_max: int, order: int = 10) -> Callable[[Array, Array], Array]:
     n_max = l_max + 1
 
     @partial(jnp.vectorize, signature=f"(),()->({n_max})")
@@ -102,9 +100,7 @@ def s0s2(
     Alens = kappa1 + r2 * kappa0 - area * 0.5
     s0_sml = jnp.pi - Alens
     s2_sml = 2 * s0_sml + 2 * (
-        -(jnp.pi - kappa1)
-        + 2 * eta2 * kappa0
-        - 0.25 * area * (1 + 5 * r2 + b2)
+        -(jnp.pi - kappa1) + 2 * eta2 * kappa0 - 0.25 * area * (1 + 5 * r2 + b2)
     )
 
     delta = 4 * b * r
@@ -152,9 +148,7 @@ def p_integral(
         f *= 2 * r * (r - b + 2 * b * s2[None, :])
         arg.append(f)
 
-    return rng * jnp.sum(
-        jnp.concatenate(arg, axis=0) * weights[None, :], axis=1
-    )
+    return rng * jnp.sum(jnp.concatenate(arg, axis=0) * weights[None, :], axis=1)
 
 
 def kite_area(a: Array, b: Array, c: Array) -> Array:

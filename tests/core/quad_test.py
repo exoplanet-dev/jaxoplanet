@@ -3,7 +3,6 @@
 import jax
 import jax.numpy as jnp
 import pytest
-
 from jaxoplanet._src.core.quad import quad_soln_impl
 from jaxoplanet.test_utils import assert_allclose
 
