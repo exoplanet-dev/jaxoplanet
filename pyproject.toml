@@ -38,10 +38,13 @@ test = ["pytest", "pytest-xdist", "exoplanet-core", "batman-package"]
 test-math = ["sympy"]
 comparison = ["starry", "tqdm"]
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 nox = "^2022.11.21"
 ruff = "^0.0.253"
 black = "^23.1.0"
+pre-commit = "^3.1.1"
+pytest = "^7.2.1"
+sympy = "^1.11.1"
 
 [tool.poetry-dynamic-versioning]
 enable = true
@@ -60,9 +63,12 @@ target-version = ["py38", "py39"]
 line-length = 88
 
 [tool.ruff]
-line-length = 88
+line-length = 89
 update-check = false
 target-version = "py38"
-select = ["F", "I", "E", "W", "YTT", "B", "Q", "PLE", "PLR", "PLW"]
-ignore = ["PLR0913"]
+select = ["F", "I", "E", "W", "YTT", "B", "Q", "PLE", "PLW"]
+ignore = [
+    "E741", # Allow ambiguous variable names (e.g. "l" in starry)
+    "B023", # Allow using global variables in lambdas
+]
 exclude = []

@@ -9,9 +9,7 @@ from jaxoplanet._src.types import Array
 
 
 @partial(jax.jit, static_argnames=("order",))
-def light_curve(
-    u1: Array, u2: Array, b: Array, r: Array, *, order: int = 10
-) -> Array:
+def light_curve(u1: Array, u2: Array, b: Array, r: Array, *, order: int = 10) -> Array:
     """Compute a quadratically limb darkened light curve
 
     Args:
@@ -46,9 +44,7 @@ def quad_soln_impl(b: Array, r: Array, order: int) -> Array:
     eta2 = 0.5 * r2 * (r2 + 2 * b2)
 
     factor = (r - 1) * (r + 1)
-    b_cond = jnp.logical_and(
-        jnp.greater(b, jnp.abs(1 - r)), jnp.less(b, 1 + r)
-    )
+    b_cond = jnp.logical_and(jnp.greater(b, jnp.abs(1 - r)), jnp.less(b, 1 + r))
     b_ = jnp.where(b_cond, b, 1)
     area = jnp.where(b_cond, kite_area(r, b_, 1), 0)
     kappa0 = jnp.arctan2(area, b2 + factor)
@@ -64,9 +60,7 @@ def quad_soln_impl(b: Array, r: Array, order: int) -> Array:
     Alens = kappa1 + r2 * kappa0 - area * 0.5
     s0_sml = jnp.pi - Alens
     s2_sml = 2 * s0_sml + 2 * (
-        -(jnp.pi - kappa1)
-        + 2 * eta2 * kappa0
-        - 0.25 * area * (1 + 5 * r2 + b2)
+        -(jnp.pi - kappa1) + 2 * eta2 * kappa0 - 0.25 * area * (1 + 5 * r2 + b2)
     )
 
     cond = jnp.greater(onembpr2 / (4 * b * r) + 1, 1)
@@ -84,9 +78,7 @@ def quad_soln_impl(b: Array, r: Array, order: int) -> Array:
     return jnp.stack((s0, s1, s2), axis=-1)
 
 
-def s1_impl(
-    b: Array, r: Array, kappa0: Array, kappa1: Array, *, order: int
-) -> Array:
+def s1_impl(b: Array, r: Array, kappa0: Array, kappa1: Array, *, order: int) -> Array:
     # Pre-compute this before broadcasting
     P0 = kappa0 * r
 

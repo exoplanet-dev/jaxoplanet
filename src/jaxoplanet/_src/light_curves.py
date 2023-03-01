@@ -3,8 +3,8 @@ from typing import NamedTuple, Optional
 
 import jax.numpy as jnp
 
-from jaxoplanet._src.proto import LightCurveOrbit
 from jaxoplanet._src.core.quad import light_curve
+from jaxoplanet._src.proto import LightCurveOrbit
 from jaxoplanet._src.types import Array
 
 
@@ -52,7 +52,7 @@ class QuadLightCurve(NamedTuple):
         *,
         texp: Optional[Array] = None,
         oversample: int = 7,
-        order: int = 10
+        order: int = 10,
     ) -> Array:
         """Get the light curve for an orbit at a set of times
 

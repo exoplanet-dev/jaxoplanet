@@ -1,7 +1,8 @@
 import math
+from collections import defaultdict
+
 import numpy as np
 from scipy.special import gamma
-from collections import defaultdict
 
 
 def A1(lmax):
@@ -98,9 +99,7 @@ def Y(l, m):
                 for q in range(0, p + 1, 2):
                     ind = (abs(m) - j + p - q, j + q, 0)
                     res[ind] += (
-                        (-1) ** ((j + p - (m < 0)) // 2)
-                        * factor
-                        * Cpqk(p, q, k)
+                        (-1) ** ((j + p - (m < 0)) // 2) * factor * Cpqk(p, q, k)
                     )
         for k in range(1, l - abs(m) + 1, 2):
             B = Blmjk(l, abs(m), j, k)
@@ -111,9 +110,7 @@ def Y(l, m):
                 for q in range(0, p + 1, 2):
                     ind = (abs(m) - j + p - q, j + q, 1)
                     res[ind] += (
-                        (-1) ** ((j + p - (m < 0)) // 2)
-                        * factor
-                        * Cpqk(p, q, k - 1)
+                        (-1) ** ((j + p - (m < 0)) // 2) * factor * Cpqk(p, q, k - 1)
                     )
 
     return dict(res)
