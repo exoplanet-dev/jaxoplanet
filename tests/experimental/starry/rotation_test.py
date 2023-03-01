@@ -8,14 +8,26 @@ config.update("jax_enable_x64", True)
 
 
 @pytest.mark.parametrize("lmax", [10, 7, 5, 4, 3, 2, 1, 0])
-def test_R(lmax):
+def test_R_lmax(lmax):
     pytest.importorskip("sympy")
-    expected = np.array(R_symbolic(lmax, 0, 0, 1, np.pi / 4)).astype(float)
-    calc = R(lmax, (0, 0, 1))(np.array([np.pi / 4]))[0]
+    u = (0, 0, 1)
+    theta = np.pi / 4
+    expected = np.array(R_symbolic(lmax, u, theta)).astype(float)
+    calc = R(lmax, u)(np.array([theta]))[0]
     np.testing.assert_allclose(calc, expected, atol=5e-12)
 
 
-def R_symbolic(lmax, u1, u2, u3, theta):
+@pytest.mark.parametrize("u", [(1, 0, 0), (0, 1, 0), (0, 0, 1), (0.5, 0.1, 0)])
+def test_R_u(u):
+    pytest.importorskip("sympy")
+    lmax = 5
+    theta = np.pi / 4
+    expected = np.array(R_symbolic(lmax, u, theta)).astype(float)
+    calc = R(lmax, u)(np.array([theta]))[0]
+    np.testing.assert_allclose(calc, expected, atol=5e-12)
+
+
+def R_symbolic(lmax, u, theta):
     import sympy as sm
     from sympy.functions.special.tensor_functions import KroneckerDelta
 
@@ -152,9 +164,9 @@ def R_symbolic(lmax, u1, u2, u3, theta):
 
         return REuler(l, alpha, beta, gamma)
 
-    def R(lmax, u1, u2, u3, theta):
+    def R(lmax, u, theta):
         """Return the full axis-angle rotation matrix up to degree `lmax`."""
-        blocks = [RAxisAngle(l, u1, u2, u3, theta) for l in range(lmax + 1)]
+        blocks = [RAxisAngle(l, *u, theta) for l in range(lmax + 1)]
         return sm.BlockDiagMatrix(*blocks)
 
-    return R(lmax, u1, u2, u3, theta)
+    return R(lmax, u, theta)

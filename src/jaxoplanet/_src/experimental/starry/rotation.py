@@ -98,8 +98,8 @@ def R(l_max: int, u: Array) -> Callable[[Array], Array]:
     # todo: use @partial(jnp.vectorize... with right signature
     @jax.vmap
     def _R(theta: Array) -> Array:
-        a, b, g = axis_to_euler(u[0], u[1], u[2], theta)
-        full = block_diag(*[rl(a, b, g) for rl in Rls])
+        alpha, beta, gamma = axis_to_euler(u[0], u[1], u[2], theta)
+        full = block_diag(*[rl(alpha, beta, gamma) for rl in Rls])
         return jnp.where(theta != 0, full, jnp.eye(l_max * (l_max + 2) + 1))
 
     return _R
