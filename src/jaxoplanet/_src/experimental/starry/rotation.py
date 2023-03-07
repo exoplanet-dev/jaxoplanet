@@ -5,6 +5,7 @@ import jax.numpy as jnp
 import numpy as np
 from jax.scipy.linalg import block_diag
 from scipy.special import factorial
+from functools import partial
 
 from jaxoplanet._src.types import Array
 
@@ -12,7 +13,11 @@ from jaxoplanet._src.types import Array
 @jax.jit
 def axis_to_euler(u1: float, u2: float, u3: float, theta: float):
     """Axis-angle rotation matrix"""
-    tol = 1e-15
+    tol = 1e-16
+    theta = jnp.where(theta == 0, tol, theta)
+    u1u2_null = jnp.logical_and(u1 == 0, u2 == 0)
+    u1 = jnp.where(u1u2_null, tol, u1)
+    u2 = jnp.where(u1u2_null, tol, u2)
     cos_theta = jnp.cos(theta)
     sin_theta = jnp.sin(theta)
     P01 = u1 * u2 * (1 - cos_theta) - u3 * sin_theta
@@ -87,19 +92,33 @@ def Rl(l: int):
         dlm = jnp.nansum(dlm, 0)
         Dlm = jnp.exp(-1j * (mp * alpha + m * gamma)) * dlm
 
-        return jnp.real(jnp.linalg.inv(U) @ Dlm @ U)
+        return jnp.real(jnp.linalg.solve(U, Dlm) @ U)
 
     return _Rl
 
 
-def R(l_max: int, u: Array) -> Callable[[Array], Array]:
+def R_full(l_max: int, u: Array) -> Callable[[Array], Array]:
     Rls = [Rl(l) for l in range(l_max + 1)]
+    n_max = l_max**2 + 2 * l_max + 1
 
-    # todo: use @partial(jnp.vectorize... with right signature
-    @jax.vmap
+    @partial(jnp.vectorize, signature=f"()->({n_max},{n_max})")
     def _R(theta: Array) -> Array:
         alpha, beta, gamma = axis_to_euler(u[0], u[1], u[2], theta)
         full = block_diag(*[rl(alpha, beta, gamma) for rl in Rls])
         return jnp.where(theta != 0, full, jnp.eye(l_max * (l_max + 2) + 1))
 
     return _R
+
+
+def dotR(l_max: int, u: Array) -> Callable[[Array], Array]:
+    Rls = [Rl(l) for l in range(l_max + 1)]
+    n_max = l_max**2 + 2 * l_max + 1
+    idxs = jnp.cumsum(jnp.array([2 * l + 1 for l in range(l_max + 1)]))[0:-1]
+
+    @partial(jnp.vectorize, signature=f"({n_max}),()->({n_max})")
+    def R(y: Array, theta: Array) -> Array:
+        yls = jnp.split(y, idxs)
+        alpha, beta, gamma = axis_to_euler(u[0], u[1], u[2], theta)
+        return jnp.hstack([rl(alpha, beta, gamma) @ yl for rl, yl in zip(Rls, yls)])
+
+    return R
