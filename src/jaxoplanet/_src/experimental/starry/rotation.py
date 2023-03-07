@@ -1,3 +1,4 @@
+from functools import partial
 from typing import Callable
 
 import jax
@@ -5,7 +6,6 @@ import jax.numpy as jnp
 import numpy as np
 from jax.scipy.linalg import block_diag
 from scipy.special import factorial
-from functools import partial
 
 from jaxoplanet._src.types import Array
 
