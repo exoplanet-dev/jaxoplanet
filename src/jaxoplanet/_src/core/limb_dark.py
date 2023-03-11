@@ -11,8 +11,14 @@ from jaxoplanet._src.types import Array
 
 @partial(jax.jit, static_argnames=("order",))
 def light_curve(u: Array, b: Array, r: Array, *, order: int = 10):
-    g = greens_basis_transform(jnp.atleast_1d(u))
-    g /= jnp.pi * (g[0] + g[1] / 1.5)
+    u = jnp.atleast_1d(u)
+    assert u.ndim == 1
+    print(u.shape)
+    if u.shape[0] == 0:
+        g = jnp.full((1,), 1.0 / jnp.pi)
+    else:
+        g = greens_basis_transform(u)
+        g /= jnp.pi * (g[0] + g[1] / 1.5)
     s = solution_vector(len(g) - 1, order=order)(b, r)
     return s @ g - 1
 
@@ -40,8 +46,9 @@ def solution_vector(l_max: int, order: int = 10) -> Callable[[Array, Array], Arr
         s0 = jnp.where(full_occ, 0, s0)
         s2 = jnp.where(cond, 0, s2)
 
-        P = p_integral(order, l_max, b_, r, b2, r2, kappa0)
-        P = jnp.where(cond, 0, P)
+        if l_max >= 1:
+            P = p_integral(order, l_max, b_, r, b2, r2, kappa0)
+            P = jnp.where(cond, 0, P)
 
         s = [s0]
         if l_max >= 1:
