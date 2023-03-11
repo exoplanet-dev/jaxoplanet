@@ -1,5 +1,6 @@
-from jaxoplanet._src.experimental.starry.basis import Y
 import numpy as np
+
+from jaxoplanet._src.experimental.starry.basis import Y
 
 
 def lm(n: int) -> tuple:

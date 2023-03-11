@@ -1,8 +1,10 @@
+import jax
 import numpy as np
 import pytest
 import jax
 from jaxoplanet._src.experimental.starry.rotation import R_full, Rdot, axis_to_euler
 from jaxoplanet._src.experimental.starry import utils
+from jaxoplanet._src.experimental.starry.rotation import R_full, axis_to_euler, dotR
 from jaxoplanet.test_utils import assert_allclose
 
 

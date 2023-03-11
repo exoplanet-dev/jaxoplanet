@@ -9,3 +9,4 @@ build
 /*.png
 .venv
 dist
+poetry.lock
