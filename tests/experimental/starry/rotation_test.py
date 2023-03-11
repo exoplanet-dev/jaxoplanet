@@ -1,27 +1,40 @@
 import numpy as np
 import pytest
 import jax
-from jaxoplanet._src.experimental.starry.rotation import R_full, dotR, axis_to_euler
+from jaxoplanet._src.experimental.starry.rotation import R_full, Rdot, axis_to_euler
 from jaxoplanet._src.experimental.starry import utils
 from jaxoplanet.test_utils import assert_allclose
 
 
 @pytest.mark.parametrize("l_max", [10, 7, 5, 4, 3, 2, 1, 0])
-@pytest.mark.parametrize("u", [(1, 0, 0), (0, 1, 0), (0, 0, 1), (0.5, 0.1, 0)])
+@pytest.mark.parametrize("u", [(1, 0, 0), (0, 1, 0), (0, 0, 1), (1, 1, 1)])
 def test_R_full(l_max, u):
     pytest.importorskip("sympy")
-    theta = np.pi / 4
+    theta = 0.1
     expected = np.array(R_symbolic(l_max, u, theta)).astype(float)
     calc = R_full(l_max, u)(theta)
     assert_allclose(calc, expected)
 
 
 @pytest.mark.parametrize("l_max", [10, 7, 5, 4, 3, 2, 1, 0])
-def test_dotR(l_max, u=(1, 0, 0)):
+@pytest.mark.parametrize("u", [(1, 0, 0), (0, 1, 0), (0, 0, 1), (0.5, 0.1, 0)])
+def test_compare_starry_R_full(l_max, u):
+    starry = pytest.importorskip("starry")
+    theta = 0.1
+    m = starry._core.core.OpsYlm(l_max, 0, 0, 1)
+    I = np.eye(l_max**2 + 2 * l_max + 1)
+    expected = m.dotR(I, *u, theta)
+    calc = R_full(l_max, u)(theta)
+    assert_allclose(calc, expected)
+
+
+@pytest.mark.parametrize("l_max", [10, 7, 5, 4, 3, 2, 1, 0])
+@pytest.mark.parametrize("u", [(1, 0, 0), (0, 1, 0), (0, 0, 1)])
+def test_dotR(l_max, u):
     np.random.seed(l_max)
     y = np.random.rand(l_max**2 + 2 * l_max + 1)
     u = (1, 0, 0)
-    r = dotR(l_max, u)
+    r = Rdot(l_max, u)
     r_full = R_full(l_max, u)
     theta = 0.1 * np.pi
     assert_allclose(r(y, theta), r_full(theta) @ y)
@@ -32,27 +45,6 @@ def test_u1u2_null_grad(u1=0.0, u2=0.0, u3=1.0):
         return axis_to_euler(u1, u2, u3, theta)[1]
 
     assert ~jax.numpy.isnan(jax.grad(grad_beta)(u1, u2, u3, np.pi / 4))
-
-
-@pytest.mark.parametrize("l_max", [10, 7, 5, 4, 3, 2, 1, 0])
-def test_compare_starry_dotR(l_max):
-    starry = pytest.importorskip("starry")
-
-    n_max = l_max**2 + 2 * l_max + 1
-    np.random.seed(l_max)
-    y = np.random.rand(n_max)
-    y[0] = 1.0
-    n_max = l_max**2 + 2 * l_max + 1
-
-    # create starry map and copy map coefficients
-    m = starry.Map(l_max, udeg=0)
-    for i in range(1, n_max):
-        m[utils.lm(i)] = y[i]
-
-    u = [1, 0, 0]
-    theta = np.pi / 3
-    m.rotate(u, np.rad2deg(theta))
-    assert_allclose(dotR(l_max, u)(y, theta), m.y.eval())
 
 
 def R_symbolic(lmax, u, theta):
@@ -93,7 +85,7 @@ def R_symbolic(lmax, u, theta):
         res = sm.zeros(2 * l + 1, 2 * l + 1)
         for m in range(-l, l + 1):
             for n in range(-l, l + 1):
-                res[m + l, n + l] = Dmn(l, m, n, alpha, beta, gamma)
+                res[m + l, n + l] = Dmn(l, n, m, alpha, beta, gamma)
         return res
 
     def Umn(l, m, n):

@@ -92,7 +92,7 @@ def Rl(l: int):
         dlm = jnp.nansum(dlm, 0)
         Dlm = jnp.exp(-1j * (mp * alpha + m * gamma)) * dlm
 
-        return jnp.real(jnp.linalg.solve(U, Dlm) @ U)
+        return jnp.real(jnp.linalg.solve(U, Dlm.T) @ U)
 
     return _Rl
 
@@ -110,7 +110,7 @@ def R_full(l_max: int, u: Array) -> Callable[[Array], Array]:
     return _R
 
 
-def dotR(l_max: int, u: Array) -> Callable[[Array], Array]:
+def Rdot(l_max: int, u: Array) -> Callable[[Array], Array]:
     Rls = [Rl(l) for l in range(l_max + 1)]
     n_max = l_max**2 + 2 * l_max + 1
     idxs = jnp.cumsum(jnp.array([2 * l + 1 for l in range(l_max + 1)]))[0:-1]
