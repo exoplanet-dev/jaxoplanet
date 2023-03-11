@@ -63,3 +63,8 @@ def test_quad_limb_dark_consistency(radius, ld_order):
     lc0 = light_curves.QuadLightCurve.init(*ld).light_curve(orbit, t)
     lc1 = light_curves.LimbDarkLightCurve.init(*ld[:ld_order]).light_curve(orbit, t)
     assert_allclose(lc0, lc1)
+
+    lc2 = light_curves.LimbDarkLightCurve.init(jnp.array(ld[:ld_order])).light_curve(
+        orbit, t
+    )
+    assert_allclose(lc0, lc2)
