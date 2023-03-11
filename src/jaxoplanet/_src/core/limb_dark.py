@@ -13,7 +13,6 @@ from jaxoplanet._src.types import Array
 def light_curve(u: Array, b: Array, r: Array, *, order: int = 10):
     u = jnp.atleast_1d(u)
     assert u.ndim == 1
-    print(u.shape)
     if u.shape[0] == 0:
         g = jnp.full((1,), 1.0 / jnp.pi)
     else:

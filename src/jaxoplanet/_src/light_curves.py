@@ -13,9 +13,11 @@ class LimbDarkLightCurve(NamedTuple):
     u: Array
 
     @classmethod
-    def init(cls, u: Array, *rest: Array) -> "LimbDarkLightCurve":
-        if rest:
-            u = jnp.stack((u, *rest))
+    def init(cls, *u: Array) -> "LimbDarkLightCurve":
+        if u:
+            u = jnp.stack(u)
+        else:
+            u = jnp.array([])
         return cls(u=u)
 
     def light_curve(
