@@ -166,7 +166,9 @@ def Rdot(l_max: int, u: Array) -> Callable[[Array], Array]:
     Returns
     -------
     Callable[[Array], Array]
-        a jax.vmap function of (y, theta) returning the product R@y
+        a jax.vmap function of (y, theta) returning the product R@y where
+        - y is a vector of spherical harmonics coefficients
+        - theta is the rotation angle in radians
     """
     Rls = [Rl(l) for l in range(l_max + 1)]
     n_max = l_max**2 + 2 * l_max
@@ -194,7 +196,9 @@ def dotR(l_max: int, u: Array) -> Callable[[Array], Array]:
     Returns
     -------
     Callable[[Array], Array]
-        a jax.vmap function of (M, theta) returning the product M@R
+        a jax.vmap function of (M, theta) returning the product M@R where
+        - M is a matrix (Array)
+        - theta is the rotation angle in radians
     """
     Rls = [Rl(l) for l in range(l_max + 1)]
     n_max = l_max**2 + 2 * l_max + 1
