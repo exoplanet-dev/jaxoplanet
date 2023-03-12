@@ -2,15 +2,19 @@ import jax
 import numpy as np
 import pytest
 import jax
-from jaxoplanet._src.experimental.starry.rotation import R_full, Rdot, axis_to_euler
-from jaxoplanet._src.experimental.starry import utils
-from jaxoplanet._src.experimental.starry.rotation import R_full, axis_to_euler, dotR
+from jaxoplanet._src.experimental.starry.rotation import (
+    R_full,
+    Rdot,
+    axis_to_euler,
+    dotR,
+)
 from jaxoplanet.test_utils import assert_allclose
 
 
 @pytest.mark.parametrize("l_max", [10, 7, 5, 4, 3, 2, 1, 0])
 @pytest.mark.parametrize("u", [(1, 0, 0), (0, 1, 0), (0, 0, 1), (1, 1, 1)])
 def test_R_full(l_max, u):
+    """Test full rotation matrix against symbolic one"""
     pytest.importorskip("sympy")
     theta = 0.1
     expected = np.array(R_symbolic(l_max, u, theta)).astype(float)
@@ -21,6 +25,8 @@ def test_R_full(l_max, u):
 @pytest.mark.parametrize("l_max", [10, 7, 5, 4, 3, 2, 1, 0])
 @pytest.mark.parametrize("u", [(1, 0, 0), (0, 1, 0), (0, 0, 1), (0.5, 0.1, 0)])
 def test_compare_starry_R_full(l_max, u):
+    """Comparison test with starry full rotation matrix
+    obtained from OpsYlm.dotR"""
     starry = pytest.importorskip("starry")
     theta = 0.1
     m = starry._core.core.OpsYlm(l_max, 0, 0, 1)
@@ -32,17 +38,34 @@ def test_compare_starry_R_full(l_max, u):
 
 @pytest.mark.parametrize("l_max", [10, 7, 5, 4, 3, 2, 1, 0])
 @pytest.mark.parametrize("u", [(1, 0, 0), (0, 1, 0), (0, 0, 1)])
-def test_dotR(l_max, u):
+def test_Rdot(l_max, u):
+    """Test Rdot against R_full@"""
     np.random.seed(l_max)
     y = np.random.rand(l_max**2 + 2 * l_max + 1)
-    u = (1, 0, 0)
     r = Rdot(l_max, u)
     r_full = R_full(l_max, u)
     theta = 0.1 * np.pi
     assert_allclose(r(y, theta), r_full(theta) @ y)
 
 
+@pytest.mark.parametrize("l_max", [10, 7, 5, 4, 3, 2, 1, 0])
+@pytest.mark.parametrize("u", [(1, 0, 0), (0, 1, 0), (0, 0, 1)])
+def test_compare_starry_dotR(l_max, u):
+    """Comparison test with starry OpsYlm.dotR"""
+    starry = pytest.importorskip("starry")
+    theta = 0.1
+    np.random.seed(l_max)
+    n_max = l_max**2 + 2 * l_max + 1
+    M = np.random.rand(n_max, n_max)
+    m = starry._core.core.OpsYlm(l_max, 0, 0, 1)
+    expected = m.dotR(M, *u, theta)
+    calc = dotR(l_max, u)(M, theta)
+    assert_allclose(calc, expected)
+
+
 def test_u1u2_null_grad(u1=0.0, u2=0.0, u3=1.0):
+    """Test gradient of axis_to_euler against nan in jnp.where"""
+
     def grad_beta(u1, u2, u3, theta):
         return axis_to_euler(u1, u2, u3, theta)[1]
 
