@@ -12,7 +12,24 @@ from jaxoplanet._src.types import Array
 
 @jax.jit
 def axis_to_euler(u1: float, u2: float, u3: float, theta: float):
-    """Axis-angle rotation matrix"""
+    """Returns euler angles (zxz convention) associated to a given axis-angle rotation
+
+    Parameters
+    ----------
+    u1 : float
+        x component of the axis-rotation vector
+    u2 : float
+        y component of the axis-rotation vector
+    u3 : float
+        z component of the axis-rotation vector
+    theta : float
+        rotation angle in radians
+
+    Returns
+    -------
+    tuple
+        the three euler angles in the zyz convention
+    """
     tol = 1e-16
     theta = jnp.where(theta == 0, tol, theta)
     u1u2_null = jnp.logical_and(u1 == 0, u2 == 0)
@@ -54,6 +71,18 @@ def axis_to_euler(u1: float, u2: float, u3: float, theta: float):
 
 # todo: type hinting callable
 def Rl(l: int):
+    """Rotation matrix of the spherical harmonics map order l
+
+    Parameters
+    ----------
+    l : int
+        order
+
+    Returns
+    -------
+    Array
+        rotation matrix
+    """
     # U
     U = np.zeros((2 * l + 1, 2 * l + 1), dtype=np.complex_)
     Ud1 = np.ones(2 * l + 1) * 1j
@@ -98,6 +127,20 @@ def Rl(l: int):
 
 
 def R_full(l_max: int, u: Array) -> Callable[[Array], Array]:
+    """Full Wigner rotation matrix of an axis-angle rotation angle theta about vector u
+
+    Parameters
+    ----------
+    l_max : int
+        maximum order of the spherical harmonics map
+    u : Array
+        axis-rotation vector
+
+    Returns
+    -------
+    Callable[[Array], Array]
+        a jax.vmap function of theta returning the Wigner matrix for this angle
+    """
     Rls = [Rl(l) for l in range(l_max + 1)]
     n_max = l_max**2 + 2 * l_max + 1
 
@@ -111,6 +154,20 @@ def R_full(l_max: int, u: Array) -> Callable[[Array], Array]:
 
 
 def Rdot(l_max: int, u: Array) -> Callable[[Array], Array]:
+    """Dot product R@y of the rotation matrix R with a vector y
+
+    Parameters
+    ----------
+    l_max : int
+        maximum order of the spherical harmonics map
+    u : Array
+        axis-rotation vector
+
+    Returns
+    -------
+    Callable[[Array], Array]
+        a jax.vmap function of (y, theta) returning the product R@y
+    """
     Rls = [Rl(l) for l in range(l_max + 1)]
     n_max = l_max**2 + 2 * l_max
     idxs = jnp.cumsum(jnp.array([2 * l + 1 for l in range(l_max + 1)]))[0:-1]
@@ -125,6 +182,20 @@ def Rdot(l_max: int, u: Array) -> Callable[[Array], Array]:
 
 
 def dotR(l_max: int, u: Array) -> Callable[[Array], Array]:
+    """Dot product M@R of a matrix M with the rotation matrix R
+
+    Parameters
+    ----------
+    l_max : int
+        maximum order of the spherical harmonics map
+    u : Array
+        axis-rotation vector
+
+    Returns
+    -------
+    Callable[[Array], Array]
+        a jax.vmap function of (M, theta) returning the product M@R
+    """
     Rls = [Rl(l) for l in range(l_max + 1)]
     n_max = l_max**2 + 2 * l_max + 1
 
