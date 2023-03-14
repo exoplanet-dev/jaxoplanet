@@ -86,7 +86,7 @@ def Cpqk(p, q, k):
     )
 
 
-def Y(l, m):
+def Ylm(l, m):
     res = defaultdict(lambda: 0)
     A = Alm(l, abs(m))
     for j in range(int(m < 0), abs(m) + 1, 2):
@@ -117,7 +117,7 @@ def Y(l, m):
 
 
 def p_Y(p, l, m, res):
-    for k, v in Y(l, m).items():
+    for k, v in Ylm(l, m).items():
         if k not in p:
             continue
         res[p[k]] = v
