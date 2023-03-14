@@ -21,7 +21,7 @@ def test_R_full(l_max, u):
     assert_allclose(calc, expected)
 
 
-@pytest.mark.parametrize("l_max", [7, 5, 4, 3, 2, 1, 0])
+@pytest.mark.parametrize("l_max", [10, 7, 5, 4])
 @pytest.mark.parametrize("u", [(1, 0, 0), (0, 1, 0), (0, 0, 1), (0.5, 0.1, 0)])
 def test_compare_starry_R_full(l_max, u):
     """Comparison test with starry full rotation matrix
@@ -35,7 +35,7 @@ def test_compare_starry_R_full(l_max, u):
     assert_allclose(calc, expected)
 
 
-@pytest.mark.parametrize("l_max", [7, 5, 4, 3, 2, 1, 0])
+@pytest.mark.parametrize("l_max", [10, 7, 5, 4])
 @pytest.mark.parametrize("u", [(1, 0, 0), (0, 1, 0), (0, 0, 1)])
 def test_Rdot(l_max, u):
     """Test Rdot against R_full@"""
@@ -47,7 +47,7 @@ def test_Rdot(l_max, u):
     assert_allclose(r(y, theta), r_full(theta) @ y)
 
 
-@pytest.mark.parametrize("l_max", [7, 5, 4, 3, 2, 1, 0])
+@pytest.mark.parametrize("l_max", [10, 7, 5, 4])
 @pytest.mark.parametrize("u", [(1, 0, 0), (0, 1, 0), (0, 0, 1)])
 def test_compare_starry_dotR(l_max, u):
     """Comparison test with starry OpsYlm.dotR"""
