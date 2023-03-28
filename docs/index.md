@@ -1,4 +1,4 @@
-# Jaxoplanet
+# jaxoplanet
 
 _Astronomical time series analysis with JAX_
 
