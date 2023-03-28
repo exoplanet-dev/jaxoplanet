@@ -24,6 +24,7 @@ exclude = ["tests"]
 [tool.poetry.dependencies]
 python = "^3.8"
 jax = ">=0.4"
+jaxlib = { version = "*", optional = true }
 typing-extensions = "*"
 pytest = { version = "*", optional = true }
 pytest-xdist = { version = "*", optional = true }
@@ -38,7 +39,7 @@ sphinx-design = { version = "^0.3", optional = true }
 
 [tool.poetry.extras]
 docs = ["myst-nb", "sphinx-book-theme", "sphinx-design"]
-test = ["pytest", "pytest-xdist", "exoplanet-core", "batman-package"]
+test = ["jaxlib", "pytest", "pytest-xdist", "exoplanet-core", "batman-package"]
 test-math = ["sympy"]
 comparison = ["starry", "tqdm"]
 
