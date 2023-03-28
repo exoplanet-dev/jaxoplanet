@@ -53,6 +53,12 @@ and [Flax](https://flax.readthedocs.io/en/latest/).
 
 ````
 
+## Installation
+
+```bash
+python -m pip install jaxoplanet
+```
+
 ## Table of contents
 
 ```{toctree}
