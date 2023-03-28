@@ -3,8 +3,14 @@ version: 2
 submodules:
   include: all
 
+build:
+  os: ubuntu-20.04
+  apt_packages:
+    - fonts-liberation
+  tools:
+    python: "3.10"
+
 python:
-  version: 3.7
   install:
     - method: pip
       path: .
@@ -13,3 +19,5 @@ python:
 
 sphinx:
   builder: dirhtml
+  configuration: docs/conf.py
+  fail_on_warning: true

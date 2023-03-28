@@ -35,7 +35,7 @@ starry = { version = "^1.2.0", optional = true }
 tqdm = { version = "*", optional = true }
 
 [tool.poetry.extras]
-docs = ["myst-nb"]
+docs = ["myst-nb", "sphinx-book-theme", "sphinx-design"]
 test = ["pytest", "pytest-xdist", "exoplanet-core", "batman-package"]
 test-math = ["sympy"]
 comparison = ["starry", "tqdm"]
