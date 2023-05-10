@@ -2,13 +2,14 @@
 
 import warnings
 
-import exoplanet_core
 import jax
 import numpy as np
 import pytest
 from jax.test_util import check_grads
-from jaxoplanet._src.core.limb_dark import light_curve
+from jaxoplanet.core.limb_dark import light_curve
 from jaxoplanet.test_utils import assert_allclose
+
+exoplanet_core = pytest.importorskip("exoplanet_core")
 
 
 @pytest.mark.parametrize("r", [0.01, 0.1, 1.1, 2.0])

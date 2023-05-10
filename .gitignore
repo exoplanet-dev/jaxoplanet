@@ -10,3 +10,4 @@ build
 .venv
 dist
 poetry.lock
+.*_cache

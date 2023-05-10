@@ -4,8 +4,8 @@ from typing import TYPE_CHECKING, Any, NamedTuple, Optional, Tuple
 import jax
 import jax.numpy as jnp
 
-from jaxoplanet._src.core.kepler import kepler
-from jaxoplanet._src.types import Scalar
+from jaxoplanet.core.kepler import kepler
+from jaxoplanet.types import Scalar
 
 # FIXME: Switch to constants from astropy
 GRAVITATIONAL_CONSTANT = 2942.2062175044193 / (4 * jnp.pi**2)

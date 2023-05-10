@@ -5,7 +5,7 @@ import jax
 import jax.numpy as jnp
 from scipy.special import roots_legendre
 
-from jaxoplanet._src.types import Array
+from jaxoplanet.types import Array
 
 
 @partial(jax.jit, static_argnames=("order",))

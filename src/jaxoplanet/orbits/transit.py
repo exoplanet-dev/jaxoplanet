@@ -3,7 +3,7 @@ from typing import NamedTuple, Optional, Tuple
 import jax
 import jax.numpy as jnp
 
-from jaxoplanet._src.types import Array
+from jaxoplanet.types import Array
 
 
 class TransitOrbit(NamedTuple):
