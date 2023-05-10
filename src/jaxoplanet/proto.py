@@ -2,7 +2,7 @@ from typing import Optional, Tuple
 
 from typing_extensions import Protocol
 
-from jaxoplanet._src.types import Array
+from jaxoplanet.types import Array
 
 
 class LightCurveBody(Protocol):

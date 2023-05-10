@@ -6,7 +6,7 @@ import jax.numpy as jnp
 import numpy as np
 from scipy.special import binom, roots_legendre
 
-from jaxoplanet._src.types import Array
+from jaxoplanet.types import Array
 
 
 @partial(jax.jit, static_argnames=("order",))

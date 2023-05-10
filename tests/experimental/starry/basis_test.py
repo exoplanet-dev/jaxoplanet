@@ -2,7 +2,7 @@ import warnings
 
 import numpy as np
 import pytest
-from jaxoplanet._src.experimental.starry.basis import A1, A2_inv
+from jaxoplanet.experimental.starry.basis import A1, A2_inv
 
 
 @pytest.mark.parametrize("lmax", [10, 7, 5, 4, 3, 2, 1, 0])

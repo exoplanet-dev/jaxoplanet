@@ -7,7 +7,7 @@ import numpy as np
 from scipy.special import roots_legendre
 
 from jaxoplanet._src.core.quad import kite_area
-from jaxoplanet._src.types import Array
+from jaxoplanet.types import Array
 
 
 def solution_vector(l_max: int, order: int = 20) -> Callable[[Array, Array], Array]:
