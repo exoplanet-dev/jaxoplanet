@@ -94,7 +94,6 @@ line-length = 88
 
 [tool.ruff]
 line-length = 89
-update-check = false
 target-version = "py38"
 select = ["F", "I", "E", "W", "YTT", "B", "Q", "PLE", "PLW"]
 ignore = [
