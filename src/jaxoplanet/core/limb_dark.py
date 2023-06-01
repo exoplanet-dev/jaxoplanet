@@ -35,40 +35,40 @@ def solution_vector(l_max: int, order: int = 10) -> Callable[[Array, Array], Arr
         no_occ = jnp.greater_equal(b, 1 + r)
         full_occ = jnp.less_equal(1 + b, r)
         cond = jnp.logical_or(no_occ, full_occ)
-        b_ = jnp.where(cond, 1, b)
+        b_ = jnp.where(cond, jnp.ones_like(b), b)
 
         b2 = jnp.square(b_)
         r2 = jnp.square(r)
 
         s0, s2 = s0s2(b_, r, b2, r2, area, kappa0, kappa1)
         s0 = jnp.where(no_occ, jnp.pi, s0)
-        s0 = jnp.where(full_occ, 0, s0)
-        s2 = jnp.where(cond, 0, s2)
+        s0 = jnp.where(full_occ, jnp.zeros_like(s0), s0)
+        s2 = jnp.where(cond, jnp.zeros_like(s2), s2)
 
         if l_max >= 1:
             P = p_integral(order, l_max, b_, r, b2, r2, kappa0)
-            P = jnp.where(cond, 0, P)
+            P = jnp.where(cond, jnp.zeros_like(P), P)
 
-        s = [s0]
+        s = [s0[None]]
         if l_max >= 1:
-            s.append(-P[0] - 2 * (kappa1 - jnp.pi) / 3)
+            s.append(-P[:1] - 2 * (kappa1 - jnp.pi) / 3)
         if l_max >= 2:
-            s.append(s2)
-        s = jnp.stack(s)
+            s.append(s2[None])
         if l_max >= 3:
-            s = jnp.concatenate((s, -P[1:]))
-        return s
+            s.append(-P[1:])
+        return jnp.concatenate(s, axis=0)
 
     return impl
 
 
 def greens_basis_transform(u: Array) -> Array:
-    u = jnp.append(-1, u)
+    dtype = jnp.dtype(u)
+    u = jnp.concatenate((-jnp.ones(1, dtype=dtype), u))
     size = len(u)
     i = np.arange(size)
     arg = binom(i[None, :], i[:, None]) @ u
     p = (-1) ** (i + 1) * arg
-    g = [0 for _ in range(size + 2)]
+    g = [jnp.zeros((), dtype=dtype) for _ in range(size + 2)]
     for n in range(size - 1, 1, -1):
         g[n] = p[n] / (n + 2) + g[n + 2]
     g[1] = p[1] + 3 * g[3]
@@ -80,8 +80,8 @@ def kappas(b: Array, r: Array) -> Tuple[Array, Array, Array]:
     b2 = jnp.square(b)
     factor = (r - 1) * (r + 1)
     cond = jnp.logical_and(jnp.greater(b, jnp.abs(1 - r)), jnp.less(b, 1 + r))
-    b_ = jnp.where(cond, b, 1)
-    area = jnp.where(cond, kite_area(r, b_, 1), 0)
+    b_ = jnp.where(cond, b, jnp.ones_like(b))
+    area = jnp.where(cond, kite_area(r, b_, jnp.ones_like(r)), jnp.zeros_like(r))
     return area, jnp.arctan2(area, b2 + factor), jnp.arctan2(area, b2 - factor)
 
 
@@ -126,8 +126,8 @@ def p_integral(
     # This is a hack for when r -> 0 or b -> 0, so k2 -> inf
     factor = 4 * b * r
     k2_cond = jnp.less(factor, 10 * jnp.finfo(factor.dtype).eps)
-    factor = jnp.where(k2_cond, 1, factor)
-    k2 = jnp.maximum(0, (1 - r2 - b2 + 2 * b * r) / factor)
+    factor = jnp.where(k2_cond, jnp.ones_like(factor), factor)
+    k2 = jnp.maximum(jnp.zeros_like(factor), (1 - r2 - b2 + 2 * b * r) / factor)
 
     roots, weights = roots_legendre(order)
     rng = 0.5 * kappa0
@@ -141,14 +141,16 @@ def p_integral(
         omz2 = jnp.maximum(0, r2 + b2 - 2 * b * r * c)
         z2 = 1 - omz2
         m = jnp.less(z2, 10 * jnp.finfo(omz2.dtype).eps)
-        z2 = jnp.where(m, 1, z2)
-        z3 = jnp.where(m, 0, z2 * jnp.sqrt(z2))
+        z2 = jnp.where(m, jnp.ones_like(z2), z2)
+        z3 = jnp.where(m, jnp.zeros_like(z2), z2 * jnp.sqrt(z2))
         cond = jnp.less(omz2, 10 * jnp.finfo(omz2.dtype).eps)
-        omz2 = jnp.where(cond, 1, omz2)
+        omz2 = jnp.where(cond, jnp.ones_like(z2), omz2)
         result = 2 * r * (r - b * c) * (1 - z3) / (3 * omz2)
-        arg.append(jnp.where(cond, 0, result[None, :]))
+        arg.append(jnp.where(cond, jnp.zeros_like(result[None, :]), result[None, :]))
     if l_max >= 3:
-        f0 = jnp.maximum(0, jnp.where(k2_cond, 1 - r2, factor * (k2 - s2)))
+        f0 = jnp.maximum(
+            jnp.zeros_like(r2), jnp.where(k2_cond, 1 - r2, factor * (k2 - s2))
+        )
         n = jnp.arange(3, l_max + 1)
         f = f0[None, :] ** (0.5 * n[:, None])
         f *= 2 * r * (r - b + 2 * b * s2[None, :])
@@ -167,5 +169,5 @@ def kite_area(a: Array, b: Array, c: Array) -> Array:
 
     square_area = (a + (b + c)) * (c - (a - b)) * (c + (a - b)) * (a + (b - c))
     cond = jnp.less(square_area, 10 * jnp.finfo(square_area.dtype).eps)
-    square_area = jnp.where(cond, 1, square_area)
-    return jnp.where(cond, 0, jnp.sqrt(square_area))
+    square_area = jnp.where(cond, jnp.ones_like(square_area), square_area)
+    return jnp.where(cond, jnp.zeros_like(square_area), jnp.sqrt(square_area))
