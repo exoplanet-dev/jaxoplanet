@@ -142,7 +142,7 @@ def p_integral(
         z2 = 1 - omz2
         m = jnp.less(z2, 10 * jnp.finfo(omz2.dtype).eps)
         z2 = jnp.where(m, jnp.ones_like(z2), z2)
-        z3 = jnp.where(m, jnp.zeros_like(z2), z2 * jnp.sqrt(z2))
+        z3 = z2 * zero_safe_sqrt(z2)
         cond = jnp.less(omz2, 10 * jnp.finfo(omz2.dtype).eps)
         omz2 = jnp.where(cond, jnp.ones_like(z2), omz2)
         result = 2 * r * (r - b * c) * (1 - z3) / (3 * omz2)
@@ -168,6 +168,20 @@ def kite_area(a: Array, b: Array, c: Array) -> Array:
     a, b = sort2(a, b)
 
     square_area = (a + (b + c)) * (c - (a - b)) * (c + (a - b)) * (a + (b - c))
-    cond = jnp.less(square_area, 10 * jnp.finfo(square_area.dtype).eps)
-    square_area = jnp.where(cond, jnp.ones_like(square_area), square_area)
-    return jnp.where(cond, jnp.zeros_like(square_area), jnp.sqrt(square_area))
+    return zero_safe_sqrt(square_area)
+
+
+@jax.custom_jvp
+def zero_safe_sqrt(x):
+    return jnp.sqrt(x)
+
+
+@zero_safe_sqrt.defjvp
+def zero_safe_sqrt_jvp(primals, tangents):
+    (x,) = primals
+    (x_dot,) = tangents
+    primal_out = jnp.sqrt(x)
+    cond = jnp.less(x, 10 * jnp.finfo(jax.dtypes.result_type(x)).eps)
+    denom = jnp.where(cond, jnp.ones_like(x), x)
+    tangent_out = 0.5 * x_dot * primal_out / denom
+    return primal_out, tangent_out
