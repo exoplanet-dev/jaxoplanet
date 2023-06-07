@@ -6,7 +6,7 @@ import jax.numpy as jnp
 import numpy as np
 from scipy.special import roots_legendre
 
-from jaxoplanet.core.quad import kite_area
+from jaxoplanet.core.limb_dark import kite_area
 from jaxoplanet.types import Array
 
 
