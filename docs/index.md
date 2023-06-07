@@ -79,5 +79,4 @@ maxdepth: 2
 start
 api
 tutorials/autodiff.ipynb
-tutorials/data-and-models.ipynb
 ```
