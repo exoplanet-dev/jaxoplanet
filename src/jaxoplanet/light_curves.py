@@ -26,7 +26,8 @@ class LimbDarkLightCurve(NamedTuple):
         *,
         texp: Optional[Array] = None,
         oversample: Optional[int] = 7,
-        order: Optional[int] = 0,
+        stencil_order: Optional[int] = 0,
+        order: Optional[int] = 10,
     ) -> Array:
         """Get the light curve for an orbit at a set of times
 
@@ -45,7 +46,7 @@ class LimbDarkLightCurve(NamedTuple):
                 timestamp at the *middle* of an exposure of length ``texp``.
             oversample: The number of function evaluations to use when
                 numerically integrating the exposure time.
-            order (Optional[int]): The order of the numerical integration
+            stencil_order (Optional[int]): The order of the numerical integration
                 scheme. This must be one of the following: ``0`` for a
                 centered Riemann sum (equivalent to the "resampling" procedure
                 suggested by Kipping 2010), ``1`` for the trapezoid rule, or
@@ -75,12 +76,12 @@ class LimbDarkLightCurve(NamedTuple):
             stencil = jnp.ones(oversample, dtype=int)
 
             # Construct exposure time integration stencil
-            if order == 0:
+            if stencil_order == 0:
                 dt = jnp.linspace(-0.5, 0.5, 2 * oversample + 1)[1:-1:2]
-            elif order == 1:
+            elif stencil_order == 1:
                 dt = jnp.linspace(-0.5, 0.5, oversample)
                 stencil[1:-1] = 2
-            elif order == 2:
+            elif stencil_order == 2:
                 dt = jnp.linspace(-0.5, 0.5, oversample)
                 stencil[1:-1:2] = 4
                 stencil[2:-1:2] = 2
@@ -101,6 +102,7 @@ class LimbDarkLightCurve(NamedTuple):
             )  # right shape padding
 
         print(f"tgrid.shape = {tgrid.shape}")
+        print(f"rgrid.shape = {rgrid.shape}")
 
         # Evaluate the coordinates of the transiting body
         x, y, z = orbit.relative_position(tgrid)
