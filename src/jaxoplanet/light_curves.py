@@ -57,6 +57,8 @@ class LimbDarkLightCurve(NamedTuple):
         r_transit = jnp.reshape(r_transit, r_transit.shape)
         t = jnp.atleast_1d(t)
 
+        print(r_transit.shape)
+
         # Handle exposure time integration
         if texp is None:
             tgrid = t
@@ -87,7 +89,9 @@ class LimbDarkLightCurve(NamedTuple):
                 stencil[2:-1:2] = 2
             else:
                 raise ValueError("order must be 0, 1, or 2")
-            stencil /= jnp.sum(stencil)
+            # stencil /= jnp.sum(stencil)
+            print(f"stencil = {stencil}")
+            print(f"stencil.shape = {stencil.shape}")
 
             if texp.ndim == 0:  # Unnecessary since I check the shapes above?
                 dt = texp * dt
@@ -103,13 +107,17 @@ class LimbDarkLightCurve(NamedTuple):
 
         print(f"tgrid.shape = {tgrid.shape}")
         print(f"rgrid.shape = {rgrid.shape}")
+        # print(f"stenil.shape = {stencil.shape}")
 
         # Evaluate the coordinates of the transiting body
+        # Correct tgrid and rgrid such that light curve has correct shape of (1, 1000)
+
         x, y, z = orbit.relative_position(tgrid)
         b = jnp.sqrt(x**2 + y**2)
-        b = jnp.reshape(b, newshape=rgrid.shape)
+        # b = jnp.reshape(b, newshape=rgrid.shape)
         r_star = orbit.central_radius
-        r = rgrid / r_star
+        # r = rgrid / r_star
+        r = r_transit / r_star
         lc_func = partial(light_curve, self.u, order=order)
         if orbit.shape == ():
             b /= r_star
@@ -118,17 +126,20 @@ class LimbDarkLightCurve(NamedTuple):
             b /= r_star[..., None]
             lc = jnp.vectorize(lc_func, signature="(k),()->(k)")(b, r)
         lc = jnp.where(z > 0, lc, 0)
+        lc = lc[0]
 
         # Integrate over exposure time
         if texp is not None:
             stencil = jnp.reshape(
                 stencil, newshape=(1,) * t.ndim + stencil.shape
             )  # left shape padding
-            stencil = jnp.reshape(
-                stencil, newshape=stencil.shape + (1,)
-            )  # right shape padding
-            lc = jnp.sum(lc * stencil, axis=t.ndim)
-        return lc
+            # stencil = jnp.reshape(
+            # stencil, newshape=stencil.shape + (1,)
+            # )  # right shape padding
+            summed_lc = jnp.sum(lc * stencil, axis=t.ndim)
+            return lc, summed_lc, stencil, x, y, z
+        else:
+            return lc, x, y, z
 
         # r_star = orbit.central_radius
         # x, y, z = orbit.relative_position(t)
