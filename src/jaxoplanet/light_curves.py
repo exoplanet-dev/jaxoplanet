@@ -51,8 +51,9 @@ class LimbDarkLightCurve(NamedTuple):
                 centered Riemann sum (equivalent to the "resampling" procedure
                 suggested by Kipping 2010), ``1`` for the trapezoid rule, or
                 ``2`` for Simpson's rule.
-            order (Optional[int]): ADD DOCUMENTATION. I know this is related
-                to the order of the legendre polynomial used in the core component
+            order (Optional[int]): The quadrature order passed to the
+                ``scipy.special.roots_legendre`` function which implements
+                Gauss-Legendre quadrature. Defaults to 10.
         """
 
         t = jnp.atleast_1d(t)
