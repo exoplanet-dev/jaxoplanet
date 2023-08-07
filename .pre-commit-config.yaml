@@ -6,11 +6,11 @@ repos:
       - id: end-of-file-fixer
         exclude_types: [json, binary]
   - repo: https://github.com/psf/black
-    rev: "23.3.0"
+    rev: "23.7.0"
     hooks:
       - id: black-jupyter
-  - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: "v0.0.270"
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: "v0.0.281"
     hooks:
       - id: ruff
         exclude: "^docs/"
