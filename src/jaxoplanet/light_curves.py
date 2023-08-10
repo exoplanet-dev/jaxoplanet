@@ -27,7 +27,7 @@ class LimbDarkLightCurve(NamedTuple):
         texp: Optional[Array] = None,
         oversample: Optional[int] = 7,
         texp_order: Optional[int] = 0,
-        order: Optional[int] = 10,
+        limbdark_order: Optional[int] = 10,
     ) -> Array:
         """Get the light curve for an orbit at a set of times
 
@@ -45,15 +45,16 @@ class LimbDarkLightCurve(NamedTuple):
                 If ``texp`` is provided, ``t`` is assumed to indicate the
                 timestamp at the *middle* of an exposure of length ``texp``.
             oversample: The number of function evaluations to use when
-                numerically integrating the exposure time.
+                numerically integrating the exposure time. Defaults to 7.
             texp_order (Optional[int]): The order of the numerical integration
                 scheme. This must be one of the following: ``0`` for a
                 centered Riemann sum (equivalent to the "resampling" procedure
                 suggested by Kipping 2010), ``1`` for the trapezoid rule, or
-                ``2`` for Simpson's rule.
-            order (Optional[int]): The quadrature order passed to the
-                ``scipy.special.roots_legendre`` function which implements
-                Gauss-Legendre quadrature. Defaults to 10.
+                ``2`` for Simpson's rule. Has no effect if ``texp`` is not set.
+                Defaults to 0.
+            limbdark_order (Optional[int]): The quadrature order passed to the
+                ``scipy.special.roots_legendre`` function in ``core.limb_dark.py``
+                which implements Gauss-Legendre quadrature. Defaults to 10.
         """
 
         t = jnp.atleast_1d(t)
@@ -96,7 +97,7 @@ class LimbDarkLightCurve(NamedTuple):
         b = jnp.sqrt(x**2 + y**2)
         r_star = orbit.central_radius
         r = orbit.radius / r_star
-        lc_func = partial(light_curve, self.u, order=order)
+        lc_func = partial(light_curve, self.u, order=limbdark_order)
         if orbit.shape == ():
             b /= r_star
             lc = lc_func(b, r)
