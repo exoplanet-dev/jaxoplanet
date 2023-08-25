@@ -6,6 +6,7 @@ import jax
 import numpy as np
 import pytest
 from jax.test_util import check_grads
+
 from jaxoplanet.core.limb_dark import light_curve
 from jaxoplanet.test_utils import assert_allclose
 

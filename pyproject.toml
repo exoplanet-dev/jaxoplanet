@@ -54,10 +54,17 @@ target-version = ["py39"]
 line-length = 88
 
 [tool.ruff]
-line-length = 88
+line-length = 89
 target-version = "py39"
 select = ["F", "I", "E", "W", "YTT", "B", "Q", "PLE", "PLR", "PLW", "UP"]
-ignore = ["PLR0912", "PLR0913"]
+ignore = [
+    "B023",    # Allow using global variables in lambdas
+    "E741",    # Allow ambiguous variable names (e.g. "l" in starry)
+    "PLR0912", # Allow many branches
+    "PLR0913", # Allow many arguments in function call
+    "PLR0915", # Allow many statements
+    "PLR2004", # Allow magic numbers in comparisons
+]
 exclude = []
 
 [tool.ruff.isort]

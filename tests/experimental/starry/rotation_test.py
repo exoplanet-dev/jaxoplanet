@@ -1,6 +1,7 @@
 import jax
 import numpy as np
 import pytest
+
 from jaxoplanet.experimental.starry.rotation import (
     R_full,
     Rdot,

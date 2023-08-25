@@ -5,6 +5,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import pytest
+
 from jaxoplanet.orbits import KeplerianBody, KeplerianCentral, KeplerianOrbit
 from jaxoplanet.test_utils import assert_allclose
 
