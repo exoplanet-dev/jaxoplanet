@@ -22,7 +22,7 @@ jobs:
         include:
           - os: "macos-latest"
             python-version: "3.11"
-            session: "tests"
+            session: "test"
           - os: "ubuntu-latest"
             python-version: "3.9"
             session: "comparison"
