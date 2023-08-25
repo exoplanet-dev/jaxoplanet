@@ -28,23 +28,23 @@ jobs:
             session: "comparison"
 
     steps:
-      - name: Checkout
+      - name: "Init: checkout"
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
           submodules: true
 
-      - name: Setup Python
+      - name: "Init: Python"
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies
+      - name: "Install: dependencies"
         run: |
           python -m pip install -U pip
           python -m pip install -U nox
 
-      - name: Run tests
+      - name: "Tests: run"
         run: |
           python -m nox --non-interactive --error-on-missing-interpreter \
             --session "${{matrix.session}}-${{matrix.python-version}}"
