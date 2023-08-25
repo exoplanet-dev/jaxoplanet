@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Callable, Tuple
+from typing import Callable
 
 import jax
 import jax.numpy as jnp
@@ -76,7 +76,7 @@ def greens_basis_transform(u: Array) -> Array:
     return jnp.stack(g[:-2])
 
 
-def kappas(b: Array, r: Array) -> Tuple[Array, Array, Array]:
+def kappas(b: Array, r: Array) -> tuple[Array, Array, Array]:
     b2 = jnp.square(b)
     factor = (r - 1) * (r + 1)
     cond = jnp.logical_and(jnp.greater(b, jnp.abs(1 - r)), jnp.less(b, 1 + r))
@@ -93,7 +93,7 @@ def s0s2(
     area: Array,
     kappa0: Array,
     kappa1: Array,
-) -> Tuple[Array, Array]:
+) -> tuple[Array, Array]:
     bpr = b + r
     onembpr2 = (1 + bpr) * (1 - bpr)
     eta2 = 0.5 * r2 * (r2 + 2 * b2)
@@ -160,7 +160,7 @@ def p_integral(
 
 
 def kite_area(a: Array, b: Array, c: Array) -> Array:
-    def sort2(a: Array, b: Array) -> Tuple[Array, Array]:
+    def sort2(a: Array, b: Array) -> tuple[Array, Array]:
         return jnp.minimum(a, b), jnp.maximum(a, b)
 
     a, b = sort2(a, b)

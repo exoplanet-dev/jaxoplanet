@@ -1,4 +1,3 @@
-from typing import Tuple
 
 import jax
 import jax.numpy as jnp
@@ -6,7 +5,7 @@ import jax.numpy as jnp
 from jaxoplanet.types import Array
 
 
-def kepler(M: Array, ecc: Array) -> Tuple[Array, Array]:
+def kepler(M: Array, ecc: Array) -> tuple[Array, Array]:
     """Solve Kepler's equation to compute the true anomaly
 
     Args:
@@ -20,7 +19,7 @@ def kepler(M: Array, ecc: Array) -> Tuple[Array, Array]:
 
 
 @jax.custom_jvp
-def _kepler(M: Array, ecc: Array) -> Tuple[Array, Array]:
+def _kepler(M: Array, ecc: Array) -> tuple[Array, Array]:
     # Wrap into the right range
     M = M % (2 * jnp.pi)
 

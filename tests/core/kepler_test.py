@@ -4,6 +4,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 from jax.test_util import check_grads
+
 from jaxoplanet.core import kepler
 from jaxoplanet.test_utils import assert_allclose
 

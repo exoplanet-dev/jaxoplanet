@@ -1,4 +1,5 @@
 import jax.numpy as jnp
+
 from jaxoplanet import light_curves, orbits
 from jaxoplanet.test_utils import assert_allclose
 
