@@ -16,7 +16,7 @@ def test(session, x64):
     session.run("pytest", "-n", "auto", *session.posargs, env=env)
 
 
-@nox.session(python=ALL_PYTHON_VS)
+@nox.session(python=["3.9"])
 def comparison(session):
     session.install(".[test,comparison]", "numpy<1.22")
     session.run("python", "-c", "import starry")

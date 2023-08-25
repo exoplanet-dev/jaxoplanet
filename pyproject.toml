@@ -1,15 +1,10 @@
-[tool.poetry]
+[project]
 name = "jaxoplanet"
-packages = [{ include = "jaxoplanet", from = "src" }]
-version = "0.0.0"
 description = "Probabilistic models for exoplanet inference in JAX"
-license = "MIT"
-authors = ["Dan Foreman-Mackey <dfm@dfm.io>"]
+authors = [{ name = "Dan Foreman-Mackey", email = "foreman.mackey@gmail.com" }]
 readme = "README.md"
-homepage = "https://github.com/exoplanet-dev/jaxoplanet"
-repository = "https://github.com/exoplanet-dev/jaxoplanet"
-documentation = "https://github.com/exoplanet-dev/jaxoplanet"
-keywords = []
+requires-python = ">=3.9"
+license = { text = "MIT License" }
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -19,44 +14,20 @@ classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
 ]
-exclude = ["tests"]
+dynamic = ["version"]
+dependencies = ["jax", "jaxlib", "jpu"]
 
-[tool.poetry.dependencies]
-python = "^3.9"
-jax = ">=0.4,!=0.4.9"
-typing-extensions = "*"
+[project.urls]
+"Homepage" = "https://jax.exoplanet.codes"
+"Source" = "https://github.com/exoplanet-dev/jaxoplanet"
+"Bug Tracker" = "https://github.com/exoplanet-dev/jaxoplanet/issues"
 
-# Required for consistent testing, etc.
-jaxlib = { version = ">=0.4,!=0.4.9", optional = true }
-
-# Testing
-pytest = { version = "*", optional = true }
-pytest-xdist = { version = "*", optional = true }
-exoplanet-core = { version = "*", optional = true }
-batman-package = { version = "^2.4", optional = true }
-sympy = { version = "^1.11", optional = true }
-
-# Comparisons
-starry = { version = "^1.2.0", optional = true }
-tqdm = { version = "*", optional = true }        # Required by starry
-
-# Docs
-matplotlib = { version = "^3.7.1", optional = true }
-arviz = { version = "^0.15.1", optional = true }
-corner = { version = "^2.2.2", optional = true }
-numpyro = { version = "^0.11.0", optional = true }
-numpyro-ext = { version = "^0.0.1", optional = true }
-jaxopt = { version = "^0.6", optional = true }
-myst-nb = { version = "^0.17", optional = true }
-sphinx-book-theme = { version = "^1.0", optional = true }
-sphinx-design = { version = "^0.3", optional = true }
-
-[tool.poetry.extras]
-test = ["jaxlib", "pytest", "pytest-xdist", "exoplanet-core", "batman-package"]
+[project.optional-dependencies]
+dev = ["nox", "ruff", "black", "pre-commit", "pytest", "sympy"]
+test = ["pytest", "pytest-xdist", "exoplanet-core", "batman-package"]
 test-math = ["sympy"]
-comparison = ["starry", "tqdm"]
+comparison = ["starry", "numpy<1.22", "tqdm"]
 docs = [
-    "jaxlib",
     "matplotlib",
     "arviz",
     "corner",
@@ -68,36 +39,27 @@ docs = [
     "sphinx-design",
 ]
 
-[tool.poetry.group.dev.dependencies]
-nox = "^2022.11.21"
-ruff = "^0.0.253"
-black = "^23.1.0"
-pre-commit = "^3.1.1"
-pytest = "^7.2.1"
-sympy = "^1.11.1"
-
-[tool.poetry-dynamic-versioning]
-enable = true
-vcs = "git"
-style = "semver"
-
-[tool.poetry-dynamic-versioning.substitution]
-folders = [{ path = "src" }]
-
 [build-system]
-requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning"]
-build-backend = "poetry_dynamic_versioning.backend"
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/jaxoplanet/jaxoplanet_version.py"
 
 [tool.black]
-target-version = ["py38", "py39"]
+target-version = ["py39"]
 line-length = 88
 
 [tool.ruff]
-line-length = 89
-target-version = "py38"
-select = ["F", "I", "E", "W", "YTT", "B", "Q", "PLE", "PLW"]
-ignore = [
-    "E741", # Allow ambiguous variable names (e.g. "l" in starry)
-    "B023", # Allow using global variables in lambdas
-]
+line-length = 88
+target-version = "py39"
+select = ["F", "I", "E", "W", "YTT", "B", "Q", "PLE", "PLR", "PLW", "UP"]
+ignore = ["PLR0912", "PLR0913"]
 exclude = []
+
+[tool.ruff.isort]
+known-first-party = ["jaxoplanet"]
+combine-as-imports = true
