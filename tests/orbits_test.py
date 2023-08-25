@@ -166,8 +166,10 @@ def test_small_star():
         eccentricity=ecc,
         omega_peri=omega,
     )
-    a = orbit.bodies.semimajor
-    incl = jnp.arctan2(orbit.bodies.sin_inclination, orbit.bodies.cos_inclination)
+    a = float(orbit.bodies.semimajor[0])
+    incl = float(
+        jnp.arctan2(orbit.bodies.sin_inclination, orbit.bodies.cos_inclination)[0]
+    )
 
     r_batman = _rsky._rsky(t, t0, period, a, incl, ecc, omega, 1, 1)
     m = r_batman < 100.0
