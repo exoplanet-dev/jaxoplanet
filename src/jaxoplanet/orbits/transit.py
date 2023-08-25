@@ -1,4 +1,4 @@
-from typing import NamedTuple, Optional, Tuple
+from typing import NamedTuple, Optional
 
 import jax
 import jax.numpy as jnp
@@ -15,7 +15,7 @@ class TransitOrbit(NamedTuple):
     radius: Array
 
     @property
-    def shape(self) -> Tuple[int, ...]:
+    def shape(self) -> tuple[int, ...]:
         return self.period.shape
 
     @classmethod
@@ -79,7 +79,7 @@ class TransitOrbit(NamedTuple):
 
     def relative_position(
         self, t: Array, parallax: Optional[Array] = None
-    ) -> Tuple[Array, Array, Array]:
+    ) -> tuple[Array, Array, Array]:
         del parallax
 
         def impl(
@@ -89,7 +89,7 @@ class TransitOrbit(NamedTuple):
             time_transit: Array,
             impact_param: Array,
             radius: Array,
-        ) -> Tuple[Array, Array, Array]:
+        ) -> tuple[Array, Array, Array]:
             del radius
             half_period = 0.5 * period
             ref_time = time_transit - half_period
