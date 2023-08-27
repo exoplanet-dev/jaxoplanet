@@ -1,38 +1,34 @@
 from functools import partial
 from typing import TYPE_CHECKING, Any, NamedTuple, Optional
 
+import equinox as eqx
 import jax
 import jax.numpy as jnp
 
+from jaxoplanet import units
 from jaxoplanet.core.kepler import kepler
 from jaxoplanet.types import Scalar
+from jaxoplanet.units import field, unit_registry as ureg
 
 # FIXME: Switch to constants from astropy
 GRAVITATIONAL_CONSTANT = 2942.2062175044193 / (4 * jnp.pi**2)
 AU_PER_R_SUN = 0.00465046726096215
 
 
-class KeplerianCentral(NamedTuple):
-    mass: Scalar
-    radius: Scalar
-    density: Scalar
+class KeplerianCentral(eqx.Module):
+    mass: ureg.Quantity = field(ureg.M_sun)
+    radius: ureg.Quantity = field(ureg.R_sun)
+    density: ureg.Quantity = field(ureg.M_sun / ureg.R_sun**3)
 
-    @property
-    def shape(self) -> tuple[int, ...]:
-        leaves, _ = jax.tree_util.tree_flatten(self)
-        shape = leaves[0].shape
-        if any(leaf.shape != shape for leaf in leaves[1:]):
-            raise ValueError("Inconsistent shapes for parameters of 'KeplerianCentral'")
-        return shape
-
-    @classmethod
-    def init(
-        cls,
-        *,
-        mass: Optional[Scalar] = None,
-        radius: Optional[Scalar] = None,
-        density: Optional[Scalar] = None,
-    ) -> "KeplerianCentral":
+    @units.expect_units(
+        mass=ureg.M_sun, radius=ureg.R_sun, density=ureg.M_sun / ureg.R_sun**3
+    )
+    def __init__(
+        self,
+        mass: Scalar | None = None,
+        radius: Scalar | None = None,
+        density: Scalar | None = None,
+    ):
         if radius is None and mass is None:
             radius = 1.0
             if density is None:
@@ -69,10 +65,26 @@ class KeplerianCentral(NamedTuple):
 
         # Convert dtypes to be at least float32
         dtype = jnp.result_type(mass, radius, density, jnp.float32)
-        mass = jnp.asarray(mass, dtype=dtype)
-        radius = jnp.asarray(radius, dtype=dtype)
-        density = jnp.asarray(density, dtype=dtype)
+        self.mass = jnp.asarray(mass, dtype=dtype)
+        self.radius = jnp.asarray(radius, dtype=dtype)
+        self.density = jnp.asarray(density, dtype=dtype)
 
+    @property
+    def shape(self) -> tuple[int, ...]:
+        leaves, _ = jax.tree_util.tree_flatten(self)
+        shape = leaves[0].shape
+        if any(leaf.shape != shape for leaf in leaves[1:]):
+            raise ValueError("Inconsistent shapes for parameters of 'KeplerianCentral'")
+        return shape
+
+    @classmethod
+    def init(
+        cls,
+        *,
+        mass: Optional[Scalar] = None,
+        radius: Optional[Scalar] = None,
+        density: Optional[Scalar] = None,
+    ) -> "KeplerianCentral":
         return cls(mass=mass, radius=radius, density=density)
 
     @classmethod

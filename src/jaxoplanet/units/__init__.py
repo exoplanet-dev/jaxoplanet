@@ -1,9 +1,3 @@
-from importlib.resources import as_file, files
-
-import jpu
-
-registry = jpu.UnitRegistry()
-with as_file(
-    files("jaxoplanet.units").joinpath("astro_constants_and_units.txt")
-) as path:
-    registry.load_definitions(path)
+from jaxoplanet.units.decorator import expect_units as expect_units
+from jaxoplanet.units.field import field as field
+from jaxoplanet.units.registry import unit_registry as unit_registry
