@@ -16,9 +16,9 @@ AU_PER_R_SUN = 0.00465046726096215
 
 
 class KeplerianCentral(eqx.Module):
-    mass: ureg.Quantity = field(ureg.M_sun)
-    radius: ureg.Quantity = field(ureg.R_sun)
-    density: ureg.Quantity = field(ureg.M_sun / ureg.R_sun**3)
+    mass: ureg.Quantity = field(units=ureg.M_sun)
+    radius: ureg.Quantity = field(units=ureg.R_sun)
+    density: ureg.Quantity = field(units=ureg.M_sun / ureg.R_sun**3)
 
     @units.quantity_input(
         mass=ureg.M_sun, radius=ureg.R_sun, density=ureg.M_sun / ureg.R_sun**3

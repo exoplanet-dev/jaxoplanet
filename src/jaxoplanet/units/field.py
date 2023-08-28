@@ -2,26 +2,30 @@ from functools import partial
 from typing import Any
 
 import equinox as eqx
+import jax
 
-from jaxoplanet.units.decorator import _is_quantity
-from jaxoplanet.units.registry import unit_registry
-
-
-def _convert_to(unit: unit_registry.Unit, value: Any) -> unit_registry.Quantity:
-    if _is_quantity(value):
-        return value.to(unit)
-    else:
-        return unit_registry.Quantity(value, unit)
+from jaxoplanet.units.decorator import _apply_units, _is_quantity
 
 
-def field(unit: unit_registry.Unit, **kwargs: Any) -> Any:
-    original_converter = kwargs.pop("converter", None)
+def field(*, units: Any = None, strict: bool = False, **kwargs: Any) -> Any:
+    """A custom Equinox field with support for units
 
-    if original_converter is None:
-        return eqx.field(converter=partial(_convert_to, unit), **kwargs)
-    else:
+    This is a wrapper around :func:`equinox.field` that adds support for units.
+    The ``units`` argument is used to specify the units of the field either as a
+    plain ``Unit`` or string, or as a Pytree with the same structure as the
+    expected input.
+    """
+    if units is None:
+        return eqx.field(**kwargs)
 
-        def converter(value: Any) -> Any:
-            return _convert_to(unit, original_converter(value))
+    original_converter = kwargs.pop("converter", lambda x: x)
 
-        return eqx.field(converter=converter, **kwargs)
+    def converter(value: Any) -> Any:
+        return jax.tree_util.tree_map(
+            partial(_apply_units, strict=strict),
+            original_converter(value),
+            units,
+            is_leaf=_is_quantity,
+        )
+
+    return eqx.field(converter=converter, **kwargs)
