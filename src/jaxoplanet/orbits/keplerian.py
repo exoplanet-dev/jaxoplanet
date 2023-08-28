@@ -20,19 +20,20 @@ class KeplerianCentral(eqx.Module):
     radius: ureg.Quantity = field(ureg.R_sun)
     density: ureg.Quantity = field(ureg.M_sun / ureg.R_sun**3)
 
-    @units.expect_units(
+    @units.quantity_input(
         mass=ureg.M_sun, radius=ureg.R_sun, density=ureg.M_sun / ureg.R_sun**3
     )
     def __init__(
         self,
+        *,
         mass: Scalar | None = None,
         radius: Scalar | None = None,
         density: Scalar | None = None,
     ):
         if radius is None and mass is None:
-            radius = 1.0
+            radius = 1.0 * ureg.R_sun
             if density is None:
-                mass = 1.0
+                mass = 1.0 * ureg.M_sun
 
         if sum(arg is None for arg in (mass, radius, density)) != 1:
             raise ValueError(
@@ -41,9 +42,7 @@ class KeplerianCentral(eqx.Module):
 
         # Check that all the input values are scalars; we don't support Scalars
         # here
-        if any(
-            jnp.ndim(arg) != 0 for arg in (mass, radius, density) if arg is not None
-        ):
+        if any(arg.ndim != 0 for arg in (mass, radius, density) if arg is not None):
             raise ValueError("All parameters of a KeplerianCentral must be scalars")
 
         # Compute all three parameters based on the input values
@@ -63,11 +62,12 @@ class KeplerianCentral(eqx.Module):
                 assert radius is not None
             mass = 4 * jnp.pi * radius**3 * density / 3.0
 
+        self.mass = mass
+        self.radius = radius
+        self.density = density
+
         # Convert dtypes to be at least float32
-        dtype = jnp.result_type(mass, radius, density, jnp.float32)
-        self.mass = jnp.asarray(mass, dtype=dtype)
-        self.radius = jnp.asarray(radius, dtype=dtype)
-        self.density = jnp.asarray(density, dtype=dtype)
+        # dtype = jnp.result_type(mass, radius, density, jnp.float32)
 
     @property
     def shape(self) -> tuple[int, ...]:

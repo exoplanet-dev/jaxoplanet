@@ -3,6 +3,7 @@ from functools import partial, wraps
 from typing import Any, Callable
 
 import jax
+from pint import DimensionalityError
 
 from jaxoplanet.units.registry import unit_registry
 
@@ -11,16 +12,14 @@ def _is_quantity(x: Any) -> bool:
     return hasattr(x, "_magnitude") and hasattr(x, "_units")
 
 
-class ExpectUnits:
+class QuantityInput:
     def __init__(
         self,
-        return_units: Any = None,
         *,
         _strict: bool = False,
         **kwargs: Any,
     ):
         self.decorator_kwargs = kwargs
-        self.return_units = return_units
         self.strict = _strict
 
     def __call__(self, func: Callable) -> Callable:
@@ -62,14 +61,7 @@ class ExpectUnits:
                         is_leaf=_is_quantity,
                     )
 
-            result = func(*bound_args.args, **bound_args.kwargs)
-
-            if self.return_units is None:
-                return result
-
-            return jax.tree_util.tree_map(
-                unit_registry.Quantity, result, self.return_units
-            )
+            return func(*bound_args.args, **bound_args.kwargs)
 
         return wrapped
 
@@ -77,28 +69,32 @@ class ExpectUnits:
         if unit is None:
             return value
         if _is_quantity(value):
-            return value.to(unit).magnitude
+            try:
+                return value.to(unit)
+            except DimensionalityError as e:
+                raise DimensionalityError(
+                    e.units1,
+                    e.units2,
+                    e.dim1,
+                    e.dim2,
+                    f" for input '{name}'",
+                ) from None
         elif self.strict:
             raise ValueError(
                 f"All elements of argument '{name}' must be quantities for strict "
                 "parsing"
             )
         else:
-            return value
+            return unit_registry.Quantity(value, unit)
 
 
-def expect_units(
-    func_or_return_units: Any = None,
-    return_units: Any = None,
+def quantity_input(
+    func: Callable | None = None,
     *,
     _strict: bool = False,
     **kwargs: Any,
-) -> Callable | ExpectUnits:
-    if callable(func_or_return_units):
-        return ExpectUnits(return_units, _strict=_strict, **kwargs)(
-            func_or_return_units
-        )
+) -> Callable | QuantityInput:
+    if func is None:
+        return QuantityInput(_strict=_strict, **kwargs)
     else:
-        return ExpectUnits(
-            return_units or func_or_return_units, _strict=_strict, **kwargs
-        )
+        return QuantityInput(_strict=_strict, **kwargs)(func)
