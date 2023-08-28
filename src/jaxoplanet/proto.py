@@ -1,6 +1,4 @@
-from typing import Optional
-
-from typing_extensions import Protocol
+from typing import Optional, Protocol
 
 from jaxoplanet.types import Array
 

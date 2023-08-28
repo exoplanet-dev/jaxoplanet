@@ -8,8 +8,97 @@ from pint import DimensionalityError
 from jaxoplanet.units.registry import unit_registry
 
 
-def _is_quantity(x: Any) -> bool:
-    return hasattr(x, "_magnitude") and hasattr(x, "_units")
+def quantity_input(
+    func: Callable | None = None,
+    *,
+    _strict: bool = False,
+    **kwargs: Any,
+) -> Callable | "QuantityInput":
+    """A decorator to wrap functions that require quantities as inputs
+
+    Please note, this is similar to the decorator of the same name from
+    ``astropy.units``, but the behavior is slightly different, in ways that
+    we'll try to highlight here.
+
+    This decorator will wrap a function and check or convert the units of all
+    inputs, such that the wrapped function can assume that all input units are
+    correct.
+
+    By default, if a non-``Quantity`` is provided, it will be assumed to be in
+    the correct units, and converted to a ``Quantity``. If the ``_strict`` flag
+    is instead set to ``True``, inputting a non-``Quantity`` will raise a
+    ``ValueError``.
+
+    Simple examples
+    ---------------
+
+    The following function expects a length in meters and a time in seconds, and
+    it returns a speed in meters per second:
+
+    .. code-block:: python
+
+        from jaxoplanet.units import unit_registry as ureg
+
+        @units.quantity_input(a=ureg.m, b=ureg.s)
+        def speed(a, b):
+            return a / b
+
+    If we call this function with a length and a time, it will work as expected:
+
+    .. code-block:: python
+
+        speed(1.5 * ureg.m, 0.5 * ureg.s)
+
+    And it will also handle unit conversions:
+
+    .. code-block:: python
+
+        speed(1.5 * ureg.AU, 0.5 * ureg.day)  # The result will still be in m/s
+
+    To skip validating specific inputs, you can set the unit to ``None``, or
+    omit it from the decorator arguments:
+
+    .. code-block:: python
+
+        @units.quantity_input(x=ureg.m)  # optionally include flag=None
+        def condition(x, flag):
+            if flag:
+                return x
+            else:
+                return 0.0 * x
+
+    JAX Pytree support
+    ------------------
+
+    This decorator also supports JAX Pytrees, so you can use it to wrap
+    functions with structured inputs. For example, we could rewrite the
+    ``speed`` example from above as:
+
+    .. code-block:: python
+
+        @units.quantity_input(params={"distance": ureg.m, "time": ureg.s})
+        def speed(params):
+            return params["distance"] / params["time"]
+
+    This will work with arbitrary Pytrees, as long as structure of the input
+    fully matches the decorator argument. In other words, since the full Pytree
+    structure must be specified, you'll need to explicitly list ``None`` for any
+    Pytree nodes that you want to skip during validation:
+
+    .. code-block:: python
+
+        # Omitting `flag` from the decorator wouldn't work here
+        @units.quantity_input(params={"x": ureg.m, "flag": None})
+        def condition(params):
+            if params["flag"]:
+                return params["x"]
+            else:
+                return 0.0 * params["x"]
+    """
+    if func is None:
+        return QuantityInput(_strict=_strict, **kwargs)
+    else:
+        return QuantityInput(_strict=_strict, **kwargs)(func)
 
 
 class QuantityInput:
@@ -88,13 +177,5 @@ class QuantityInput:
             return unit_registry.Quantity(value, unit)
 
 
-def quantity_input(
-    func: Callable | None = None,
-    *,
-    _strict: bool = False,
-    **kwargs: Any,
-) -> Callable | QuantityInput:
-    if func is None:
-        return QuantityInput(_strict=_strict, **kwargs)
-    else:
-        return QuantityInput(_strict=_strict, **kwargs)(func)
+def _is_quantity(x: Any) -> bool:
+    return hasattr(x, "_magnitude") and hasattr(x, "_units")

@@ -10,6 +10,18 @@ from jaxoplanet.units import unit_registry as ureg
 def test_quantity_input():
     @units.quantity_input(a=ureg.m, b=ureg.s)
     def func(a, b):
+        assert a.units == ureg.m
+        assert b.units == ureg.s
+        return a / b
+
+    assert_quantity_allclose(func(1.5 * ureg.m, 0.5 * ureg.s), 3.0 * ureg.m / ureg.s)
+
+
+def test_quantity_input_string():
+    @units.quantity_input(a="m", b="s")
+    def func(a, b):
+        assert a.units == ureg.m
+        assert b.units == ureg.s
         return a / b
 
     assert_quantity_allclose(func(1.5 * ureg.m, 0.5 * ureg.s), 3.0 * ureg.m / ureg.s)
@@ -63,6 +75,8 @@ def test_quantity_input_invalid():
 def test_quantity_input_pytree(with_jit):
     @units.quantity_input(params={"a": ureg.m, "b": ureg.s})
     def func(params):
+        assert params["a"].units == ureg.m
+        assert params["b"].units == ureg.s
         return params["a"] / params["b"]
 
     if with_jit:
