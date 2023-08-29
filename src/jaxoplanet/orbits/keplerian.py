@@ -22,9 +22,9 @@ class KeplerianCentral(eqx.Module):
     def __init__(
         self,
         *,
-        mass: Quantity | None = None,
-        radius: Quantity | None = None,
-        density: Quantity | None = None,
+        mass: Optional[Quantity] = None,
+        radius: Optional[Quantity] = None,
+        density: Optional[Quantity] = None,
     ):
         if radius is None and mass is None:
             radius = 1.0 * ureg.R_sun
@@ -392,7 +392,7 @@ class KeplerianBody(eqx.Module):
         return jnpu.arctan2(self.sin_inclination, self.cos_inclination)
 
     @property
-    def omega_peri(self) -> Quantity | None:
+    def omega_peri(self) -> Optional[Quantity]:
         if self.eccentricity is None:
             return None
         return jnpu.arctan2(self.sin_omega_peri, self.cos_omega_peri)

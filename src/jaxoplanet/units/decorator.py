@@ -176,7 +176,7 @@ class QuantityInput:
 
 
 def _apply_units(
-    value: Any, units: Any, strict: bool = False, name: str | None = None
+    value: Any, units: Any, strict: bool = False, name: Optional[str] = None
 ) -> Any:
     if units is None:
         return value
