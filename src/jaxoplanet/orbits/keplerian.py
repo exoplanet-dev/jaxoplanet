@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Optional
+from typing import Any, Optional
 
 import equinox as eqx
 import jax
@@ -201,13 +201,19 @@ class KeplerianBody(eqx.Module):
         # Work out the period and semimajor axis to be consistent
         mass_factor = ureg.gravitational_constant * self.total_mass
         if semimajor is None:
-            if TYPE_CHECKING:
-                assert period is not None
+            if period is None:
+                raise ValueError(
+                    "Either `period` or `semimajor` must be specified when constructing "
+                    "a KeplerianBody"
+                )
             self.semimajor = jnpu.cbrt(mass_factor * period**2 / (4 * jnp.pi**2))
             self.period = period
         elif period is None:
             self.semimajor = semimajor
             self.period = 2 * jnp.pi * semimajor * jnpu.sqrt(semimajor / mass_factor)
+        else:
+            self.semimajor = semimajor
+            self.period = period
 
         # Handle treatment and normalization of angles
         if omega_peri is not None:
@@ -380,6 +386,16 @@ class KeplerianBody(eqx.Module):
     @property
     def time_peri(self) -> Quantity:
         return self.time_transit + self.time_ref  # type: ignore
+
+    @property
+    def inclination(self) -> Quantity:
+        return jnpu.arctan2(self.sin_inclination, self.cos_inclination)
+
+    @property
+    def omega_peri(self) -> Quantity | None:
+        if self.eccentricity is None:
+            return None
+        return jnpu.arctan2(self.sin_omega_peri, self.cos_omega_peri)
 
     @property
     def total_mass(self) -> Quantity:
