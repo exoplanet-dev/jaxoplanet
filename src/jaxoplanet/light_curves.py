@@ -1,30 +1,33 @@
 from functools import partial
-from typing import NamedTuple, Optional
+from typing import Optional
 
+import equinox as eqx
 import jax.numpy as jnp
+import jpu.numpy as jnpu
 
+from jaxoplanet import units
 from jaxoplanet.core.limb_dark import light_curve
 from jaxoplanet.proto import LightCurveOrbit
-from jaxoplanet.types import Array
+from jaxoplanet.types import Array, Quantity
+from jaxoplanet.units import unit_registry as ureg
 
 
-class LimbDarkLightCurve(NamedTuple):
+class LimbDarkLightCurve(eqx.Module):
     u: Array
 
-    @classmethod
-    def init(cls, *u: Array) -> "LimbDarkLightCurve":
+    def __init__(self, *u: Array):
         if u:
-            u = jnp.concatenate([jnp.atleast_1d(u0) for u0 in u], axis=0)
+            self.u = jnp.concatenate([jnp.atleast_1d(u0) for u0 in u], axis=0)
         else:
-            u = jnp.array([])
-        return cls(u=u)
+            self.u = jnp.array([])
 
+    @units.quantity_input(t=ureg.d, texp=ureg.s)
     def light_curve(
         self,
         orbit: LightCurveOrbit,
-        t: Array,
+        t: Quantity,
         *,
-        texp: Optional[Array] = None,
+        texp: Optional[Quantity] = None,
         oversample: int = 7,
         order: int = 10,
     ) -> Array:
@@ -53,13 +56,15 @@ class LimbDarkLightCurve(NamedTuple):
             )
         r_star = orbit.central_radius
         x, y, z = orbit.relative_position(t)
-        b = jnp.sqrt(x**2 + y**2)
+        b = jnpu.sqrt(x**2 + y**2)
         r = orbit.radius / r_star
         lc_func = partial(light_curve, self.u, order=order)
         if orbit.shape == ():
             b /= r_star
-            lc = lc_func(b, r)
+            lc: Array = lc_func(b.magnitude, r.magnitude)
         else:
             b /= r_star[..., None]
-            lc = jnp.vectorize(lc_func, signature="(k),()->(k)")(b, r)
+            lc: Array = jnp.vectorize(lc_func, signature="(k),()->(k)")(
+                b.magnitude, r.magnitude
+            )
         return jnp.where(z > 0, lc, 0)

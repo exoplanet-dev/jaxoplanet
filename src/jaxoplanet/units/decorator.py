@@ -9,11 +9,11 @@ from jaxoplanet.units.registry import unit_registry
 
 
 def quantity_input(
-    func: Callable | None = None,
+    func: Callable[..., Any] | None = None,
     *,
     _strict: bool = False,
     **kwargs: Any,
-) -> Callable | "QuantityInput":
+) -> Any:
     """A decorator to wrap functions that require quantities as inputs
 
     Please note, this is similar to the decorator of the same name from

@@ -125,7 +125,7 @@ def test_quantity_input_unrecognized_argument():
 def test_quantity_input_positional_unit():
     with pytest.raises(TypeError):
 
-        @units.quantity_input(ureg.m, b=ureg.s)
+        @units.quantity_input(ureg.m, b=ureg.s)  # type: ignore
         def func(a, b):
             return a / b
 
@@ -142,7 +142,7 @@ def test_quantity_input_varargs_error():
 
 def test_field():
     class Model(eqx.Module):
-        x: ureg.Quantity = units.field(units=ureg.m)
+        x: Any = units.field(units=ureg.m)
 
     assert_quantity_allclose(Model(x=1.5).x, 1.5 * ureg.m)
     assert_quantity_allclose(Model(x=1.5 * ureg.m).x, 1.5 * ureg.m)
@@ -151,7 +151,7 @@ def test_field():
 
 def test_field_converter():
     class Model(eqx.Module):
-        x: ureg.Quantity = units.field(units=ureg.m, converter=lambda x: 2 * x)
+        x: Any = units.field(units=ureg.m, converter=lambda x: 2 * x)
 
     assert_quantity_allclose(Model(x=1.5).x, 3 * ureg.m)
 
@@ -163,3 +163,12 @@ def test_field_pytree():
     model = Model(x={"a": 150.0 * ureg.cm, "b": 0.5})
     assert_quantity_allclose(model.x["a"], 1.5 * ureg.m)
     assert_quantity_allclose(model.x["b"], 0.5 * ureg.s)
+
+
+def test_field_optional():
+    class Model(eqx.Module):
+        x: Any = units.field(units=ureg.m)
+
+    model = Model(x=None)
+    assert model.x is None
+    assert_quantity_allclose(Model(x=1.5).x, 1.5 * ureg.m)
