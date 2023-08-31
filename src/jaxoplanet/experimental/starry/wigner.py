@@ -24,16 +24,16 @@ def compute_rotation_matrices(ydeg, x, y, z, theta):
     ra21 = z * y * (1 - c) + x * s
     ra22 = c + z * z * (1 - c)
 
-    cond_pos = jnp.isclose(ra22, 1.0)
     cond_neg = jnp.isclose(ra22, -1.0)
+    cond_pos = jnp.isclose(ra22, 1.0)
     cond_full = jnp.logical_or(cond_pos, cond_neg)
-    sign = cond_pos.astype(int) - cond_neg.astype(int)
+    sign = cond_neg.astype(int) - cond_pos.astype(int)
     cos_beta = ra22
     sin_beta = jnp.where(
-        cond_pos,
+        cond_neg,
         1 + ra22,
         jnp.where(
-            cond_neg,
+            cond_pos,
             1 - ra22,
             jnp.sqrt(1 - cos_beta * cos_beta),  # type: ignore
         ),  # TODO(dfm): handle NaNs in grad
@@ -128,12 +128,8 @@ def rotar(ydeg, c1, s1, c2, s2, c3, s3):
         )
     )
 
-    # TODO(dfm): handle small s2
-    #   if (abs(s2) < tol)
-    #     tgbet2 = s2; // = 0
-    #   else
-    #     tgbet2 = (Scalar(1.0) - c2) / s2;
-    tgbet2 = (1 - c2) / s2
+    # TODO(dfm): handle NaNs in gradient
+    tgbet2 = jnp.where(jnp.allclose(s2, 0.0), s2, (1 - c2) / s2)
 
     for ell in range(2, ydeg + 1):
         D_, R_ = dlmn(ell, s1, c1, c2, tgbet2, s3, c3, D)
