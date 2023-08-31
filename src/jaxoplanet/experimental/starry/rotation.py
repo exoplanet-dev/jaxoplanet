@@ -183,7 +183,7 @@ def Rdot(l_max: int, u: Array) -> Callable[[Array], Array]:
     return R
 
 
-def dotR(l_max: int, u: Array) -> Callable[[Array], Array]:
+def dotR(l_max: int, u: Array) -> Callable[[Array, Array], Array]:
     """Dot product M@R of a matrix M with the rotation matrix R
 
     Parameters
@@ -201,12 +201,10 @@ def dotR(l_max: int, u: Array) -> Callable[[Array], Array]:
         - theta is the rotation angle in radians
     """
     Rls = [Rl(l) for l in range(l_max + 1)]
-    n_max = l_max**2 + 2 * l_max + 1
 
-    @partial(jnp.vectorize, signature=f"({n_max},{n_max}),()->({n_max},{n_max})")
     def R(M: Array, theta: Array) -> Array:
         alpha, beta, gamma = axis_to_euler(u[0], u[1], u[2], theta)
-        return np.hstack(
+        return jnp.hstack(
             [
                 M[:, l**2 : (l + 1) ** 2] @ Rls[l](alpha, beta, gamma)
                 for l in range(l_max + 1)
