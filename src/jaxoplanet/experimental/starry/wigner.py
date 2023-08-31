@@ -5,6 +5,7 @@ import jax.numpy as jnp
 
 
 def dot_rotation_matrix(ydeg, x, y, z, theta):
+    # TODO(dfm): Check all the shapes
     R = compute_rotation_matrices(ydeg, x, y, z, theta)
     n_max = ydeg**2 + 2 * ydeg + 1
 
