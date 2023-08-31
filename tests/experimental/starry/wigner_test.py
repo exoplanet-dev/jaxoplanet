@@ -14,7 +14,7 @@ def test_matches_dotR(l_max, u):
     n_max = l_max**2 + 2 * l_max + 1
     M = np.random.rand(n_max, n_max)
     expected = dotR(l_max, u)(M, theta)
-    calc = dot_rotation_matrix(l_max, *u, theta, M)
+    calc = dot_rotation_matrix(l_max, *u, theta)(M)
     assert_allclose(calc, expected)
 
 
@@ -29,5 +29,5 @@ def test_compare_starry_rot_rotation(l_max, u):
     M = np.random.rand(n_max, n_max)
     m = starry._core.core.OpsYlm(l_max, 0, 0, 1)
     expected = m.dotR(M, *u, theta)
-    calc = dot_rotation_matrix(l_max, *u, theta, M)
+    calc = dot_rotation_matrix(l_max, *u, theta)(M)
     assert_allclose(calc, expected)
