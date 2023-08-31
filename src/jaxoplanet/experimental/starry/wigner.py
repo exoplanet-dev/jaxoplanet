@@ -6,9 +6,15 @@ import jax.numpy as jnp
 
 @partial(jax.jit, static_argnums=(0,))
 def dot_rotation_matrix(ydeg, x, y, z, theta, M):
+    # TODO(dfm): Add shape checks
     R = compute_rotation_matrices(ydeg, x, y, z, theta)
     result = []
     for ell in range(ydeg + 1):
+        # TODO(dfm): There's no reason why we need to specialize to a matrix
+        # here. I think we should probably just implement the vector version
+        # then use a vmap anytime we need a matrix. The best approach is
+        # probably to factor out the R computation and then return a function
+        # that applies that to a vector `y`.
         result.append(M[:, ell * ell : ell * ell + 2 * ell + 1] @ R[ell])
     return jnp.concatenate(result, axis=1)
 
