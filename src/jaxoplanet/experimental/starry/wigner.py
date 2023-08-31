@@ -28,18 +28,15 @@ def compute_rotation_matrices(ydeg, x, y, z, theta):
     cond_pos = jnp.isclose(ra22, 1.0)
     cond_full = jnp.logical_or(cond_pos, cond_neg)
     sign = cond_neg.astype(int) - cond_pos.astype(int)
-    cos_beta = ra22
-    sin_beta = jnp.where(
-        cond_neg,
-        1 + ra22,
-        jnp.where(
-            cond_pos,
-            1 - ra22,
-            jnp.sqrt(1 - cos_beta * cos_beta),  # type: ignore
-        ),  # TODO(dfm): handle NaNs in grad
-    )
     norm1 = jnp.sqrt(ra20 * ra20 + ra21 * ra21)
     norm2 = jnp.sqrt(ra02 * ra02 + ra12 * ra12)
+    cos_beta = ra22
+    sin_beta = jnp.where(
+        cond_full,
+        1 + sign * ra22,
+        jnp.sqrt(1 - cos_beta * cos_beta),  # type: ignore
+        # TODO(dfm): handle NaNs in grad
+    )
     cos_gamma = jnp.where(
         cond_full,
         ra11,
