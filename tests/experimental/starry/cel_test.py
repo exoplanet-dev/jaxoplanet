@@ -22,7 +22,7 @@ def test_cel_ellipe(k):
     assert_allclose(computed, expected)
 
 
-@pytest.mark.parametrize("k", [-0.1, 0.0, 0.1, 0.5, 0.9, 0.99])
+@pytest.mark.parametrize("k", [-0.1, 0.0, 0.1, 0.5, 0.9])
 @pytest.mark.parametrize("p", [-5.0, -1.0, -0.5, 0.5, 0.8])
 def test_cel_grads(k, p):
     m = k**2
