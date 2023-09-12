@@ -77,12 +77,12 @@ def _cel(k2, kc, p, a, b, *, max_iter=10):
     m = 1.0 + kc
 
     def loop_cond(args):
-        i, kc, p, a, b, ee, f, g, m = args
-        del p, a, b, ee, f, m
+        i, kc, p, a, b, ee, g, m = args
+        del p, a, b, ee, m
         return jnp.logical_and(jnp.abs(g - kc) > g * ca, i < max_iter)
 
     def loop_body(args):
-        i, kc, p, a, b, ee, f, g, m = args
+        i, kc, p, a, b, ee, g, m = args
         kc = jnp.sqrt(ee)
         kc += kc
         ee = kc * m
@@ -96,10 +96,10 @@ def _cel(k2, kc, p, a, b, *, max_iter=10):
         g = m
         m += kc
 
-        return i + 1, kc, p, a, b, ee, f, g, m
+        return i + 1, kc, p, a, b, ee, g, m
 
-    _, _, p, a, b, _, _, _, m = jax.lax.while_loop(
-        loop_cond, loop_body, (0, kc, p, a, b, ee, f, g, m)
+    _, _, p, a, b, _, _, m = jax.lax.while_loop(
+        loop_cond, loop_body, (0, kc, p, a, b, ee, g, m)
     )
 
     return 0.5 * jnp.pi * (a * m + b) / (m * (m + p))
