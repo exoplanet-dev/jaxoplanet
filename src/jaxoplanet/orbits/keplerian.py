@@ -287,8 +287,10 @@ class KeplerianSystem(eqx.Module):
     central: Central
     bodies: tuple[Body, ...]
 
-    def __init__(self, central: Central, *, bodies: tuple[Body, ...] = ()):
-        self.central = central
+    def __init__(
+        self, central: Optional[Central] = None, *, bodies: tuple[Body, ...] = ()
+    ):
+        self.central = Central() if central is None else central
         self.bodies = bodies
 
     def add_body(self, body: Optional[Body] = None, **kwargs: Any) -> "KeplerianSystem":
