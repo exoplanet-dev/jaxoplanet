@@ -23,12 +23,15 @@ def comparison(session):
     session.install(".[test,comparison]", "numpy<1.22")
     session.run("python", "-c", "import starry")
     session.run("python", "-c", "import theano")
+    if session.posargs:
+        args = session.posargs
+    else:
+        args = ("tests/experimental/starry",)
     session.run(
         "pytest",
         "-n",
         "auto",
-        "tests/experimental/starry",
-        *session.posargs,
+        *args,
         env={"JAX_ENABLE_X64": "True"},
     )
 
