@@ -3,14 +3,15 @@ import warnings
 import numpy as np
 import pytest
 
-from jaxoplanet.experimental.starry.basis import A1, A2_inv
+from jaxoplanet.experimental.starry.basis import A1, A, A2_inv
+from jaxoplanet.test_utils import assert_allclose
 
 
 @pytest.mark.parametrize("lmax", [10, 7, 5, 4, 3, 2, 1, 0])
 def test_A1(lmax):
     pytest.importorskip("sympy")
-    expected = A1_symbolic(lmax)
-    calc = A1(lmax)
+    expected = A1_symbolic(lmax) / (0.5 * np.sqrt(np.pi))
+    calc = A1(lmax).todense()
     np.testing.assert_allclose(calc, expected, atol=5e-12)
 
 
@@ -18,30 +19,41 @@ def test_A1(lmax):
 def test_A2_inv(lmax):
     pytest.importorskip("sympy")
     expected = A2_inv_symbolic(lmax)
-    calc = A2_inv(lmax)
+    calc = A2_inv(lmax).todense()
     np.testing.assert_allclose(calc, expected)
 
 
 @pytest.mark.parametrize("lmax", [10, 7, 5, 4, 3, 2, 1, 0])
-def test_compare_starry_A1(lmax):
+def test_A1_compare_starry(lmax):
     starry = pytest.importorskip("starry")
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         m = starry.Map(lmax)
-        expect = m.ops.A1.eval().toarray() * (0.5 * np.sqrt(np.pi))
-    calc = A1(lmax)
+        expect = m.ops.A1.eval().toarray()
+    calc = A1(lmax).todense()
     np.testing.assert_allclose(calc, expect, atol=5e-12)
 
 
 @pytest.mark.parametrize("lmax", [10, 7, 5, 4, 3, 2, 1, 0])
-def test_compare_starry_A2_inv(lmax):
+def test_A2_inv_compare_starry(lmax):
     starry = pytest.importorskip("starry")
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         m = starry.Map(lmax)
         A2 = m.ops.A.eval().toarray() @ m.ops.A1Inv.eval().toarray()
     inv = A2_inv(lmax)
-    np.testing.assert_allclose(inv @ A2, np.eye(len(inv)), atol=5e-12)
+    np.testing.assert_allclose(inv @ A2, np.eye(inv.shape[0]), atol=5e-12)
+
+
+@pytest.mark.parametrize("lmax", [10, 7, 5, 4, 3, 2, 1, 0])
+def test_A_compare_starry(lmax):
+    starry = pytest.importorskip("starry")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        m = starry.Map(lmax)
+        expect = m.ops.A.eval().toarray()
+    calc = A(lmax).todense()
+    assert_allclose(calc, expect)
 
 
 def A1_symbolic(lmax):
