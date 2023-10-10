@@ -5,13 +5,39 @@ import jax.numpy as jnp
 
 
 def dot_rotation_matrix(ydeg, x, y, z, theta):
-    # TODO(dfm): Check all the shapes
-    R = compute_rotation_matrices(ydeg, x, y, z, theta)
+    """Construct a callable to apply a spherical harmonic rotation
+
+    Args:
+        ydeg (int): The order of the spherical harmonic map
+        x (float): The x component of the rotation axis
+        y (float): The y component of the rotation axis
+        z (float): The z component of the rotation axis
+        theta (float): The rotation angle in radians
+    """
+    try:
+        ydeg = int(ydeg)
+    except TypeError as e:
+        raise TypeError(f"ydeg must be an integer; got {ydeg}") from e
+    if jnp.shape(x) != ():
+        raise ValueError(f"x must be a scalar; got {jnp.shape(x)}")
+    if jnp.shape(y) != ():
+        raise ValueError(f"y must be a scalar; got {jnp.shape(y)}")
+    if jnp.shape(z) != ():
+        raise ValueError(f"z must be a scalar; got {jnp.shape(z)}")
+    if jnp.shape(theta) != ():
+        raise ValueError(f"theta must be a scalar; got {jnp.shape(theta)}")
+
+    rotation_matrices = compute_rotation_matrices(ydeg, x, y, z, theta)
     n_max = ydeg**2 + 2 * ydeg + 1
 
     @jax.jit
     @partial(jnp.vectorize, signature=f"({n_max})->({n_max})")
     def do_dot(M):
+        """Rotate a spherical harmonic map
+
+        Args:
+            M (Array[..., n_max]): The spherical harmonic map to rotate
+        """
         if M.shape[-1] != n_max:
             raise ValueError(
                 f"Dimension mismatch: Input array must have shape (..., {n_max}); "
@@ -19,13 +45,22 @@ def dot_rotation_matrix(ydeg, x, y, z, theta):
             )
         result = []
         for ell in range(ydeg + 1):
-            result.append(M[ell * ell : ell * ell + 2 * ell + 1] @ R[ell])
+            result.append(
+                M[ell * ell : ell * ell + 2 * ell + 1] @ rotation_matrices[ell]
+            )
         return jnp.concatenate(result, axis=0)
 
     return do_dot
 
 
+@partial(jax.jit, static_argnums=(0,))
 def compute_rotation_matrices(ydeg, x, y, z, theta):
+    # We need the axis to be a unit vector - enforce that here
+    norm = jnp.sqrt(x * x + y * y + z * z)
+    x = x / norm
+    y = y / norm
+    z = z / norm
+
     s = jnp.sin(theta)
     c = jnp.cos(theta)
     ra01 = x * y * (1 - c) - z * s
