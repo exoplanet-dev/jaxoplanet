@@ -17,9 +17,16 @@ def test_dot_rotation(l_max, u):
     assert_allclose(calc, expected)
 
 
+def test_dot_rotation_edge_cases():
+    l_max = 5
+    n_max = l_max**2 + 2 * l_max + 1
+    ident = np.eye(n_max)
+    assert np.all(np.isfinite(dot_rotation_matrix(l_max, 0, 0, 1, 0)(ident)))
+
+
 @pytest.mark.parametrize("l_max", [10, 7, 5, 4])
 @pytest.mark.parametrize("u", [(1, 0, 0), (0, 1, 0), (0, 0, 1), (1, 1, 1)])
-def test_compare_starry_dot_rotation(l_max, u):
+def test_dot_rotation_compare_starry(l_max, u):
     """Comparison test with starry OpsYlm.dotR"""
     starry = pytest.importorskip("starry")
     random = np.random.default_rng(l_max)

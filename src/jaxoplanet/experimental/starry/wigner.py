@@ -71,8 +71,9 @@ def compute_rotation_matrices(ydeg, x, y, z, theta):
     ra21 = z * y * (1 - c) + x * s
     ra22 = c + z * z * (1 - c)
 
-    cond_neg = jnp.isclose(ra22, -1.0)
-    cond_pos = jnp.isclose(ra22, 1.0)
+    tol = 10 * jnp.finfo(jnp.dtype(ra22)).eps
+    cond_neg = jnp.less(jnp.abs(ra22 + 1.0), tol)
+    cond_pos = jnp.less(jnp.abs(ra22 - 1.0), tol)
     cond_full = jnp.logical_or(cond_pos, cond_neg)
     sign = cond_neg.astype(int) - cond_pos.astype(int)
     norm1 = jnp.sqrt(ra20 * ra20 + ra21 * ra21)
@@ -172,8 +173,9 @@ def rotar(ydeg, c1, s1, c2, s2, c3, s3):
         )
     )
 
-    # TODO(dfm): handle NaNs in gradient
-    tgbet2 = jnp.where(jnp.allclose(s2, 0.0), s2, (1 - c2) / s2)
+    tol = 10 * jnp.finfo(jnp.dtype(s2)).eps
+    s2_cond = jnp.less(jnp.abs(s2), tol)
+    tgbet2 = jnp.where(s2_cond, s2, (1 - c2) / jnp.where(s2_cond, 1.0, s2))
 
     for ell in range(2, ydeg + 1):
         D_, R_ = dlmn(ell, s1, c1, c2, tgbet2, s3, c3, D)
