@@ -1,3 +1,4 @@
+import jax
 import numpy as np
 import pytest
 
@@ -22,6 +23,13 @@ def test_dot_rotation_edge_cases():
     n_max = l_max**2 + 2 * l_max + 1
     ident = np.eye(n_max)
     assert np.all(np.isfinite(dot_rotation_matrix(l_max, 0, 0, 1, 0)(ident)))
+
+    g = jax.grad(
+        lambda *args: dot_rotation_matrix(l_max, *args)(ident).sum(),
+        argnums=(0, 1, 2, 3),
+    )(0.0, 0.0, 1.0, 0.0)
+    for g_ in g:
+        assert np.all(np.isfinite(g_))
 
 
 @pytest.mark.parametrize("l_max", [10, 7, 5, 4])

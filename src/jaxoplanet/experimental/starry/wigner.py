@@ -3,6 +3,8 @@ from functools import partial
 import jax
 import jax.numpy as jnp
 
+from jaxoplanet.utils import get_dtype_eps
+
 
 def dot_rotation_matrix(ydeg, x, y, z, theta):
     """Construct a callable to apply a spherical harmonic rotation
@@ -71,40 +73,24 @@ def compute_rotation_matrices(ydeg, x, y, z, theta):
     ra21 = z * y * (1 - c) + x * s
     ra22 = c + z * z * (1 - c)
 
-    tol = 10 * jnp.finfo(jnp.dtype(ra22)).eps
+    tol = 10 * get_dtype_eps(ra22)
     cond_neg = jnp.less(jnp.abs(ra22 + 1.0), tol)
     cond_pos = jnp.less(jnp.abs(ra22 - 1.0), tol)
     cond_full = jnp.logical_or(cond_pos, cond_neg)
     sign = cond_neg.astype(int) - cond_pos.astype(int)
-    norm1 = jnp.sqrt(ra20 * ra20 + ra21 * ra21)
-    norm2 = jnp.sqrt(ra02 * ra02 + ra12 * ra12)
+    norm1 = jnp.sqrt(jnp.where(cond_full, 1, ra20 * ra20 + ra21 * ra21))
+    norm2 = jnp.sqrt(jnp.where(cond_full, 1, ra02 * ra02 + ra12 * ra12))
     cos_beta = ra22
+    ra22_ = jnp.where(cond_full, 0.0, ra22)
     sin_beta = jnp.where(
         cond_full,
         1 + sign * ra22,
-        jnp.sqrt(1 - cos_beta * cos_beta),  # type: ignore
-        # TODO(dfm): handle NaNs in grad
+        jnp.sqrt(1 - ra22_ * ra22_),  # type: ignore
     )
-    cos_gamma = jnp.where(
-        cond_full,
-        ra11,
-        -ra20 / norm1,  # TODO(dfm): handle NaNs in grad
-    )
-    sin_gamma = jnp.where(
-        cond_full,
-        sign * ra01,
-        ra21 / norm1,  # TODO(dfm): handle NaNs in grad
-    )
-    cos_alpha = jnp.where(
-        cond_full,
-        -sign * ra22,
-        ra02 / norm2,  # TODO(dfm): handle NaNs in grad
-    )
-    sin_alpha = jnp.where(
-        cond_full,
-        1 + sign * ra22,
-        ra12 / norm2,  # TODO(dfm): handle NaNs in grad
-    )
+    cos_gamma = jnp.where(cond_full, ra11, -ra20 / norm1)
+    sin_gamma = jnp.where(cond_full, sign * ra01, ra21 / norm1)
+    cos_alpha = jnp.where(cond_full, -sign * ra22, ra02 / norm2)
+    sin_alpha = jnp.where(cond_full, 1 + sign * ra22, ra12 / norm2)
 
     return rotar(
         ydeg,
