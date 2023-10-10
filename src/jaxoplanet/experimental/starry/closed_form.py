@@ -2,7 +2,7 @@ import jax
 import jax.numpy as jnp
 
 from jaxoplanet.experimental.starry.cel import cel
-from jaxoplanet.utils import where
+from jaxoplanet.utils import get_dtype_eps, where
 
 
 def solution_vector(b, r):
@@ -21,7 +21,7 @@ def _solution_vector_jvp(primals, tangents):
     (b, r) = primals
     (b_dot, r_dot) = tangents
 
-    tolerance = 10 * jnp.finfo(jnp.result_type(b, r)).eps
+    tolerance = 10 * get_dtype_eps(b, r)
     (s0, s2), ((ds0db, ds0dr), (ds2db, ds2dr)) = _s0_s2_and_grad(b, r)
     s1, (ds1db, ds1dr) = _s1_and_grad(b, r)
 
@@ -46,7 +46,7 @@ def _s0s2(b, r):
 
 
 @_s0s2.defjvp
-def _s0s2_jvp(primals, tangents):
+def _(primals, tangents):
     (b, r) = primals
     (b_dot, r_dot) = tangents
     (s0, s2), ((ds0db, ds0dr), (ds2db, ds2dr)) = _s0_s2_and_grad(b, r)
@@ -100,7 +100,7 @@ def _s1(b, r):
 
 
 @_s1.defjvp
-def _s1_jvp(primals, tangents):
+def _(primals, tangents):
     (b, r) = primals
     (b_dot, r_dot) = tangents
     s, (dsdb, dsdr) = _s1_and_grad(b, r)

@@ -19,8 +19,8 @@ def where(
     return jnp.where(condition, x, y, size=size, fill_value=fill_value)  # type: ignore
 
 
-def get_dtype_eps(x):
-    return jnp.finfo(jax.dtypes.result_type(x)).eps
+def get_dtype_eps(*args):
+    return jnp.finfo(jax.dtypes.result_type(*args)).eps
 
 
 @jax.custom_jvp
