@@ -12,6 +12,14 @@ except ImportError:
     from scipy.sparse import csc_matrix as csc_array
 
 
+def basis(lmax):
+    matrix = scipy.sparse.linalg.spsolve(A2_inv(lmax), A1(lmax))
+    if lmax > 0:
+        return BCOO.from_scipy_sparse(matrix)
+    else:
+        return BCOO.fromdense(np.squeeze(matrix)[None, None])
+
+
 def A1(lmax):
     return _A_impl(lmax, p_Y) * 2 / np.sqrt(np.pi)
 
@@ -35,14 +43,6 @@ def _A_impl(lmax, func):
             col_ind.extend([n] * len(idx))
             n += 1
     return csc_array((np.array(data), (row_ind, col_ind)), shape=(n, n))
-
-
-def A(lmax):
-    matrix = scipy.sparse.linalg.spsolve(A2_inv(lmax), A1(lmax))
-    if lmax > 0:
-        return BCOO.from_scipy_sparse(matrix)
-    else:
-        return BCOO.fromdense(np.squeeze(matrix)[None, None])
 
 
 def ptilde(n):
