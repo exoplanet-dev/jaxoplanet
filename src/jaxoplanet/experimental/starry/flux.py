@@ -30,37 +30,6 @@ def flux(deg, theta, xo, yo, zo, ro, inc, obl, y, u, f):
     return x @ y
 
 
-def tensordot_rz(deg, M, theta):
-    c = jnp.cos(theta)
-    s = jnp.sin(theta)
-    cosnt = [1.0, c]
-    sinnt = [0.0, s]
-    for n in range(2, deg + 1):
-        cosnt.append(2.0 * cosnt[n - 1] * c - cosnt[n - 2])
-        sinnt.append(2.0 * sinnt[n - 1] * c - sinnt[n - 2])
-
-    n = 0
-    cosmt = []
-    sinmt = []
-    for ell in range(deg + 1):
-        for m in range(-ell, 0):
-            cosmt.append(cosnt[-m])
-            sinmt.append(-sinnt[-m])
-        for m in range(ell + 1):
-            cosmt.append(cosnt[m])
-            sinmt.append(sinnt[m])
-
-    result = [0 for _ in range(M.shape[0])]
-    for ell in range(deg + 1):
-        for j in range(2 * ell + 1):
-            result[ell * ell + j] = (
-                M[ell * ell + j] * cosmt[ell * ell + j]
-                + M[ell * ell + 2 * ell - j] * sinmt[ell * ell + j]
-            )
-
-    return jnp.array(result)
-
-
 def rT(lmax):
     rt = [0 for _ in range((lmax + 1) * (lmax + 1))]
     amp0 = jnp.pi
