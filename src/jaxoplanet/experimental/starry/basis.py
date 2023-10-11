@@ -9,6 +9,8 @@ from scipy.special import gamma
 try:
     from scipy.sparse import csc_array
 except ImportError:
+    # With older versions of scipy, the data structures were called "matrices"
+    # not "arrays"; this allows us to support either.
     from scipy.sparse import csc_matrix as csc_array
 
 
