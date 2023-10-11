@@ -1,5 +1,11 @@
 __pycache__/
+<<<<<<< HEAD
 
+=======
+.ipynb_checkpoints/
+
+.DS_Store
+>>>>>>> 36226f8ea4a2be7088510259cd0d175ce0712f15
 *_version.py
 .rendered.*
 *.so

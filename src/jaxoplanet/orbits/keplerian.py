@@ -1,5 +1,5 @@
 from functools import partial
-from typing import TYPE_CHECKING, Any, NamedTuple, Optional, Tuple
+from typing import TYPE_CHECKING, Any, NamedTuple, Optional
 
 import jax
 import jax.numpy as jnp
@@ -18,7 +18,7 @@ class KeplerianCentral(NamedTuple):
     density: Scalar
 
     @property
-    def shape(self) -> Tuple[int, ...]:
+    def shape(self) -> tuple[int, ...]:
         leaves, _ = jax.tree_util.tree_flatten(self)
         shape = leaves[0].shape
         if any(leaf.shape != shape for leaf in leaves[1:]):
@@ -119,7 +119,7 @@ class KeplerianBody(NamedTuple):
     cos_asc_node: Optional[Scalar]
 
     @property
-    def shape(self) -> Tuple[int, ...]:
+    def shape(self) -> tuple[int, ...]:
         leaves, _ = jax.tree_util.tree_flatten(self)
         shape = leaves[0].shape
         if any(leaf.shape != shape for leaf in leaves[1:]):
@@ -401,7 +401,7 @@ class KeplerianBody(NamedTuple):
 
     def position(
         self, t: Scalar, parallax: Optional[Scalar] = None
-    ) -> Tuple[Scalar, Scalar, Scalar]:
+    ) -> tuple[Scalar, Scalar, Scalar]:
         """This body's position in the barycentric frame
 
         Args:
@@ -418,7 +418,7 @@ class KeplerianBody(NamedTuple):
 
     def central_position(
         self, t: Scalar, parallax: Optional[Scalar] = None
-    ) -> Tuple[Scalar, Scalar, Scalar]:
+    ) -> tuple[Scalar, Scalar, Scalar]:
         """The central's position in the barycentric frame
 
         Args:
@@ -435,7 +435,7 @@ class KeplerianBody(NamedTuple):
 
     def relative_position(
         self, t: Scalar, parallax: Optional[Scalar] = None
-    ) -> Tuple[Scalar, Scalar, Scalar]:
+    ) -> tuple[Scalar, Scalar, Scalar]:
         """This body's position relative to the central in the X,Y,Z frame
 
         Args:
@@ -451,7 +451,7 @@ class KeplerianBody(NamedTuple):
 
     def relative_angles(
         self, t: Scalar, parallax: Optional[Scalar] = None
-    ) -> Tuple[Scalar, Scalar]:
+    ) -> tuple[Scalar, Scalar]:
         """This body's relative position to the central in the sky plane, in
         separation, position angle coordinates
 
@@ -469,7 +469,7 @@ class KeplerianBody(NamedTuple):
 
     def velocity(
         self, t: Scalar, semiamplitude: Optional[Scalar] = None
-    ) -> Tuple[Scalar, Scalar, Scalar]:
+    ) -> tuple[Scalar, Scalar, Scalar]:
         """This body's velocity in the barycentric frame
 
         Args:
@@ -491,7 +491,7 @@ class KeplerianBody(NamedTuple):
 
     def central_velocity(
         self, t: Scalar, semiamplitude: Optional[Scalar] = None
-    ) -> Tuple[Scalar, Scalar, Scalar]:
+    ) -> tuple[Scalar, Scalar, Scalar]:
         """The central's velocity in the barycentric frame
 
         Args:
@@ -512,7 +512,7 @@ class KeplerianBody(NamedTuple):
 
     def relative_velocity(
         self, t: Scalar, semiamplitude: Optional[Scalar] = None
-    ) -> Tuple[Scalar, Scalar, Scalar]:
+    ) -> tuple[Scalar, Scalar, Scalar]:
         """This body's velocity relative to the central
 
         Args:
@@ -556,7 +556,7 @@ class KeplerianBody(NamedTuple):
     def _warp_times(self, t: Scalar) -> Scalar:
         return t - self.time_transit
 
-    def _get_true_anomaly(self, t: Scalar) -> Tuple[Scalar, Scalar]:
+    def _get_true_anomaly(self, t: Scalar) -> tuple[Scalar, Scalar]:
         M = 2 * jnp.pi * (self._warp_times(t) - self.time_ref) / self.period
         if self.eccentricity is None:
             return jnp.sin(M), jnp.cos(M)
@@ -564,7 +564,7 @@ class KeplerianBody(NamedTuple):
 
     def _rotate_vector(
         self, x: Scalar, y: Scalar, *, include_inclination: bool = True
-    ) -> Tuple[Scalar, Scalar, Scalar]:
+    ) -> tuple[Scalar, Scalar, Scalar]:
         """Apply the rotation matrices to go from orbit to observer frame
 
         In order,
@@ -616,7 +616,7 @@ class KeplerianBody(NamedTuple):
         mass: Optional[Scalar] = None,
         semiamplitude: Optional[Scalar] = None,
         parallax: Optional[Scalar] = None,
-    ) -> Tuple[Tuple[Scalar, Scalar, Scalar], Tuple[Scalar, Scalar, Scalar]]:
+    ) -> tuple[tuple[Scalar, Scalar, Scalar], tuple[Scalar, Scalar, Scalar]]:
         sinf, cosf = self._get_true_anomaly(t)
 
         if semiamplitude is None:
@@ -651,7 +651,7 @@ class KeplerianOrbit(NamedTuple):
         return len(self.bodies.period)
 
     @property
-    def shape(self) -> Tuple[int, ...]:
+    def shape(self) -> tuple[int, ...]:
         return self.bodies.shape
 
     @property
@@ -675,37 +675,37 @@ class KeplerianOrbit(NamedTuple):
 
     def position(
         self, t: Scalar, parallax: Optional[Scalar] = None
-    ) -> Tuple[Scalar, Scalar, Scalar]:
+    ) -> tuple[Scalar, Scalar, Scalar]:
         return jax.vmap(partial(KeplerianBody.position, t=t, parallax=parallax))(
             self.bodies
         )
 
     def central_position(
         self, t: Scalar, parallax: Optional[Scalar] = None
-    ) -> Tuple[Scalar, Scalar, Scalar]:
+    ) -> tuple[Scalar, Scalar, Scalar]:
         return jax.vmap(
             partial(KeplerianBody.central_position, t=t, parallax=parallax)
         )(self.bodies)
 
     def relative_position(
         self, t: Scalar, parallax: Optional[Scalar] = None
-    ) -> Tuple[Scalar, Scalar, Scalar]:
+    ) -> tuple[Scalar, Scalar, Scalar]:
         return jax.vmap(
             partial(KeplerianBody.relative_position, t=t, parallax=parallax)
         )(self.bodies)
 
-    def velocity(self, t: Scalar) -> Tuple[Scalar, Scalar, Scalar]:
+    def velocity(self, t: Scalar) -> tuple[Scalar, Scalar, Scalar]:
         return jax.vmap(partial(KeplerianBody.velocity, t=t))(self.bodies)
 
-    def central_velocity(self, t: Scalar) -> Tuple[Scalar, Scalar, Scalar]:
+    def central_velocity(self, t: Scalar) -> tuple[Scalar, Scalar, Scalar]:
         return jax.vmap(partial(KeplerianBody.central_velocity, t=t))(self.bodies)
 
-    def relative_velocity(self, t: Scalar) -> Tuple[Scalar, Scalar, Scalar]:
+    def relative_velocity(self, t: Scalar) -> tuple[Scalar, Scalar, Scalar]:
         return jax.vmap(partial(KeplerianBody.relative_velocity, t=t))(self.bodies)
 
     def radial_velocity(
         self, t: Scalar, semiamplitude: Optional[Scalar] = None
-    ) -> Tuple[Scalar, Scalar, Scalar]:
+    ) -> tuple[Scalar, Scalar, Scalar]:
         return jax.vmap(partial(KeplerianBody.radial_velocity, t=t))(
             self.bodies, semiamplitude=semiamplitude
         )

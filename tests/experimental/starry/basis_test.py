@@ -2,6 +2,7 @@ import warnings
 
 import numpy as np
 import pytest
+
 from jaxoplanet.experimental.starry.basis import A1, A2_inv
 
 
