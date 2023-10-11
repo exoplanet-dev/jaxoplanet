@@ -168,7 +168,7 @@ def kite_area(a: Array, b: Array, c: Array) -> Array:
     a, b = sort2(a, b)
 
     square_area = (a + (b + c)) * (c - (a - b)) * (c + (a - b)) * (a + (b - c))
-    return zero_safe_sqrt(square_area)
+    return zero_safe_sqrt(jnp.maximum(0, square_area))
 
 
 @jax.custom_jvp
