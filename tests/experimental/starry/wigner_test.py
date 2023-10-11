@@ -18,6 +18,15 @@ def test_dot_rotation(l_max, u, theta):
     assert_allclose(calc, expected)
 
 
+@pytest.mark.parametrize("l_max", [5, 4, 3, 2, 1, 0])
+@pytest.mark.parametrize("theta", [-0.5, 0.0, 0.1, 1.5 * np.pi])
+def test_dot_rotation_z(l_max, theta):
+    ident = np.eye(l_max**2 + 2 * l_max + 1)
+    expected = dot_rotation_matrix(l_max, 0.0, 0.0, 1.0, theta)(ident)
+    calc = dot_rotation_matrix(l_max, None, None, 1.0, theta)(ident)
+    assert_allclose(calc, expected)
+
+
 def test_dot_rotation_negative():
     starry = pytest.importorskip("starry")
     l_max = 5

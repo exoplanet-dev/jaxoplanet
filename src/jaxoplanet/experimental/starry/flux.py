@@ -15,16 +15,16 @@ def flux(deg, theta, xo, yo, zo, ro, inc, obl, y, u, f):
     theta_z = jnp.arctan2(xo, yo)
     sT = solution_vector(deg)(b, ro)
     sTA = sT @ basis(deg)
-    sTAR = tensordot_rz(deg, sTA, theta_z)
+    sTAR = dot_rotation_matrix(deg, None, None, 1.0, theta_z)(sTA)
 
     x = jnp.where(b_occ, sTAR, rTA1(deg))
 
     x = dot_rotation_matrix(
         deg, -jnp.cos(obl), -jnp.sin(obl), 0.0, -(0.5 * jnp.pi - inc)
     )(x)
-    x = dot_rotation_matrix(deg, 0.0, 0.0, 1.0, obl)(x)
+    x = dot_rotation_matrix(deg, None, None, 1.0, obl)(x)
     x = dot_rotation_matrix(deg, 1.0, 0.0, 0.0, -0.5 * jnp.pi)(x)
-    x = dot_rotation_matrix(deg, 0.0, 0.0, 1.0, theta)(x)
+    x = dot_rotation_matrix(deg, None, None, 1.0, theta)(x)
     x = dot_rotation_matrix(deg, 1.0, 0.0, 0.0, 0.5 * jnp.pi)(x)
 
     return x @ y
