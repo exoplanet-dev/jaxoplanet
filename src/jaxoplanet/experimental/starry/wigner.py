@@ -20,6 +20,17 @@ def dot_rotation_matrix(ydeg, x, y, z, theta):
         ydeg = int(ydeg)
     except TypeError as e:
         raise TypeError(f"ydeg must be an integer; got {ydeg}") from e
+
+    if x is None and y is None:
+        if z is None:
+            raise ValueError("Either x, y, or z must be specified")
+
+        return dot_rz(ydeg, theta)
+
+    x = 0.0 if x is None else x
+    y = 0.0 if y is None else y
+    z = 0.0 if z is None else z
+
     if jnp.shape(x) != ():
         raise ValueError(f"x must be a scalar; got {jnp.shape(x)}")
     if jnp.shape(y) != ():
@@ -272,3 +283,42 @@ def dlmn(ell, s1, c1, c2, tgbet2, s3, c3, D):
         cosmal = aux
 
     return jnp.asarray(D_), jnp.asarray(R_)
+
+
+def dot_rz(deg, theta):
+    """Special case for rotation only around z axis"""
+    c = jnp.cos(theta)
+    s = jnp.sin(theta)
+    cosnt = [1.0, c]
+    sinnt = [0.0, s]
+    for n in range(2, deg + 1):
+        cosnt.append(2.0 * cosnt[n - 1] * c - cosnt[n - 2])
+        sinnt.append(2.0 * sinnt[n - 1] * c - sinnt[n - 2])
+
+    n = 0
+    cosmt = []
+    sinmt = []
+    for ell in range(deg + 1):
+        for m in range(-ell, 0):
+            cosmt.append(cosnt[-m])
+            sinmt.append(-sinnt[-m])
+        for m in range(ell + 1):
+            cosmt.append(cosnt[m])
+            sinmt.append(sinnt[m])
+
+    n_max = deg**2 + 2 * deg + 1
+
+    @jax.jit
+    @partial(jnp.vectorize, signature=f"({n_max})->({n_max})")
+    def impl(M):
+        result = [0 for _ in range(n_max)]
+        for ell in range(deg + 1):
+            for j in range(2 * ell + 1):
+                result[ell * ell + j] = (
+                    M[ell * ell + j] * cosmt[ell * ell + j]
+                    + M[ell * ell + 2 * ell - j] * sinmt[ell * ell + j]
+                )
+
+        return jnp.array(result, dtype=jnp.dtype(M))
+
+    return impl
