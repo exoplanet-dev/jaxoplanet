@@ -8,13 +8,33 @@ from jaxoplanet.test_utils import assert_allclose
 
 @pytest.mark.parametrize("l_max", [5, 4, 3, 2, 1, 0])
 @pytest.mark.parametrize("u", [(1, 0, 0), (0, 1, 0), (0, 0, 1), (1, 1, 1)])
-def test_dot_rotation(l_max, u):
+@pytest.mark.parametrize("theta", [0.1])
+def test_dot_rotation(l_max, u, theta):
     """Test full rotation matrix against symbolic one"""
     pytest.importorskip("sympy")
     ident = np.eye(l_max**2 + 2 * l_max + 1)
-    theta = 0.1
     expected = np.array(R_symbolic(l_max, u, theta)).astype(float)
     calc = dot_rotation_matrix(l_max, u[0], u[1], u[2], theta)(ident)
+    assert_allclose(calc, expected)
+
+
+@pytest.mark.parametrize("l_max", [5, 4, 3, 2, 1, 0])
+@pytest.mark.parametrize("theta", [-0.5, 0.0, 0.1, 1.5 * np.pi])
+def test_dot_rotation_z(l_max, theta):
+    ident = np.eye(l_max**2 + 2 * l_max + 1)
+    expected = dot_rotation_matrix(l_max, 0.0, 0.0, 1.0, theta)(ident)
+    calc = dot_rotation_matrix(l_max, None, None, 1.0, theta)(ident)
+    assert_allclose(calc, expected)
+
+
+def test_dot_rotation_negative():
+    starry = pytest.importorskip("starry")
+    l_max = 5
+    n_max = l_max**2 + 2 * l_max + 1
+    y = np.linspace(-1, 1, n_max)
+    starry_op = starry._core.core.OpsYlm(l_max, 0, 0, 1)
+    expected = starry_op.dotR(y[None, :], 1.0, 0, 0.0, -0.5 * np.pi)[0]
+    calc = dot_rotation_matrix(l_max, 1.0, 0.0, 0.0, -0.5 * np.pi)(y)
     assert_allclose(calc, expected)
 
 
@@ -34,11 +54,11 @@ def test_dot_rotation_edge_cases():
 
 @pytest.mark.parametrize("l_max", [10, 7, 5, 4])
 @pytest.mark.parametrize("u", [(1, 0, 0), (0, 1, 0), (0, 0, 1), (1, 1, 1)])
-def test_dot_rotation_compare_starry(l_max, u):
+@pytest.mark.parametrize("theta", [0.1])
+def test_dot_rotation_compare_starry(l_max, u, theta):
     """Comparison test with starry OpsYlm.dotR"""
     starry = pytest.importorskip("starry")
     random = np.random.default_rng(l_max)
-    theta = 0.1
     n_max = l_max**2 + 2 * l_max + 1
     M1 = np.eye(n_max)
     M2 = random.normal(size=(5, n_max))
