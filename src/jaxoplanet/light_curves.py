@@ -3,7 +3,6 @@ from typing import Optional
 
 import equinox as eqx
 import jax.numpy as jnp
-import jpu.numpy as jnpu
 
 from jaxoplanet import units
 from jaxoplanet.core.limb_dark import light_curve
@@ -28,13 +27,14 @@ class LimbDarkLightCurve(eqx.Module):
         t: Quantity,
         *,
         texp: Optional[Quantity] = None,
-        oversample: int = 7,
-        order: int = 10,
+        oversample: Optional[int] = 7,
+        texp_order: Optional[int] = 0,
+        limbdark_order: Optional[int] = 10,
     ) -> Array:
         """Get the light curve for an orbit at a set of times
 
         Args:
-            orbit: An object with a ``get_relative_position`` method that
+            orbit: An object with a ``relative_position`` method that
                 takes a tensor of times and returns a list of Cartesian
                 coordinates of a set of bodies relative to the central source.
                 The first two coordinate dimensions are treated as being in
@@ -42,29 +42,76 @@ class LimbDarkLightCurve(eqx.Module):
                 sight with positive values pointing *away* from the observer.
                 For an example, take a look at :class:`orbits.KeplerianOrbit`.
             t: The times where the light curve should be evaluated.
-            texp (Optional[tensor]): The exposure time of each observation.
-                This can be a scalar or a tensor with the same shape as ``t``.
+            texp (Optional[Array]): The exposure time of each observation.
+                This can be an Array with the same shape as ``t``.
                 If ``texp`` is provided, ``t`` is assumed to indicate the
                 timestamp at the *middle* of an exposure of length ``texp``.
             oversample: The number of function evaluations to use when
-                numerically integrating the exposure time.
+                numerically integrating the exposure time. Defaults to 7.
+            texp_order (Optional[int]): The order of the numerical integration
+                scheme. This must be one of the following: ``0`` for a
+                centered Riemann sum (equivalent to the "resampling" procedure
+                suggested by Kipping 2010), ``1`` for the trapezoid rule, or
+                ``2`` for Simpson's rule. Has no effect if ``texp`` is not set.
+                Defaults to 0.
+            limbdark_order (Optional[int]): The quadrature order passed to the
+                ``scipy.special.roots_legendre`` function in ``core.limb_dark.py``
+                which implements Gauss-Legendre quadrature. Defaults to 10.
         """
-        del oversample
-        if texp is not None:
-            raise NotImplementedError(
-                "Exposure time integration is not yet implemented"
-            )
+
+        t = jnp.atleast_1d(t)
+
+        # Handle exposure time integration
+        if texp is None:
+            tgrid = t
+        else:
+            assert texp.shape == t.shape, "texp must have the same shape as t (change?)"
+
+            # Ensure oversample is an odd number
+            oversample = int(oversample)
+            oversample += 1 - oversample % 2
+            stencil = jnp.ones(oversample)
+
+            # Construct exposure time integration stencil
+            if texp_order == 0:
+                dt = jnp.linspace(-0.5, 0.5, 2 * oversample + 1)[1:-1:2]
+            elif texp_order == 1:
+                dt = jnp.linspace(-0.5, 0.5, oversample)
+                stencil = 2 * stencil
+                stencil = stencil.at[0].set(1)
+                stencil = stencil.at[-1].set(1)
+            elif texp_order == 2:
+                dt = jnp.linspace(-0.5, 0.5, oversample)
+                stencil = stencil.at[1:-1:2].set(4)
+                stencil = stencil.at[2:-1:2].set(2)
+            else:
+                raise ValueError("order must be 0, 1, or 2")
+            stencil /= jnp.sum(stencil)
+
+            if texp.ndim == 0:  # Unnecessary since I check the shapes above?
+                dt = texp * dt
+            else:
+                dt = jnp.outer(texp, dt)
+            tgrid = (t.reshape(t.size, 1) + dt).flatten()
+
+        # Evaluate the coordinates of the transiting body
+        x, y, z = orbit.relative_position(tgrid)
+        b = jnp.sqrt(x**2 + y**2)
         r_star = orbit.central_radius
-        x, y, z = orbit.relative_position(t)
-        b = jnpu.sqrt(x**2 + y**2)
         r = orbit.radius / r_star
-        lc_func = partial(light_curve, self.u, order=order)
+        lc_func = partial(light_curve, self.u, order=limbdark_order)
         if orbit.shape == ():
             b /= r_star
             lc: Array = lc_func(b.magnitude, r.magnitude)
         else:
             b /= r_star[..., None]
-            lc: Array = jnp.vectorize(lc_func, signature="(k),()->(k)")(
-                b.magnitude, r.magnitude
-            )
-        return jnp.where(z > 0, lc, 0)
+            lc = jnp.vectorize(lc_func, signature="(k),()->(k)")(b, r)
+        lc = jnp.where(z > 0, lc, 0)
+
+        # Integrate over exposure time
+        if texp is not None:
+            lc = lc[0]
+            lc = jnp.reshape(lc, newshape=(t.size, oversample))
+            stencil = jnp.reshape(stencil, newshape=stencil.shape + (1,))
+            lc = (lc @ stencil).T
+        return lc

@@ -7,6 +7,7 @@ import numpy as np
 from scipy.special import binom, roots_legendre
 
 from jaxoplanet.types import Array
+from jaxoplanet.utils import zero_safe_sqrt
 
 
 @partial(jax.jit, static_argnames=("order",))
@@ -168,20 +169,4 @@ def kite_area(a: Array, b: Array, c: Array) -> Array:
     a, b = sort2(a, b)
 
     square_area = (a + (b + c)) * (c - (a - b)) * (c + (a - b)) * (a + (b - c))
-    return zero_safe_sqrt(square_area)
-
-
-@jax.custom_jvp
-def zero_safe_sqrt(x):
-    return jnp.sqrt(x)
-
-
-@zero_safe_sqrt.defjvp
-def zero_safe_sqrt_jvp(primals, tangents):
-    (x,) = primals
-    (x_dot,) = tangents
-    primal_out = jnp.sqrt(x)
-    cond = jnp.less(x, 10 * jnp.finfo(jax.dtypes.result_type(x)).eps)
-    denom = jnp.where(cond, jnp.ones_like(x), x)
-    tangent_out = 0.5 * x_dot * primal_out / denom
-    return primal_out, tangent_out
+    return zero_safe_sqrt(jnp.maximum(0, square_area))
