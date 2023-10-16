@@ -191,7 +191,7 @@ def kite_area(a, b, c):
     a, b = sort2(a, b)
 
     square_area = (a + (b + c)) * (c - (a - b)) * (c + (a - b)) * (a + (b - c))
-    return jnp.sqrt(square_area)
+    return jnp.sqrt(jnp.maximum(0, square_area))  # We might not need this maximum
 
 
 def kappas(b, r):
