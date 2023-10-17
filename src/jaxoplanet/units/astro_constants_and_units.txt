@@ -1,0 +1,21 @@
+# Constants from astropy.constants for consistency
+
+# IAU astronomical constants
+AU = 1.49597870700e11 m = au = astronomical_unit
+gravitational_constant = 6.67430e-11 m^3/kg/s^2 = G
+parsec = astronomical_unit / tansec = pc
+L_bol0 = 3.0128e28 W = _
+
+# Solar constants
+L_sun = 3.828e26 W = L_sun = L_solar = solar_luminosity
+GM_sun = 1.3271244e20 m^3/s^2 = GM_sun = GM_solar = solar_mass_parameter
+M_sun = solar_mass_parameter / gravitational_constant = M_sun = M_solar = solar_mass
+R_sun = 6.957e8 m = R_sun = R_solar = solar_radius
+
+# Solar system constants
+GM_jupiter = 1.2668653e17 m^3/s^2 = GM_jup = jupiter_mass_parameter
+M_jupiter = jupiter_mass_parameter / gravitational_constant = M_jup = jupiter_mass
+R_jupiter = 7.1492e7 m = R_jup = jupiter_radius
+GM_earth = 3.986004e14 m^3/s^2 = GM_earth = earth_mass_parameter
+M_earth = earth_mass_parameter / gravitational_constant = M_earth = earth_mass
+R_earth = 6.3781e6 m = R_earth = earth_radius

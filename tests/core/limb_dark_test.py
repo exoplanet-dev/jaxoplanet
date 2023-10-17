@@ -31,13 +31,13 @@ def test_edge_cases(u, r):
         assert np.isfinite(calc)
         if len(u) == 2:
             expect = exoplanet_core.quad_limbdark_light_curve(*u, b, r)
-            assert_allclose(calc, expect)
+            assert_allclose(calc, expect[0])
 
         for n in range(3):
             g = jax.grad(light_curve, argnums=n)(u, b, r)
             assert np.all(np.isfinite(g))
 
-    if jax.config.jax_enable_x64:
+    if jax.config.jax_enable_x64:  # type: ignore
         for b in [0.0, 0.5, 1.0, r, 1 + 2 * r]:
             if np.allclose(b, r) or np.allclose(np.abs(b - r), 1):
                 continue
