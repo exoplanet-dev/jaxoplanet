@@ -22,9 +22,7 @@ class LightCurveOrbit(Protocol):
     def radius(self) -> Quantity:
         ...
 
-    def relative_position(
-        self, t: Quantity, parallax: Optional[Quantity] = None
-    ) -> tuple[Quantity, Quantity, Quantity]:
+    def relative_position(self, t: Quantity) -> tuple[Quantity, Quantity, Quantity]:
         ...
 
     @property

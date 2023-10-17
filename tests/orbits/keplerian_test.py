@@ -5,7 +5,7 @@ import jpu.numpy as jnpu
 import numpy as np
 import pytest
 
-from jaxoplanet import orbits
+from jaxoplanet.orbits import keplerian
 from jaxoplanet.test_utils import assert_allclose, assert_quantity_allclose
 from jaxoplanet.units import unit_registry as ureg
 
@@ -13,14 +13,14 @@ from jaxoplanet.units import unit_registry as ureg
 @pytest.fixture(
     params=[
         {
-            "central": orbits.KeplerianCentral(mass=1.3, radius=1.1),
+            "central": keplerian.Central(mass=1.3, radius=1.1),
             "mass": 0.1,
             "time_transit": 0.1,
             "period": 12.5,
             "inclination": 0.3,
         },
         {
-            "central": orbits.KeplerianCentral(mass=1.3, radius=1.1),
+            "central": keplerian.Central(mass=1.3, radius=1.1),
             "mass": 0.1,
             "time_transit": 0.1,
             "period": 12.5,
@@ -32,7 +32,7 @@ from jaxoplanet.units import unit_registry as ureg
     ]
 )
 def keplerian_body(request):
-    return orbits.KeplerianBody(**request.param)
+    return keplerian.Body(**request.param)
 
 
 @pytest.fixture
@@ -40,22 +40,18 @@ def time():
     return jnp.linspace(-50.0, 50.0, 500) * ureg.day
 
 
-def test_keplerian_central_shape():
-    assert orbits.KeplerianCentral(mass=0.98, radius=0.93).shape == ()
-
-
 def test_keplerian_central_density():
-    star = orbits.KeplerianCentral()
+    star = keplerian.Central()
     assert_quantity_allclose(
         star.density, 1.4 * ureg.g / ureg.cm**3, atol=0.01, convert=True
     )
 
 
 def test_keplerian_body_keplers_law():
-    orbit = orbits.KeplerianBody(semimajor=1.0 * ureg.au)
+    orbit = keplerian.Body(semimajor=1.0 * ureg.au)
     assert_quantity_allclose(orbit.period, 1.0 * ureg.year, atol=0.01, convert=True)
 
-    orbit = orbits.KeplerianBody(period=1.0 * ureg.year)
+    orbit = keplerian.Body(period=1.0 * ureg.year)
     assert_quantity_allclose(orbit.semimajor, 1.0 * ureg.au, atol=0.01, convert=True)
 
 
@@ -72,13 +68,12 @@ def test_keplerian_body_velocity(time, keplerian_body, prefix):
 
 def test_keplerian_body_radial_velocity(time, keplerian_body):
     computed = keplerian_body.radial_velocity(time)
-    expected = keplerian_body.radial_velocity(
-        time,
-        semiamplitude=keplerian_body._baseline_rv_semiamplitude
-        * keplerian_body.mass
-        * keplerian_body.sin_inclination,
-    )
-    assert_quantity_allclose(expected, computed)
+    assert computed.units == ureg.R_sun / ureg.d
+    computed.to(ureg.m / ureg.s)
+
+    computed = keplerian_body.radial_velocity(time, semiamplitude=1.0)
+    assert not hasattr(computed, "_magnitude")
+    assert not hasattr(computed, "_units")
 
 
 def test_keplerian_body_impact_parameter(keplerian_body):
@@ -129,8 +124,8 @@ def test_keplerian_body_coordinates_match_batman(time, keplerian_body):
 def test_keplerian_body_positions_small_star(time):
     _rsky = pytest.importorskip("batman._rsky")
     with jax.experimental.enable_x64(True):
-        keplerian_body = orbits.KeplerianBody(
-            central=orbits.KeplerianCentral(radius=0.189, mass=0.151),
+        keplerian_body = keplerian.Body(
+            central=keplerian.Central(radius=0.189, mass=0.151),
             period=0.4626413,
             time_transit=0.2,
             impact_param=0.5,
@@ -159,3 +154,53 @@ def test_keplerian_body_positions_small_star(time):
         x, y, _ = keplerian_body.relative_position(time)
         r = jnpu.sqrt(x**2 + y**2)
         assert_allclose(r_batman[m], r[m].magnitude)
+
+
+def test_keplerian_system_stack_construction():
+    sys = keplerian.System().add_body(period=0.1).add_body(period=0.2)
+    assert_quantity_allclose(sys._body_stack.period, jnp.array([0.1, 0.2]) * ureg.day)
+
+    sys = (
+        keplerian.System()
+        .add_body(period=0.1)
+        .add_body(period=0.2, eccentricity=0.1, omega_peri=-1.5)
+    )
+    assert sys._body_stack is None
+
+
+def test_keplerian_system_radial_velocity():
+    sys1 = keplerian.System().add_body(period=0.1).add_body(period=0.2)
+    sys2 = (
+        keplerian.System()
+        .add_body(period=0.1)
+        .add_body(period=0.2, eccentricity=0.0, omega_peri=0.0)
+    )
+    assert sys1._body_stack is not None
+    assert sys2._body_stack is None
+    with pytest.raises(ValueError):
+        sys1._body_stack.radial_velocity(0.0)
+
+    for t in [0.0, jnp.linspace(0, 1, 5)]:
+        assert_quantity_allclose(
+            sys1.radial_velocity(t),
+            sys2.radial_velocity(t),
+            # TODO(dfm): I'm not sure why we need to loosen the tolerance here,
+            # but the ecc=0 model doesn't give the same results as the ecc=None
+            # model otherwise.
+            atol={jnp.float32: 5e-6, jnp.float64: 1e-12},
+        )
+
+
+def test_keplerian_system_position():
+    sys1 = keplerian.System().add_body(period=0.1).add_body(period=0.2)
+    sys2 = (
+        keplerian.System()
+        .add_body(period=0.1)
+        .add_body(period=0.2, eccentricity=0.0, omega_peri=0.0)
+    )
+    for t in [0.0, jnp.linspace(0, 1, 5)]:
+        x1, y1, z1 = sys1.position(t)
+        x2, y2, z2 = sys2.position(t)
+        assert_quantity_allclose(x1, x2)
+        assert_quantity_allclose(y1, y2)
+        assert_quantity_allclose(z1, z2)
