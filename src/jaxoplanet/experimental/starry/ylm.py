@@ -31,6 +31,10 @@ class Ylm(eqx.Module):
         return self.ell_max**2 + 2 * self.ell_max + 1
 
     def index(self, ell: Array, m: Array) -> Array:
+        if np.any(np.abs(m) > ell):
+            raise ValueError(
+                "All spherical harmonic orders 'm' must be in the range [-ell, ell]"
+            )
         return ell * (ell + 1) + m
 
     def tosparse(self) -> BCOO:

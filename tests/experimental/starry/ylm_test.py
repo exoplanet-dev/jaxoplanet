@@ -10,16 +10,6 @@ def test_starry_ylm_compare(data):
     theano = pytest.importorskip("theano")
     theano.config.gcc__cxxflags += " -fexceptions"
 
-    # >>> import starry
-    # m = starry.Map(5)
-    # m[:,>>> m = starry.Map(5)
-    # Pre-computing some matrices... Done.
-    # >>> m[5, 0] = 5.0
-    # >>> m[3, -1] = 1.5
-    # >>> m._y
-    # AdvancedIncSubtensor1{no_inplace,set}.0
-    # >>> m._y.eval()
-
     data = dict(data)
     data.update({(0, 0): 1.0})
     ylm = Ylm(data)
