@@ -83,10 +83,10 @@ def _mul(f: Ylm, g: Ylm) -> Ylm:
                 sqrt2 = math.sqrt(2 * ell2 + 1)
                 # w3j_s = s_calculator.calculate(ell1, ell2, s_f, s_g)
                 for m2 in range(-ell2, ell2 + 1):
-                    w3j_m = m_calculator.calculate(ell1, ell2, m1, m2)
                     idx2 = (ell2, m2)
                     if idx2 not in g.data:
                         continue
+                    w3j_m = m_calculator.calculate(ell1, ell2, m1, m2)
                     sum2 = sqrt2 * g.data[idx2]
                     m3 = m1 + m2
                     for ell3 in range(
