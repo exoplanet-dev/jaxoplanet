@@ -1,214 +1,342 @@
 from functools import partial
-from typing import Callable
 
 import jax
 import jax.numpy as jnp
-import numpy as np
-from jax.scipy.linalg import block_diag
-from scipy.special import factorial
 
-from jaxoplanet.types import Array
+from jaxoplanet.utils import get_dtype_eps
 
 
-@jax.jit
-def axis_to_euler(u1: float, u2: float, u3: float, theta: float):
-    """Returns euler angles (zxz convention) associated to a given axis-angle rotation
+def dot_rotation_matrix(ydeg, x, y, z, theta):
+    """Construct a callable to apply a spherical harmonic rotation
 
-    Parameters
-    ----------
-    u1 : float
-        x component of the axis-rotation vector
-    u2 : float
-        y component of the axis-rotation vector
-    u3 : float
-        z component of the axis-rotation vector
-    theta : float
-        rotation angle in radians
-
-    Returns
-    -------
-    tuple
-        the three euler angles in the zyz convention
+    Args:
+        ydeg (int): The order of the spherical harmonic map
+        x (float): The x component of the rotation axis
+        y (float): The y component of the rotation axis
+        z (float): The z component of the rotation axis
+        theta (float): The rotation angle in radians
     """
-    tol = 1e-16
-    theta = jnp.where(theta == 0, tol, theta)
-    u1u2_null = jnp.logical_and(u1 == 0, u2 == 0)
-    u1 = jnp.where(u1u2_null, tol, u1)
-    u2 = jnp.where(u1u2_null, tol, u2)
-    cos_theta = jnp.cos(theta)
-    sin_theta = jnp.sin(theta)
-    P01 = u1 * u2 * (1 - cos_theta) - u3 * sin_theta
-    P02 = u1 * u3 * (1 - cos_theta) + u2 * sin_theta
-    P11 = cos_theta + u2 * u2 * (1 - cos_theta)
-    P12 = u2 * u3 * (1 - cos_theta) - u1 * sin_theta
-    P20 = u3 * u1 * (1 - cos_theta) - u2 * sin_theta
-    P21 = u3 * u2 * (1 - cos_theta) + u1 * sin_theta
-    P22 = cos_theta + u3 * u3 * (1 - cos_theta)
-    norm1 = jnp.sqrt(P20 * P20 + P21 * P21)
-    norm2 = jnp.sqrt(P02 * P02 + P12 * P12)
+    try:
+        ydeg = int(ydeg)
+    except TypeError as e:
+        raise TypeError(f"ydeg must be an integer; got {ydeg}") from e
 
-    alpha0 = jnp.arctan2(0.0, 1.0)
-    beta0 = jnp.arctan2(0.0, -1.0)
-    gamma0 = jnp.arctan2(P01, P11)
+    if x is None and y is None:
+        if z is None:
+            raise ValueError("Either x, y, or z must be specified")
 
-    alpha1 = jnp.arctan2(0.0, 1.0)
-    beta1 = jnp.arctan2(0.0, 1.0)
-    gamma1 = jnp.arctan2(-P01, P11)
+        return dot_rz(ydeg, theta)
 
-    alpha2 = jnp.arctan2(P12 / norm2, P02 / norm2)
-    beta2 = jnp.arctan2(jnp.sqrt(1 - P22**2), P22)
-    gamma2 = jnp.arctan2(P21 / norm1, -P20 / norm1)
+    x = 0.0 if x is None else x
+    y = 0.0 if y is None else y
+    z = 0.0 if z is None else z
 
-    case1 = jnp.logical_and((P22 < -1 + tol), (P22 > -1 - tol))
-    case2 = jnp.logical_and((P22 < 1 + tol), (P22 > 1 - tol))
+    if jnp.shape(x) != ():
+        raise ValueError(f"x must be a scalar; got {jnp.shape(x)}")
+    if jnp.shape(y) != ():
+        raise ValueError(f"y must be a scalar; got {jnp.shape(y)}")
+    if jnp.shape(z) != ():
+        raise ValueError(f"z must be a scalar; got {jnp.shape(z)}")
+    if jnp.shape(theta) != ():
+        raise ValueError(f"theta must be a scalar; got {jnp.shape(theta)}")
 
-    alpha = jnp.where(case1, alpha0, jnp.where(case2, alpha1, alpha2))
-    beta = jnp.where(case1, beta0, jnp.where(case2, beta1, beta2))
-    gamma = jnp.where(case1, gamma0, jnp.where(case2, gamma1, gamma2))
-
-    return alpha, beta, gamma
-
-
-# todo: type hinting callable
-def Rl(l: int):
-    """Rotation matrix of the spherical harmonics map order l
-
-    Parameters
-    ----------
-    l : int
-        order
-
-    Returns
-    -------
-    Array
-        rotation matrix
-    """
-    # U
-    U = np.zeros((2 * l + 1, 2 * l + 1), dtype=np.complex_)
-    Ud1 = np.ones(2 * l + 1) * 1j
-    Ud1[l + 1 : :] = (-1) ** np.arange(1, l + 1)
-    np.fill_diagonal(U, Ud1)
-    np.fill_diagonal(np.fliplr(U), -1j * Ud1)
-    U[l, l] = np.sqrt(2)
-    U *= 1 / np.sqrt(2)
-    U = jnp.array(U)
-
-    # dlm
-    m, mp = np.indices((2 * l + 1, 2 * l + 1)) - l
-    k = np.arange(0, 2 * l + 2)[:, None, None]
+    rotation_matrices = compute_rotation_matrices(ydeg, x, y, z, theta)
+    n_max = ydeg**2 + 2 * ydeg + 1
 
     @jax.jit
-    def _Rl(alpha: float, beta: float, gamma: float):
-        dlm = (
-            jnp.power(-1 + 0j, mp + m)
-            * jnp.sqrt(
-                factorial(l - m)
-                * factorial(l + m)
-                * factorial(l - mp)
-                * factorial(l + mp)
+    @partial(jnp.vectorize, signature=f"({n_max})->({n_max})")
+    def do_dot(M):
+        """Rotate a spherical harmonic map
+
+        Args:
+            M (Array[..., n_max]): The spherical harmonic map to rotate
+        """
+        if M.shape[-1] != n_max:
+            raise ValueError(
+                f"Dimension mismatch: Input array must have shape (..., {n_max}); "
+                f"got {M.shape}"
             )
-            * (-1) ** k
-            * jnp.cos(beta / 2) ** (2 * l + m - mp - 2 * k)
-            * jnp.sin(beta / 2) ** (-m + mp + 2 * k)
-            / (
-                factorial(k)
-                * factorial(l + m - k)
-                * factorial(l - mp - k)
-                * factorial(mp - m + k)
+        result = []
+        for ell in range(ydeg + 1):
+            result.append(
+                M[ell * ell : ell * ell + 2 * ell + 1] @ rotation_matrices[ell]
             )
-        )
+        return jnp.concatenate(result, axis=0)
 
-        dlm = jnp.nansum(dlm, 0)
-        Dlm = jnp.exp(-1j * (mp * alpha + m * gamma)) * dlm
-
-        return jnp.real(jnp.linalg.solve(U, Dlm.T) @ U)
-
-    return _Rl
+    return do_dot
 
 
-def R_full(l_max: int, u: Array) -> Callable[[Array], Array]:
-    """Full Wigner rotation matrix of an axis-angle rotation angle theta about vector u
+def right_project(ydeg, inc, obl, theta, x):
+    si = jnp.sin(inc)
+    ci = jnp.cos(inc)
+    so = jnp.sin(obl)
+    co = jnp.cos(obl)
+    st = jnp.sin(theta)
+    ct = jnp.cos(theta)
 
-    Parameters
-    ----------
-    l_max : int
-        maximum order of the spherical harmonics map
-    u : Array
-        axis-rotation vector
+    ux = so * st - ci * co * ct - ci
+    uy = -si * st - so * ci * ct - st * co
+    uz = -si * so - so * ct - st * ci * co
 
-    Returns
-    -------
-    Callable[[Array], Array]
-        a jax.vmap function of theta returning the Wigner matrix for this angle
-    """
-    Rls = [Rl(l) for l in range(l_max + 1)]
-    n_max = l_max**2 + 2 * l_max + 1
+    norm = jnp.sqrt(ux**2 + uy**2 + uz**2)
+    ang = jnp.arcsin(0.5 * norm)
 
-    @partial(jnp.vectorize, signature=f"()->({n_max},{n_max})")
-    def _R(theta: Array) -> Array:
-        alpha, beta, gamma = axis_to_euler(u[0], u[1], u[2], theta)
-        full = block_diag(*[rl(alpha, beta, gamma) for rl in Rls])
-        return jnp.where(theta != 0, full, jnp.eye(l_max * (l_max + 2) + 1))
-
-    return _R
+    return dot_rotation_matrix(ydeg, ux, uy, uz, -ang)(x)
 
 
-def Rdot(l_max: int, u: Array) -> Callable[[Array], Array]:
-    """Dot product R@y of the rotation matrix R with a vector y
+@partial(jax.jit, static_argnums=(0,))
+def compute_rotation_matrices(ydeg, x, y, z, theta):
+    # We need the axis to be a unit vector - enforce that here
+    norm = jnp.sqrt(x * x + y * y + z * z)
+    x = x / norm
+    y = y / norm
+    z = z / norm
 
-    Parameters
-    ----------
-    l_max : int
-        maximum order of the spherical harmonics map
-    u : Array
-        axis-rotation vector
+    s = jnp.sin(theta)
+    c = jnp.cos(theta)
+    ra01 = x * y * (1 - c) - z * s
+    ra02 = x * z * (1 - c) + y * s
+    ra11 = c + y * y * (1 - c)
+    ra12 = y * z * (1 - c) - x * s
+    ra20 = z * x * (1 - c) - y * s
+    ra21 = z * y * (1 - c) + x * s
+    ra22 = c + z * z * (1 - c)
 
-    Returns
-    -------
-    Callable[[Array], Array]
-        a jax.vmap function of (y, theta) returning the product R@y where
-        - y is a vector of spherical harmonics coefficients
-        - theta is the rotation angle in radians
-    """
-    Rls = [Rl(l) for l in range(l_max + 1)]
-    n_max = l_max**2 + 2 * l_max
-    idxs = jnp.cumsum(jnp.array([2 * l + 1 for l in range(l_max + 1)]))[0:-1]
+    tol = 10 * get_dtype_eps(ra22)
+    cond_neg = jnp.less(jnp.abs(ra22 + 1.0), tol)
+    cond_pos = jnp.less(jnp.abs(ra22 - 1.0), tol)
+    cond_full = jnp.logical_or(cond_pos, cond_neg)
+    sign = cond_neg.astype(int) - cond_pos.astype(int)
+    norm1 = jnp.sqrt(jnp.where(cond_full, 1, ra20 * ra20 + ra21 * ra21))
+    norm2 = jnp.sqrt(jnp.where(cond_full, 1, ra02 * ra02 + ra12 * ra12))
+    cos_beta = ra22
+    ra22_ = jnp.where(cond_full, 0.0, ra22)
+    sin_beta = jnp.where(
+        cond_full,
+        1 + sign * ra22,
+        jnp.sqrt(1 - ra22_ * ra22_),  # type: ignore
+    )
+    cos_gamma = jnp.where(cond_full, ra11, -ra20 / norm1)
+    sin_gamma = jnp.where(cond_full, sign * ra01, ra21 / norm1)
+    cos_alpha = jnp.where(cond_full, -sign * ra22, ra02 / norm2)
+    sin_alpha = jnp.where(cond_full, 1 + sign * ra22, ra12 / norm2)
 
-    @partial(jnp.vectorize, signature=f"({n_max}),()->({n_max})")
-    def R(y: Array, theta: Array) -> Array:
-        yls = jnp.split(y, idxs)
-        alpha, beta, gamma = axis_to_euler(u[0], u[1], u[2], theta)
-        return jnp.hstack([rl(alpha, beta, gamma) @ yl for rl, yl in zip(Rls, yls)])
+    return rotar(
+        ydeg,
+        cos_alpha,
+        sin_alpha,
+        cos_beta,
+        sin_beta,
+        cos_gamma,
+        sin_gamma,
+    )[1]
 
-    return R
 
+def rotar(ydeg, c1, s1, c2, s2, c3, s3):
+    sqrt_2 = jnp.sqrt(2.0)
 
-def dotR(l_max: int, u: Array) -> Callable[[Array, Array], Array]:
-    """Dot product M@R of a matrix M with the rotation matrix R
+    D = []
+    R = []
 
-    Parameters
-    ----------
-    l_max : int
-        maximum order of the spherical harmonics map
-    u : Array
-        axis-rotation vector
+    # D[0]; R[0 ]
+    D.append(jnp.ones((1, 1)))
+    R.append(jnp.ones((1, 1)))
+    if ydeg == 0:
+        return D, R
 
-    Returns
-    -------
-    Callable[[Array], Array]
-        a jax.vmap function of (M, theta) returning the product M@R where
-        - M is a matrix (Array)
-        - theta is the rotation angle in radians
-    """
-    Rls = [Rl(l) for l in range(l_max + 1)]
-
-    def R(M: Array, theta: Array) -> Array:
-        alpha, beta, gamma = axis_to_euler(u[0], u[1], u[2], theta)
-        return jnp.hstack(
+    # D[1]
+    D1_22 = 0.5 * (1 + c2)
+    D1_21 = -s2 / sqrt_2
+    D1_20 = 0.5 * (1 - c2)
+    D1_12 = -D1_21
+    D1_11 = D1_22 - D1_20
+    D1_10 = D1_21
+    D1_02 = D1_20
+    D1_01 = D1_12
+    D1_00 = D1_22
+    D.append(
+        jnp.array(
             [
-                M[:, l**2 : (l + 1) ** 2] @ Rls[l](alpha, beta, gamma)
-                for l in range(l_max + 1)
+                [D1_00, D1_01, D1_02],
+                [D1_10, D1_11, D1_12],
+                [D1_20, D1_21, D1_22],
             ]
         )
+    )
 
-    return R
+    # R[1]
+    cosag = c1 * c3 - s1 * s3
+    cosamg = c1 * c3 + s1 * s3
+    sinag = s1 * c3 + c1 * s3
+    sinamg = s1 * c3 - c1 * s3
+    R1_11 = D1_11
+    R1_21 = sqrt_2 * D1_12 * c1
+    R1_01 = sqrt_2 * D1_12 * s1
+    R1_12 = sqrt_2 * D1_21 * c3
+    R1_10 = -sqrt_2 * D1_21 * s3
+    R1_22 = D1_22 * cosag - D1_20 * cosamg
+    R1_20 = -D1_22 * sinag - D1_20 * sinamg
+    R1_02 = D1_22 * sinag - D1_20 * sinamg
+    R1_00 = D1_22 * cosag + D1_20 * cosamg
+    R.append(
+        jnp.array(
+            [
+                [R1_00, R1_01, R1_02],
+                [R1_10, R1_11, R1_12],
+                [R1_20, R1_21, R1_22],
+            ]
+        )
+    )
+
+    tol = 10 * jnp.finfo(jnp.dtype(s2)).eps
+    s2_cond = jnp.less(jnp.abs(s2), tol)
+    tgbet2 = jnp.where(s2_cond, s2, (1 - c2) / jnp.where(s2_cond, 1.0, s2))
+
+    for ell in range(2, ydeg + 1):
+        D_, R_ = dlmn(ell, s1, c1, c2, tgbet2, s3, c3, D)
+        D.append(D_)
+        R.append(R_)
+
+    return D, R
+
+
+def dlmn(ell, s1, c1, c2, tgbet2, s3, c3, D):
+    iinf = 1 - ell
+    isup = -iinf
+
+    # Last row by recurrence (Eq. 19 and 20 in Alvarez Collado et al.)
+    D_ = [[0 for _ in range(2 * ell + 1)] for _ in range(2 * ell + 1)]
+    D_[2 * ell][2 * ell] = 0.5 * D[-1][isup + ell - 1, isup + ell - 1] * (1 + c2)
+    for m in range(isup, iinf - 1, -1):
+        D_[2 * ell][m + ell] = (
+            -tgbet2 * jnp.sqrt((ell + m + 1) / (ell - m)) * D_[2 * ell][m + 1 + ell]
+        )
+    D_[2 * ell][0] = 0.5 * D[ell - 1][isup + ell - 1, -isup + ell - 1] * (1 - c2)
+
+    # The rows of the upper quarter triangle of the D[l;m',m) matrix
+    # (Eq. 21 in Alvarez Collado et al.)
+    al = ell
+    al1 = al - 1
+    tal1 = al + al1
+    ali = 1.0 / al1
+    cosaux = c2 * al * al1
+    for mp in range(ell - 1, -1, -1):
+        amp = mp
+        laux = ell + mp
+        lbux = ell - mp
+        aux = ali / jnp.sqrt(laux * lbux)
+        cux = jnp.sqrt((laux - 1) * (lbux - 1)) * al
+        for m in range(isup, iinf - 1, -1):
+            am = m
+            lauz = ell + m
+            lbuz = ell - m
+            auz = 1.0 / jnp.sqrt(lauz * lbuz)
+            fact = aux * auz
+            term = tal1 * (cosaux - am * amp) * D[-1][mp + ell - 1, m + ell - 1]
+            if lbuz != 1 and lbux != 1:
+                cuz = jnp.sqrt((lauz - 1) * (lbuz - 1))
+                term = term - D[-2][mp + ell - 2, m + ell - 2] * cux * cuz
+            D_[mp + ell][m + ell] = fact * term
+        iinf += 1
+        isup -= 1
+
+    # The remaining elements of the D[l;m',m) matrix are calculated
+    # using the corresponding symmetry relations:
+    # reflection ---> ((-1)**(m-m')) D[l;m,m') = D[l;m',m), m'<=m
+    # inversion ---> ((-1)**(m-m')) D[l;-m',-m) = D[l;m',m)
+    sign = 1
+    iinf = -ell
+    isup = ell - 1
+    for m in range(ell, 0, -1):
+        for mp in range(iinf, isup + 1):
+            D_[mp + ell][m + ell] = sign * D_[m + ell][mp + ell]
+            sign *= -1
+        iinf += 1
+        isup -= 1
+
+    # Inversion
+    iinf = -ell
+    isup = iinf
+    for m in range(ell - 1, -(ell + 1), -1):
+        sign = -1
+        for mp in range(isup, iinf - 1, -1):
+            D_[mp + ell][m + ell] = sign * D_[-mp + ell][-m + ell]
+            sign *= -1
+        # iinf += 1
+        isup += 1
+
+    # Compute the real rotation matrices R from the complex ones D
+    R_ = [[0 for _ in range(2 * ell + 1)] for _ in range(2 * ell + 1)]
+    R_[ell][ell] = D_[ell][ell]
+    cosmal = c1
+    sinmal = s1
+    sign = -1
+    root_two = jnp.sqrt(2.0)
+    for mp in range(1, ell + 1):
+        cosmga = c3
+        sinmga = s3
+        aux = root_two * D_[ell][mp + ell]
+        R_[mp + ell][ell] = aux * cosmal
+        R_[-mp + ell][ell] = aux * sinmal
+        for m in range(1, ell + 1):
+            aux = root_two * D_[m + ell][ell]
+            R_[ell][m + ell] = aux * cosmga
+            R_[ell][-m + ell] = -aux * sinmga
+            d1 = D_[-mp + ell][-m + ell]
+            d2 = sign * D_[mp + ell][-m + ell]
+            cosag = cosmal * cosmga - sinmal * sinmga
+            cosagm = cosmal * cosmga + sinmal * sinmga
+            sinag = sinmal * cosmga + cosmal * sinmga
+            sinagm = sinmal * cosmga - cosmal * sinmga
+            R_[mp + ell][m + ell] = d1 * cosag + d2 * cosagm
+            R_[mp + ell][-m + ell] = -d1 * sinag + d2 * sinagm
+            R_[-mp + ell][m + ell] = d1 * sinag + d2 * sinagm
+            R_[-mp + ell][-m + ell] = d1 * cosag - d2 * cosagm
+            aux = cosmga * c3 - sinmga * s3
+            sinmga = sinmga * c3 + cosmga * s3
+            cosmga = aux
+        sign *= -1
+        aux = cosmal * c1 - sinmal * s1
+        sinmal = sinmal * c1 + cosmal * s1
+        cosmal = aux
+
+    return jnp.asarray(D_), jnp.asarray(R_)
+
+
+def dot_rz(deg, theta):
+    """Special case for rotation only around z axis"""
+    c = jnp.cos(theta)
+    s = jnp.sin(theta)
+    cosnt = [1.0, c]
+    sinnt = [0.0, s]
+    for n in range(2, deg + 1):
+        cosnt.append(2.0 * cosnt[n - 1] * c - cosnt[n - 2])
+        sinnt.append(2.0 * sinnt[n - 1] * c - sinnt[n - 2])
+
+    n = 0
+    cosmt = []
+    sinmt = []
+    for ell in range(deg + 1):
+        for m in range(-ell, 0):
+            cosmt.append(cosnt[-m])
+            sinmt.append(-sinnt[-m])
+        for m in range(ell + 1):
+            cosmt.append(cosnt[m])
+            sinmt.append(sinnt[m])
+
+    n_max = deg**2 + 2 * deg + 1
+
+    @jax.jit
+    @partial(jnp.vectorize, signature=f"({n_max})->({n_max})")
+    def impl(M):
+        result = [0 for _ in range(n_max)]
+        for ell in range(deg + 1):
+            for j in range(2 * ell + 1):
+                result[ell * ell + j] = (
+                    M[ell * ell + j] * cosmt[ell * ell + j]
+                    + M[ell * ell + 2 * ell - j] * sinmt[ell * ell + j]
+                )
+
+        return jnp.array(result, dtype=jnp.dtype(M))
+
+    return impl
