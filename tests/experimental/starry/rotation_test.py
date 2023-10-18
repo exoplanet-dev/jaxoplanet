@@ -84,7 +84,17 @@ def right_project_reference(deg, inc, obl, theta, x):
 
 
 @pytest.mark.parametrize("deg", [5, 1, 0])
-@pytest.mark.parametrize("angles", [(0.1, 0.2, 0.3), (0.1, -0.2, 0.3), (0, 0, 0)])
+@pytest.mark.parametrize(
+    "angles",
+    [
+        (0.1, 0.2, 0.3),
+        (0.1, -0.2, 0.3),
+        (0, 0, 0),
+        (-0.1, 0, 0),
+        (0, 0.4, 0),
+        (0, 0, 0.5),
+    ],
+)
 def test_right_project(deg, angles):
     n_max = deg**2 + 2 * deg + 1
     expect = right_project_reference(deg, *angles, jnp.ones(n_max))
