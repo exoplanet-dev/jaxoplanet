@@ -3,7 +3,7 @@ import warnings
 import numpy as np
 import pytest
 
-from jaxoplanet.experimental.starry.basis import A1, A2_inv, basis
+from jaxoplanet.experimental.starry.basis import A1, A2_inv, basis, poly_basis
 from jaxoplanet.test_utils import assert_allclose
 
 
@@ -53,6 +53,27 @@ def test_basis_compare_starry(lmax):
         m = starry.Map(lmax)
         expect = m.ops.A.eval().toarray()
     calc = basis(lmax).todense()
+    assert_allclose(calc, expect)
+
+
+def test_poly_basis():
+    expect = np.array([1.0, 0.1, 0.2, 0.3, 0.01, 0.02, 0.03, 0.06, 0.09])
+    calc = poly_basis(2)(0.1, 0.3, 0.2)
+    assert_allclose(calc, expect)
+
+
+@pytest.mark.parametrize("lmax", [10, 5, 2, 1, 0])
+def test_poly_basis_compare_starry(lmax):
+    starry = pytest.importorskip("starry")
+
+    x = np.linspace(-1, 1, 100)
+    y = np.linspace(-0.5, 0.5, 100)
+    z = np.linspace(-0.1, 0.1, 100)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        m = starry.Map(lmax)
+        expect = m.ops.pT(x, y, z)
+    calc = poly_basis(lmax)(x, y, z)
     assert_allclose(calc, expect)
 
 
