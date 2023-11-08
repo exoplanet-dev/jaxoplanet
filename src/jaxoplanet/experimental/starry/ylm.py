@@ -50,6 +50,15 @@ class Ylm(eqx.Module):
     def todense(self) -> Array:
         return self.tosparse().todense()
 
+    @classmethod
+    def from_dense(cls, y: Array) -> "Ylm":
+        data = {}
+        for i, ylm in enumerate(y):
+            ell = int(np.floor(np.sqrt(i)))
+            m = i - ell * (ell + 1)
+            data[(ell, m)] = ylm
+        return cls(data)
+
     def __mul__(self, other: Any) -> "Ylm":
         if isinstance(other, Ylm):
             return _mul(self, other)
@@ -59,6 +68,10 @@ class Ylm(eqx.Module):
     def __rmul__(self, other: Any) -> "Ylm":
         assert not isinstance(other, Ylm)
         return jax.tree_util.tree_map(lambda x: other * x, self)
+
+    def __getitem__(self, key) -> Array:
+        assert isinstance(key, tuple)
+        return self.todense()[self.index(*key)]
 
 
 def _mul(f: Ylm, g: Ylm) -> Ylm:
