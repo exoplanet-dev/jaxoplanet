@@ -6,7 +6,9 @@ import jax.numpy as jnp
 import numpy as np
 import scipy.sparse.linalg
 from jax.experimental.sparse import BCOO
-from scipy.special import gamma
+from scipy.special import gamma, comb
+from scipy.special import comb
+
 
 try:
     from scipy.sparse import csc_array
@@ -257,3 +259,44 @@ def poly_basis(deg):
             return p
 
     return impl
+
+
+def utilde(n):
+    res = defaultdict(lambda: 1.0)
+    L = []
+
+    if n == 0:
+        res[(0, 0, 0)] = 1.0
+        return res
+
+    # binomial coefficients for (1-z)^n and using z^2 = x^2 + y^2
+    # for every even power of z
+    for k in range(n + 1):
+        L.append((-1) ** k * comb(n, k))
+
+    res[(0, 0, 0)] = 1.0
+    res[(0, 0, 1)] = -L[1]
+
+    for j in range(2, n + 1):
+        n_2 = j // 2
+        for k in range(0, n_2 + 1):
+            res[(2 * (n_2 - k), 2 * k, j % 2)] *= -L[j] * comb(n_2, k)
+
+    return res
+
+
+def u_p(p, l, m, n):
+    # this is very similar to gtilde, might be a more general
+    # way of doing the _A_impl function without dummy variables
+    del l, m
+    indicies = []
+    data = []
+    for k, v in utilde(n).items():
+        if k not in p:
+            continue
+        indicies.append(p[k])
+        data.append(v)
+    indicies = np.array(indicies, dtype=int)
+    data = np.array(data, dtype=float)
+    idx = np.argsort(indicies)
+    return indicies[idx], data[idx]
