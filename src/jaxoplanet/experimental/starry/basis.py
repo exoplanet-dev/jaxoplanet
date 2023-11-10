@@ -300,3 +300,16 @@ def u_p(p, l, m, n):
     data = np.array(data, dtype=float)
     idx = np.argsort(indicies)
     return indicies[idx], data[idx]
+
+
+def U0(udeg, ydeg):
+    assert udeg < ydeg
+    n = (ydeg + 1) ** 2
+    p = {ptilde(m): m for m in range(n)}
+    P = np.zeros((udeg + 1, (ydeg + 1) ** 2))
+    for i in range(udeg + 1):
+        idxs, values = u_p(p, None, None, i)
+        for j, v in zip(idxs, values):
+            P[i, j] += v
+
+    return P
