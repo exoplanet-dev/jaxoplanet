@@ -262,25 +262,20 @@ def poly_basis(deg):
 
 
 def utilde(n):
-    res = defaultdict(lambda: 1.0)
-    L = []
+    res = defaultdict(float)
 
     if n == 0:
-        res[(0, 0, 0)] = 1.0
-        return res
+        return {(0, 0, 0): 1.0}
 
-    # binomial coefficients for (1-z)^n and using z^2 = x^2 + y^2
-    # for every even power of z
     for k in range(n + 1):
-        L.append((-1) ** k * comb(n, k))
-
-    res[(0, 0, 0)] = 1.0
-    res[(0, 0, 1)] = -L[1]
-
-    for j in range(2, n + 1):
-        n_2 = j // 2
-        for k in range(0, n_2 + 1):
-            res[(2 * (n_2 - k), 2 * k, j % 2)] *= -L[j] * comb(n_2, k)
+        c1 = comb(n, k) * (-1) ** k
+        k2 = k // 2
+        for j in range(k2 + 1):
+            c2 = comb(k2, j) * (-1) ** j
+            for l in range(j + 1):
+                c3 = comb(j, l)
+                idxs = (2 * (j - l), 2 * l, k % 2)
+                res[(2 * (j - l), 2 * l, k % 2)] += -c1 * c2 * c3
 
     return res
 
