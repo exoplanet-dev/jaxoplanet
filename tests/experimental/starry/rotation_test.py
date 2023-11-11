@@ -83,7 +83,7 @@ def right_project_reference(deg, inc, obl, theta, x):
     return x
 
 
-@pytest.mark.parametrize("deg", [5, 1, 0])
+@pytest.mark.parametrize("deg", [5, 2, 1, 0])
 @pytest.mark.parametrize(
     "angles",
     [

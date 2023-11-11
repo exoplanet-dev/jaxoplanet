@@ -1,3 +1,4 @@
+import math
 from functools import partial
 
 import jax
@@ -67,21 +68,29 @@ def dot_rotation_matrix(ydeg, x, y, z, theta):
 
 
 def right_project(ydeg, inc, obl, theta, x):
-    si = jnp.sin(inc)
-    ci = jnp.cos(inc)
-    so = jnp.sin(obl)
-    co = jnp.cos(obl)
-    st = jnp.sin(theta)
-    ct = jnp.cos(theta)
+    # np = jnp
 
-    ux = so * st - ci * co * ct - ci
-    uy = -si * st - so * ci * ct - st * co
-    uz = -si * so - so * ct - st * ci * co
+    f = 0.5 * math.sqrt(2)
+    si = jnp.sin(inc / 2)
+    ci = jnp.cos(inc / 2)
+    sp = jnp.sin(0.5 * (obl + theta))
+    cp = jnp.cos(0.5 * (obl + theta))
+    sm = jnp.sin(0.5 * (obl - theta))
+    cm = jnp.cos(0.5 * (obl - theta))
 
-    norm = jnp.sqrt(ux**2 + uy**2 + uz**2)
-    ang = jnp.arcsin(0.5 * norm)
+    numerator1 = f * (-si * cm + ci * cp)
+    numerator2 = f * (-si * sm + sp * ci)
+    numerator3 = f * (si * sm + sp * ci)
+    arg = si * cm + ci * cp
+    denominator = jnp.sqrt(1 - 0.5 * arg**2)
 
-    return dot_rotation_matrix(ydeg, ux, uy, uz, -ang)(x)
+    axis_x = numerator1 / denominator
+    axis_y = numerator2 / denominator
+    axis_z = numerator3 / denominator
+
+    angle = 2 * jnp.arccos(f * arg)
+
+    return dot_rotation_matrix(ydeg, axis_x, axis_y, axis_z, angle)(x)
 
 
 @partial(jax.jit, static_argnums=(0,))
