@@ -19,7 +19,6 @@ def test_light_curve():
 
     # Compute a limb-darkened light curve using jaxoplanet
     t = jnp.linspace(-0.3, 0.3, 1000)
-
     lc = LimbDarkLightCurve(params["u"]).light_curve(orbit, t=t)
     assert lc.shape == t.shape
 
