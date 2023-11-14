@@ -92,9 +92,7 @@ class LimbDarkLightCurve(eqx.Module):
             if texp.ndim == 0:  # Unnecessary since I check the shapes above?
                 dt = texp * dt
             else:
-                # TODO(So): We should implement the outer function in the jnpu package
-                # and use it here since the line below is a bit hacky.
-                dt = jnp.outer(texp.magnitude, dt) * texp.units
+                dt = jnpu.outer(texp, dt)
             tgrid = (jnpu.reshape(t, newshape=(t.size, 1)) + dt).flatten()
 
         # Evaluate the coordinates of the transiting body
