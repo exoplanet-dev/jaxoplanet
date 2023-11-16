@@ -31,7 +31,7 @@ def left_project(deg, M, theta, inc, obl):
         deg, -jnp.cos(obl), -jnp.sin(obl), 0.0, 0.5 * jnp.pi - inc
     )(MT)
 
-    return M.T
+    return MT
 
 
 def render(deg, res, theta, inc, obl, y):
