@@ -3,6 +3,7 @@ from typing import Optional
 
 import equinox as eqx
 import jax.numpy as jnp
+import jpu.numpy as jnpu
 
 from jaxoplanet import units
 from jaxoplanet.core.limb_dark import light_curve
@@ -59,7 +60,7 @@ class LimbDarkLightCurve(eqx.Module):
                 which implements Gauss-Legendre quadrature. Defaults to 10.
         """
 
-        t = jnp.atleast_1d(t)
+        t = jnpu.atleast_1d(t)
 
         # Handle exposure time integration
         if texp is None:
@@ -91,12 +92,12 @@ class LimbDarkLightCurve(eqx.Module):
             if texp.ndim == 0:  # Unnecessary since I check the shapes above?
                 dt = texp * dt
             else:
-                dt = jnp.outer(texp, dt)
-            tgrid = (t.reshape(t.size, 1) + dt).flatten()
+                dt = jnpu.outer(texp, dt)
+            tgrid = (jnpu.reshape(t, newshape=(t.size, 1)) + dt).flatten()
 
         # Evaluate the coordinates of the transiting body
         x, y, z = orbit.relative_position(tgrid)
-        b = jnp.sqrt(x**2 + y**2)
+        b = jnpu.sqrt(x**2 + y**2)
         r_star = orbit.central_radius
         r = orbit.radius / r_star
         lc_func = partial(light_curve, self.u, order=limbdark_order)
@@ -110,8 +111,6 @@ class LimbDarkLightCurve(eqx.Module):
 
         # Integrate over exposure time
         if texp is not None:
-            lc = lc[0]
             lc = jnp.reshape(lc, newshape=(t.size, oversample))
-            stencil = jnp.reshape(stencil, newshape=stencil.shape + (1,))
-            lc = (lc @ stencil).T
+            lc = jnp.dot(lc, stencil)
         return lc
