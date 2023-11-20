@@ -1,6 +1,8 @@
 import math
 from collections import defaultdict
+from functools import partial
 
+import jax.numpy as jnp
 import numpy as np
 import scipy.sparse.linalg
 from jax.experimental.sparse import BCOO
@@ -194,3 +196,64 @@ def p_G(p, l, m, n):
     data = np.array(data, dtype=float)
     idx = np.argsort(indicies)
     return indicies[idx], data[idx]
+
+
+def poly_basis(deg):
+    N = (deg + 1) * (deg + 1)
+
+    @partial(jnp.vectorize, signature=f"(),(),()->({N})")
+    def impl(x, y, z):
+        xarr = [None for _ in range(N)]
+        yarr = [None for _ in range(N)]
+
+        # Ensures we get `nan`s off the disk
+        xterm = 1.0 + 0.0 * z
+        yterm = 1.0 + 0.0 * z
+
+        i0 = 0
+        di0 = 3
+        j0 = 0
+        dj0 = 2
+        for n in range(deg + 1):
+            i = i0
+            di = di0
+            xarr[i] = xterm
+            j = j0
+            dj = dj0
+            yarr[j] = yterm
+            i = i0 + di - 1
+            j = j0 + dj - 1
+            while i + 1 < N:
+                xarr[i] = xterm
+                xarr[i + 1] = xterm
+                di += 2
+                i += di
+                yarr[j] = yterm
+                yarr[j + 1] = yterm
+                dj += 2
+                j += dj - 1
+            xterm *= x
+            i0 += 2 * n + 1
+            di0 += 2
+            yterm *= y
+            j0 += 2 * (n + 1) + 1
+            dj0 += 2
+
+        assert all(v is not None for v in xarr)
+        assert all(v is not None for v in yarr)
+
+        inds = []
+        n = 0
+        for ell in range(deg + 1):
+            for m in range(-ell, ell + 1):
+                if (ell + m) % 2 != 0:
+                    inds.append(n)
+                n += 1
+
+        p = jnp.array(xarr) * jnp.array(yarr)
+        if len(inds):
+            return p.at[np.array(inds)].multiply(z)
+        else:
+            return p
+
+    return impl
