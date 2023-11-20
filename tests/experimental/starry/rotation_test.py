@@ -3,7 +3,11 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 
-from jaxoplanet.experimental.starry.rotation import dot_rotation_matrix, right_project
+from jaxoplanet.experimental.starry.rotation import (
+    dot_rotation_matrix,
+    right_project,
+    left_project,
+)
 from jaxoplanet.test_utils import assert_allclose
 
 
@@ -83,6 +87,17 @@ def right_project_reference(deg, inc, obl, theta, x):
     return x
 
 
+def left_project_reference(deg, inc, obl, theta, x):
+    x = dot_rotation_matrix(deg, 1.0, 0.0, 0.0, -0.5 * jnp.pi)(x)
+    x = dot_rotation_matrix(deg, None, None, 1.0, -theta)(x)
+    x = dot_rotation_matrix(deg, 1.0, 0.0, 0.0, 0.5 * jnp.pi)(x)
+    x = dot_rotation_matrix(deg, None, None, 1.0, -obl)(x)
+    x = dot_rotation_matrix(
+        deg, -jnp.cos(obl), -jnp.sin(obl), 0.0, (0.5 * jnp.pi - inc)
+    )(x)
+    return x
+
+
 @pytest.mark.parametrize("deg", [5, 2, 1, 0])
 @pytest.mark.parametrize(
     "angles",
@@ -99,6 +114,25 @@ def test_right_project(deg, angles):
     n_max = deg**2 + 2 * deg + 1
     expect = right_project_reference(deg, *angles, jnp.ones(n_max))
     calc = right_project(deg, *angles, jnp.ones(n_max))
+    assert_allclose(calc, expect)
+
+
+@pytest.mark.parametrize("deg", [5, 2, 1, 0])
+@pytest.mark.parametrize(
+    "angles",
+    [
+        (0.1, 0.2, 0.3),
+        (0.1, -0.2, 0.3),
+        (0, 0, 0),
+        (-0.1, 0, 0),
+        (0, 0.4, 0),
+        (0, 0, 0.5),
+    ],
+)
+def test_left_project(deg, angles):
+    n_max = deg**2 + 2 * deg + 1
+    expect = left_project_reference(deg, *angles, jnp.ones(n_max))
+    calc = left_project(deg, *angles, jnp.ones(n_max))
     assert_allclose(calc, expect)
 
 
