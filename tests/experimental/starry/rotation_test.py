@@ -76,7 +76,8 @@ def test_dot_rotation_compare_starry(l_max, u, theta):
         assert_allclose(calc, expected)
 
 
-def right_project_reference(deg, inc, obl, theta, x):
+def right_project_reference(deg, inc, obl, theta, theta_z, x):
+    x = dot_rotation_matrix(deg, 0, 0, 1.0, theta_z)(x)
     x = dot_rotation_matrix(
         deg, -jnp.cos(obl), -jnp.sin(obl), 0.0, -(0.5 * jnp.pi - inc)
     )(x)
@@ -87,7 +88,7 @@ def right_project_reference(deg, inc, obl, theta, x):
     return x
 
 
-def left_project_reference(deg, inc, obl, theta, x):
+def left_project_reference(deg, inc, obl, theta, theta_z, x):
     x = dot_rotation_matrix(deg, 1.0, 0.0, 0.0, -0.5 * jnp.pi)(x)
     x = dot_rotation_matrix(deg, None, None, 1.0, -theta)(x)
     x = dot_rotation_matrix(deg, 1.0, 0.0, 0.0, 0.5 * jnp.pi)(x)
@@ -95,6 +96,7 @@ def left_project_reference(deg, inc, obl, theta, x):
     x = dot_rotation_matrix(
         deg, -jnp.cos(obl), -jnp.sin(obl), 0.0, (0.5 * jnp.pi - inc)
     )(x)
+    x = dot_rotation_matrix(deg, 0, 0, 1.0, -theta_z)(x)
     return x
 
 
@@ -102,12 +104,12 @@ def left_project_reference(deg, inc, obl, theta, x):
 @pytest.mark.parametrize(
     "angles",
     [
-        (0.1, 0.2, 0.3),
-        (0.1, -0.2, 0.3),
-        (0, 0, 0),
-        (-0.1, 0, 0),
-        (0, 0.4, 0),
-        (0, 0, 0.5),
+        (0.1, 0.2, 0.3, 0.1),
+        (0.1, -0.2, 0.3, 0.0),
+        (0, 0, 0, 0.1),
+        (-0.1, 0, 0, 0.0),
+        (0, 0.4, 0, 0.1),
+        (0, 0, 0.5, 0.0),
     ],
 )
 def test_right_project(deg, angles):
@@ -121,12 +123,12 @@ def test_right_project(deg, angles):
 @pytest.mark.parametrize(
     "angles",
     [
-        (0.1, 0.2, 0.3),
-        (0.1, -0.2, 0.3),
-        (0, 0, 0),
-        (-0.1, 0, 0),
-        (0, 0.4, 0),
-        (0, 0, 0.5),
+        (0.1, 0.2, 0.3, 0.1),
+        (0.1, -0.2, 0.3, 0.0),
+        (0, 0, 0, 0.1),
+        (-0.1, 0, 0, 0.0),
+        (0, 0.4, 0, 0.1),
+        (0, 0, 0.5, 0.0),
     ],
 )
 def test_left_project(deg, angles):

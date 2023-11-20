@@ -67,14 +67,14 @@ def dot_rotation_matrix(ydeg, x, y, z, theta):
     return do_dot
 
 
-def right_project_axis_angle(inc, obl, theta):
+def right_project_axis_angle(inc, obl, theta, theta_z):
     f = 0.5 * math.sqrt(2)
     si = jnp.sin(inc / 2)
     ci = jnp.cos(inc / 2)
-    sp = jnp.sin(0.5 * (obl + theta))
-    cp = jnp.cos(0.5 * (obl + theta))
-    sm = jnp.sin(0.5 * (obl - theta))
-    cm = jnp.cos(0.5 * (obl - theta))
+    sp = jnp.sin(0.5 * (obl + theta + theta_z))
+    cp = jnp.cos(0.5 * (obl + theta + theta_z))
+    sm = jnp.sin(0.5 * (obl - theta + theta_z))
+    cm = jnp.cos(0.5 * (obl - theta + theta_z))
 
     numerator1 = f * (-si * cm + ci * cp)
     numerator2 = f * (-si * sm + sp * ci)
@@ -91,13 +91,13 @@ def right_project_axis_angle(inc, obl, theta):
     return axis_x, axis_y, axis_z, angle
 
 
-def right_project(ydeg, inc, obl, theta, x):
-    axis_x, axis_y, axis_z, angle = right_project_axis_angle(inc, obl, theta)
+def right_project(ydeg, inc, obl, theta, theta_z, x):
+    axis_x, axis_y, axis_z, angle = right_project_axis_angle(inc, obl, theta, theta_z)
     return dot_rotation_matrix(ydeg, axis_x, axis_y, axis_z, angle)(x)
 
 
-def left_project(ydeg, inc, obl, theta, x):
-    axis_x, axis_y, axis_z, angle = right_project_axis_angle(inc, obl, theta)
+def left_project(ydeg, inc, obl, theta, theta_z, x):
+    axis_x, axis_y, axis_z, angle = right_project_axis_angle(inc, obl, theta, theta_z)
     return dot_rotation_matrix(ydeg, -axis_x, -axis_y, -axis_z, angle)(x)
 
 
