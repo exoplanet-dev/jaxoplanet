@@ -1,7 +1,7 @@
 import jax.numpy as jnp
 import numpy as np
 
-from jaxoplanet.experimental.starry.basis import A1, A2_inv
+from jaxoplanet.experimental.starry.basis import A1, basis
 from jaxoplanet.experimental.starry.solution import solution_vector
 from jaxoplanet.experimental.starry.wigner import dot_rotation_matrix
 
@@ -14,8 +14,7 @@ def flux(deg, theta, xo, yo, zo, ro, inc, obl, y, u, f):
     # Occultation
     theta_z = jnp.arctan2(xo, yo)
     sT = solution_vector(deg)(b, ro)
-    A = jnp.linalg.solve(A2_inv(deg), A1(deg))
-    sTA = sT @ A / (0.5 * jnp.sqrt(jnp.pi))  # starry convention
+    sTA = sT @ basis(deg)
     sTAR = dot_rotation_matrix(deg, 0.0, 0.0, 1.0, theta_z)(sTA)
 
     x = jnp.where(b_occ, sTAR, rTA1(deg))
