@@ -1,47 +1,35 @@
-from functools import partial
-from typing import TYPE_CHECKING, Any, NamedTuple, Optional
+from typing import Any, Optional
 
+import equinox as eqx
 import jax
 import jax.numpy as jnp
+import jpu.numpy as jnpu
 
+from jaxoplanet import units
 from jaxoplanet.core.kepler import kepler
-from jaxoplanet.types import Scalar
-
-# FIXME: Switch to constants from astropy
-GRAVITATIONAL_CONSTANT = 2942.2062175044193 / (4 * jnp.pi**2)
-AU_PER_R_SUN = 0.00465046726096215
+from jaxoplanet.types import Quantity
+from jaxoplanet.units import unit_registry as ureg
 
 
-class KeplerianCentral(NamedTuple):
-    mass: Scalar
-    radius: Scalar
-    density: Scalar
+class Central(eqx.Module):
+    mass: Quantity = units.field(units=ureg.M_sun)
+    radius: Quantity = units.field(units=ureg.R_sun)
+    density: Quantity = units.field(units=ureg.M_sun / ureg.R_sun**3)
 
-    @property
-    def shape(self) -> tuple[int, ...]:
-        leaves, _ = jax.tree_util.tree_flatten(self)
-        shape = leaves[0].shape
-        if any(leaf.shape != shape for leaf in leaves[1:]):
-            raise ValueError("Inconsistent shapes for parameters of 'KeplerianCentral'")
-        return shape
-
-    @classmethod
-    def init(
-        cls,
+    @units.quantity_input(
+        mass=ureg.M_sun, radius=ureg.R_sun, density=ureg.M_sun / ureg.R_sun**3
+    )
+    def __init__(
+        self,
         *,
-        mass: Optional[Scalar] = None,
-        radius: Optional[Scalar] = None,
-        density: Optional[Scalar] = None,
-    ) -> "KeplerianCentral":
+        mass: Optional[Quantity] = None,
+        radius: Optional[Quantity] = None,
+        density: Optional[Quantity] = None,
+    ):
         if radius is None and mass is None:
-            radius = 1.0
+            radius = 1.0 * ureg.R_sun
             if density is None:
-                mass = 1.0
-
-        if sum(arg is None for arg in (mass, radius, density)) != 1:
-            raise ValueError(
-                "Values must be provided for exactly two of mass, radius, and density"
-            )
+                mass = 1.0 * ureg.M_sun
 
         # Check that all the input values are scalars; we don't support Scalars
         # here
@@ -51,39 +39,37 @@ class KeplerianCentral(NamedTuple):
             raise ValueError("All parameters of a KeplerianCentral must be scalars")
 
         # Compute all three parameters based on the input values
+        error_msg = (
+            "Values must be provided for exactly two of mass, radius, and density"
+        )
         if density is None:
-            if TYPE_CHECKING:
-                assert mass is not None
-                assert radius is not None
-            density = 3 * mass / (4 * jnp.pi * radius**3)
+            if mass is None or radius is None:
+                raise ValueError(error_msg)
+            self.mass = mass
+            self.radius = radius
+            self.density = 3 * mass / (4 * jnp.pi * radius**3)
         elif radius is None:
-            if TYPE_CHECKING:
-                assert mass is not None
-                assert density is not None
-            radius = (3 * mass / (4 * jnp.pi * density)) ** (1 / 3)
+            if mass is None or density is None:
+                raise ValueError(error_msg)
+            self.mass = mass
+            self.radius = (3 * mass / (4 * jnp.pi * density)) ** (1 / 3)
+            self.density = density
         elif mass is None:
-            if TYPE_CHECKING:
-                assert density is not None
-                assert radius is not None
-            mass = 4 * jnp.pi * radius**3 * density / 3.0
-
-        # Convert dtypes to be at least float32
-        dtype = jnp.result_type(mass, radius, density, jnp.float32)
-        mass = jnp.asarray(mass, dtype=dtype)
-        radius = jnp.asarray(radius, dtype=dtype)
-        density = jnp.asarray(density, dtype=dtype)
-
-        return cls(mass=mass, radius=radius, density=density)
+            if radius is None or density is None:
+                raise ValueError(error_msg)
+            self.mass = 4 * jnp.pi * radius**3 * density / 3.0
+            self.radius = radius
+            self.density = density
 
     @classmethod
     def from_orbital_properties(
         cls,
         *,
-        period: Scalar,
-        semimajor: Scalar,
-        radius: Optional[Scalar] = None,
-        body_mass: Optional[Scalar] = None,
-    ) -> "KeplerianCentral":
+        period: Quantity,
+        semimajor: Quantity,
+        radius: Optional[Quantity] = None,
+        body_mass: Optional[Quantity] = None,
+    ) -> "Central":
         if jnp.ndim(semimajor) != 0:
             raise ValueError(
                 "The 'semimajor' argument to "
@@ -92,123 +78,101 @@ class KeplerianCentral(NamedTuple):
                 "use 'jax.vmap'"
             )
 
-        radius = 1.0 if radius is None else radius
+        radius = 1.0 * ureg.R_sun if radius is None else radius
 
-        mass = semimajor**3 / (GRAVITATIONAL_CONSTANT * period**2)
+        mass = semimajor**3 / (ureg.gravitational_constant * period**2)
         if body_mass is not None:
             mass -= body_mass
 
-        return cls.init(mass=mass, radius=radius)
-
-
-class KeplerianBody(NamedTuple):
-    central: KeplerianCentral
-    time_ref: Scalar
-    time_transit: Scalar
-    period: Scalar
-    semimajor: Scalar
-    sin_inclination: Scalar
-    cos_inclination: Scalar
-    impact_param: Scalar
-    mass: Scalar
-    radius: Scalar
-    eccentricity: Optional[Scalar]
-    sin_omega_peri: Optional[Scalar]
-    cos_omega_peri: Optional[Scalar]
-    sin_asc_node: Optional[Scalar]
-    cos_asc_node: Optional[Scalar]
+        return cls(mass=mass, radius=radius)
 
     @property
     def shape(self) -> tuple[int, ...]:
-        leaves, _ = jax.tree_util.tree_flatten(self)
-        shape = leaves[0].shape
-        if any(leaf.shape != shape for leaf in leaves[1:]):
-            raise ValueError("Inconsistent shapes for parameters of 'KeplerianBody'")
-        return shape
+        return self.mass.shape
 
-    @property
-    def time_peri(self) -> Scalar:
-        return self.time_transit + self.time_ref
 
-    @property
-    def total_mass(self) -> Scalar:
-        return self.central.mass if self.mass is None else self.central.mass + self.mass
+class Body(eqx.Module):
+    central: Central
+    time_ref: Quantity = units.field(units=ureg.d)
+    time_transit: Quantity = units.field(units=ureg.d)
+    period: Quantity = units.field(units=ureg.d)
+    semimajor: Quantity = units.field(units=ureg.R_sun)
+    sin_inclination: Quantity = units.field(units=ureg.dimensionless)
+    cos_inclination: Quantity = units.field(units=ureg.dimensionless)
+    impact_param: Quantity = units.field(units=ureg.dimensionless)
+    mass: Optional[Quantity] = units.field(units=ureg.M_sun)
+    radius: Optional[Quantity] = units.field(units=ureg.R_sun)
+    eccentricity: Optional[Quantity] = units.field(units=ureg.dimensionless)
+    sin_omega_peri: Optional[Quantity] = units.field(units=ureg.dimensionless)
+    cos_omega_peri: Optional[Quantity] = units.field(units=ureg.dimensionless)
+    sin_asc_node: Optional[Quantity] = units.field(units=ureg.dimensionless)
+    cos_asc_node: Optional[Quantity] = units.field(units=ureg.dimensionless)
+    radial_velocity_semiamplitude: Optional[Quantity] = units.field(
+        units=ureg.R_sun / ureg.d
+    )
+    parallax: Optional[Quantity] = units.field(units=ureg.arcsec)
 
-    @property
-    def _baseline_rv_semiamplitude(self) -> Scalar:
-        k0 = 2 * jnp.pi * self.semimajor / (self.total_mass * self.period)
-        if self.eccentricity is None:
-            return k0
-        return k0 / jnp.sqrt(1 - self.eccentricity**2)
-
-    @classmethod
-    def _central_from_orbital_properties(
-        cls,
+    @units.quantity_input(
+        time_transit=ureg.d,
+        time_peri=ureg.d,
+        period=ureg.d,
+        semimajor=ureg.R_sun,
+        inclination=ureg.radian,
+        impact_param=ureg.dimensionless,
+        eccentricity=ureg.dimensionless,
+        omega_peri=ureg.radian,
+        sin_omega_peri=ureg.dimensionless,
+        cos_omega_peri=ureg.dimensionless,
+        asc_node=ureg.radian,
+        sin_asc_node=ureg.dimensionless,
+        cos_asc_node=ureg.dimensionless,
+        mass=ureg.M_sun,
+        radius=ureg.R_sun,
+        central_radius=ureg.R_sun,
+        radial_velocity_semiamplitude=ureg.R_sun / ureg.d,
+        parallax=ureg.arcsec,
+    )
+    def __init__(
+        self,
+        central: Optional[Central] = None,
         *,
-        period: Optional[Scalar] = None,
-        semimajor: Optional[Scalar] = None,
-        mass: Optional[Scalar] = None,
-        central: Optional[KeplerianCentral] = None,
-        central_radius: Optional[Scalar] = None,
-    ) -> KeplerianCentral:
-        if period is None and semimajor is None:
-            raise ValueError("Either a period or a semimajor axis must be provided")
-
-        # When both period and semimajor axis are provided, we set up the
-        # central with the density implied by these parameters
-        if period is not None and semimajor is not None:
-            if central is not None:
-                raise ValueError(
-                    "Cannot specify both period and semimajor axis when also "
-                    "providing a central body"
+        time_transit: Optional[Quantity] = None,
+        time_peri: Optional[Quantity] = None,
+        period: Optional[Quantity] = None,
+        semimajor: Optional[Quantity] = None,
+        inclination: Optional[Quantity] = None,
+        impact_param: Optional[Quantity] = None,
+        eccentricity: Optional[Quantity] = None,
+        omega_peri: Optional[Quantity] = None,
+        sin_omega_peri: Optional[Quantity] = None,
+        cos_omega_peri: Optional[Quantity] = None,
+        asc_node: Optional[Quantity] = None,
+        sin_asc_node: Optional[Quantity] = None,
+        cos_asc_node: Optional[Quantity] = None,
+        mass: Optional[Quantity] = None,
+        radius: Optional[Quantity] = None,
+        central_radius: Optional[Quantity] = None,
+        radial_velocity_semiamplitude: Optional[Quantity] = None,
+        parallax: Optional[Quantity] = None,
+    ):
+        # Handle the special case when passing both `period` and `semimajor`.
+        # This occurs sometimes when doing transit fits, and we want to fit for
+        # the "photoeccentric effect". In this case, the central ends up with an
+        # implied density.
+        if central is None:
+            if period is not None and semimajor is not None:
+                central = Central.from_orbital_properties(
+                    period=period,
+                    semimajor=semimajor,
+                    radius=central_radius,
+                    body_mass=mass,
                 )
-            central = KeplerianCentral.from_orbital_properties(
-                period=period,
-                semimajor=semimajor,
-                radius=central_radius,
-                body_mass=mass,
-            )
+                semimajor = None
+            else:
+                central = Central()
+        self.central = central
 
-        return (
-            KeplerianCentral.init(radius=central_radius) if central is None else central
-        )
-
-    @classmethod
-    def init(
-        cls,
-        *,
-        time_transit: Optional[Scalar] = None,
-        time_peri: Optional[Scalar] = None,
-        period: Optional[Scalar] = None,
-        semimajor: Optional[Scalar] = None,
-        inclination: Optional[Scalar] = None,
-        impact_param: Optional[Scalar] = None,
-        eccentricity: Optional[Scalar] = None,
-        omega_peri: Optional[Scalar] = None,
-        sin_omega_peri: Optional[Scalar] = None,
-        cos_omega_peri: Optional[Scalar] = None,
-        asc_node: Optional[Scalar] = None,
-        sin_asc_node: Optional[Scalar] = None,
-        cos_asc_node: Optional[Scalar] = None,
-        mass: Optional[Scalar] = None,
-        radius: Optional[Scalar] = None,
-        central: Optional[KeplerianCentral] = None,
-        central_radius: Optional[Scalar] = None,
-    ) -> "KeplerianBody":
-        central = cls._central_from_orbital_properties(
-            period=period,
-            semimajor=semimajor,
-            mass=mass,
-            central=central,
-            central_radius=central_radius,
-        )
-        if central.shape != ():
-            raise ValueError(
-                "The central body for a 'KeplerianBody' must have scalar "
-                "parameters; for multi-planet systems, use 'jax.vmap'"
-            )
-
-        # Check the input arguments
+        # Check that all the input arguments have the right shape
         provided_input_arguments = [
             arg
             for arg in (
@@ -228,25 +192,41 @@ class KeplerianBody(NamedTuple):
                 mass,
                 radius,
                 central_radius,
+                radial_velocity_semiamplitude,
+                parallax,
             )
             if arg is not None
         ]
-        dtype = jnp.result_type(*provided_input_arguments, jnp.float32)
         if any(jnp.ndim(arg) != 0 for arg in provided_input_arguments):
             raise ValueError(
-                "All input arguments to 'KeplerianBody.init' must be scalars; "
-                "for multi-planet systems, use 'jax.vmap'"
+                "All input arguments to 'Body' must be scalars; "
+                "for multi-planet systems, use a 'System'"
             )
 
+        # Save the input mass and radius
+        self.radius = radius
+        self.mass = mass
+        self.radial_velocity_semiamplitude = radial_velocity_semiamplitude
+        self.parallax = parallax
+
         # Work out the period and semimajor axis to be consistent
-        total_mass = central.mass + mass if mass is not None else central.mass
-        mass_factor = GRAVITATIONAL_CONSTANT * total_mass
+        mass_factor = ureg.gravitational_constant * self.total_mass
         if semimajor is None:
-            if TYPE_CHECKING:
-                assert period is not None
-            semimajor = (mass_factor * period**2) ** (1.0 / 3)
+            if period is None:
+                raise ValueError(
+                    "Either `period` or `semimajor` must be specified when constructing "
+                    "a Keplerian 'Body'"
+                )
+            self.semimajor = jnpu.cbrt(mass_factor * period**2 / (4 * jnp.pi**2))
+            self.period = period
         elif period is None:
-            period = semimajor**1.5 / jnp.sqrt(mass_factor)
+            self.semimajor = semimajor
+            self.period = 2 * jnp.pi * semimajor * jnpu.sqrt(semimajor / mass_factor)
+        else:
+            raise ValueError(
+                "`period` or `semimajor` cannot both be specified when constructing "
+                "a Keplerian 'Body'"
+            )
 
         # Handle treatment and normalization of angles
         if omega_peri is not None:
@@ -254,154 +234,106 @@ class KeplerianBody(NamedTuple):
                 raise ValueError(
                     "Cannot specify both omega_peri and sin_omega_peri or cos_omega_peri"
                 )
-            sin_omega_peri = jnp.sin(omega_peri)
-            cos_omega_peri = jnp.cos(omega_peri)
+            self.sin_omega_peri = jnpu.sin(omega_peri)
+            self.cos_omega_peri = jnpu.cos(omega_peri)
         elif (sin_omega_peri is None) != (cos_omega_peri is None):
             raise ValueError("Must specify both sin_omega_peri and cos_omega_peri")
+        else:
+            self.sin_omega_peri = sin_omega_peri
+            self.cos_omega_peri = cos_omega_peri
 
         if asc_node is not None:
             if sin_asc_node is not None or cos_asc_node is not None:
                 raise ValueError(
                     "Cannot specify both asc_node and sin_asc_node or cos_asc_node"
                 )
-            sin_asc_node = jnp.sin(asc_node)
-            cos_asc_node = jnp.cos(asc_node)
+            self.sin_asc_node = jnpu.sin(asc_node)
+            self.cos_asc_node = jnpu.cos(asc_node)
         elif (sin_asc_node is None) != (cos_asc_node is None):
             raise ValueError("Must specify both sin_asc_node and cos_asc_node")
+        else:
+            self.sin_asc_node = sin_asc_node
+            self.cos_asc_node = cos_asc_node
 
         # Handle eccentric and circular orbits
+        self.eccentricity = eccentricity
         if eccentricity is None:
             if sin_omega_peri is not None:
                 raise ValueError("Cannot specify omega_peri without eccentricity")
 
-            M0 = jnp.full_like(period, 0.5 * jnp.pi)
+            M0 = jnpu.full_like(self.period, 0.5 * jnp.pi)
             incl_factor = 1
         else:
-            if sin_omega_peri is None:
+            if self.sin_omega_peri is None:
                 raise ValueError("Must specify omega_peri for eccentric orbits")
 
-            opsw = 1 + sin_omega_peri
-            E0 = 2 * jnp.arctan2(
-                jnp.sqrt(1 - eccentricity) * cos_omega_peri,
-                jnp.sqrt(1 + eccentricity) * opsw,
+            opsw = 1 + self.sin_omega_peri
+            E0 = 2 * jnpu.arctan2(
+                jnpu.sqrt(1 - eccentricity) * self.cos_omega_peri,
+                jnpu.sqrt(1 + eccentricity) * opsw,
             )
-            M0 = E0 - eccentricity * jnp.sin(E0)
+            M0 = E0 - eccentricity * jnpu.sin(E0)
 
             ome2 = 1 - eccentricity**2
-            incl_factor = (1 + eccentricity * sin_omega_peri) / ome2
+            incl_factor = (1 + eccentricity * self.sin_omega_peri) / ome2
 
         # Handle inclined orbits
-        dcosidb = incl_factor * central.radius / semimajor
+        dcosidb = incl_factor * central.radius / self.semimajor
         if impact_param is not None:
             if inclination is not None:
                 raise ValueError("Cannot specify both inclination and impact_param")
-            cos_inclination = dcosidb * impact_param
-            sin_inclination = jnp.sqrt(1 - cos_inclination**2)
+            self.impact_param = impact_param
+            self.cos_inclination = dcosidb * impact_param
+            self.sin_inclination = jnpu.sqrt(1 - self.cos_inclination**2)
         elif inclination is not None:
-            cos_inclination = jnp.cos(inclination)
-            sin_inclination = jnp.sin(inclination)
-            impact_param = cos_inclination / dcosidb
+            self.cos_inclination = jnpu.cos(inclination)
+            self.sin_inclination = jnpu.sin(inclination)
+            self.impact_param = self.cos_inclination / dcosidb
         else:
-            impact_param = jnp.zeros_like(period)
-            cos_inclination = jnp.zeros_like(period)
-            sin_inclination = jnp.ones_like(period)
+            self.impact_param = jnpu.zeros_like(self.period)
+            self.cos_inclination = jnpu.zeros_like(self.period)
+            self.sin_inclination = jnpu.ones_like(self.period)
 
         # Work out all the relevant reference times
-        time_ref = -M0 * period / (2 * jnp.pi)
+        self.time_ref = -M0 * self.period / (2 * jnp.pi)
         if time_transit is not None and time_peri is not None:
             raise ValueError("Cannot specify both time_transit or time_peri")
         elif time_transit is not None:
-            time_peri = time_transit + time_ref
+            self.time_transit = time_transit
         elif time_peri is not None:
-            time_transit = time_peri - time_ref
+            self.time_transit = time_peri - self.time_ref
         else:
-            time_transit = jnp.zeros_like(period)
-            time_peri = time_ref
-
-        return cls(
-            central=central,
-            time_ref=jnp.asarray(time_ref, dtype=dtype),
-            time_transit=jnp.asarray(time_transit, dtype=dtype),
-            period=jnp.asarray(period, dtype=dtype),
-            semimajor=jnp.asarray(semimajor, dtype=dtype),
-            sin_inclination=jnp.asarray(sin_inclination, dtype=dtype),
-            cos_inclination=jnp.asarray(cos_inclination, dtype=dtype),
-            impact_param=jnp.asarray(impact_param, dtype=dtype),
-            mass=jnp.asarray(0, dtype=dtype)
-            if mass is None
-            else jnp.asarray(mass, dtype=dtype),
-            radius=jnp.asarray(0, dtype=dtype)
-            if radius is None
-            else jnp.asarray(radius, dtype=dtype),
-            eccentricity=None
-            if eccentricity is None
-            else jnp.asarray(eccentricity, dtype=dtype),
-            sin_omega_peri=None
-            if sin_omega_peri is None
-            else jnp.asarray(sin_omega_peri, dtype=dtype),
-            cos_omega_peri=None
-            if cos_omega_peri is None
-            else jnp.asarray(cos_omega_peri, dtype=dtype),
-            sin_asc_node=None
-            if sin_asc_node is None
-            else jnp.asarray(sin_asc_node, dtype=dtype),
-            cos_asc_node=None
-            if cos_asc_node is None
-            else jnp.asarray(cos_asc_node, dtype=dtype),
-        )
-
-    @classmethod
-    def circular_from_duration(
-        cls,
-        *,
-        period: Scalar,
-        duration: Scalar,
-        impact_param: Scalar,
-        radius: Scalar,
-        mass: Optional[Scalar] = None,
-        central: Optional[KeplerianCentral] = None,
-        central_radius: Optional[KeplerianCentral] = None,
-        **kwargs: Any,
-    ) -> "KeplerianBody":
-        central = cls._central_from_orbital_properties(
-            period=period,
-            mass=mass,
-            central=central,
-            central_radius=central_radius,
-        )
-
-        # Get the semimajor axis implied by the duration, period, and impact
-        # parameter
-        b2 = jnp.square(impact_param)
-        opk2 = jnp.square(1 + radius / central.radius)
-        phi = jnp.pi * duration / period
-        sinp = jnp.sin(phi)
-        cosp = jnp.cos(phi)
-        semimajor = jnp.sqrt(opk2 - b2 * cosp**2) / sinp
-
-        central = KeplerianCentral.from_orbital_properties(
-            period=period,
-            semimajor=semimajor,
-            radius=central_radius,
-            body_mass=mass,
-        )
-
-        return cls.init(
-            period=period,
-            impact_param=impact_param,
-            radius=radius,
-            mass=mass,
-            central=central,
-            **kwargs,
-        )
+            self.time_transit = jnpu.zeros_like(self.period)
 
     @property
-    def central_radius(self) -> Scalar:
+    def shape(self) -> tuple[int, ...]:
+        return self.period.shape
+
+    @property
+    def central_radius(self) -> Quantity:
         return self.central.radius
 
+    @property
+    def time_peri(self) -> Quantity:
+        return self.time_transit + self.time_ref  # type: ignore
+
+    @property
+    def inclination(self) -> Quantity:
+        return jnpu.arctan2(self.sin_inclination, self.cos_inclination)
+
+    @property
+    def omega_peri(self) -> Optional[Quantity]:
+        if self.eccentricity is None:
+            return None
+        return jnpu.arctan2(self.sin_omega_peri, self.cos_omega_peri)
+
+    @property
+    def total_mass(self) -> Quantity:
+        return self.central.mass if self.mass is None else self.mass + self.central.mass
+
     def position(
-        self, t: Scalar, parallax: Optional[Scalar] = None
-    ) -> tuple[Scalar, Scalar, Scalar]:
+        self, t: Quantity, parallax: Optional[Quantity] = None
+    ) -> tuple[Quantity, Quantity, Quantity]:
         """This body's position in the barycentric frame
 
         Args:
@@ -417,8 +349,8 @@ class KeplerianBody(NamedTuple):
         )[0]
 
     def central_position(
-        self, t: Scalar, parallax: Optional[Scalar] = None
-    ) -> tuple[Scalar, Scalar, Scalar]:
+        self, t: Quantity, parallax: Optional[Quantity] = None
+    ) -> tuple[Quantity, Quantity, Quantity]:
         """The central's position in the barycentric frame
 
         Args:
@@ -434,8 +366,8 @@ class KeplerianBody(NamedTuple):
         )[0]
 
     def relative_position(
-        self, t: Scalar, parallax: Optional[Scalar] = None
-    ) -> tuple[Scalar, Scalar, Scalar]:
+        self, t: Quantity, parallax: Optional[Quantity] = None
+    ) -> tuple[Quantity, Quantity, Quantity]:
         """This body's position relative to the central in the X,Y,Z frame
 
         Args:
@@ -446,12 +378,12 @@ class KeplerianBody(NamedTuple):
             ``R_sun``.
         """
         return self._get_position_and_velocity(
-            t, semimajor=-self.semimajor, parallax=parallax
+            t, semimajor=-self.semimajor, parallax=parallax  # type: ignore
         )[0]
 
     def relative_angles(
-        self, t: Scalar, parallax: Optional[Scalar] = None
-    ) -> tuple[Scalar, Scalar]:
+        self, t: Quantity, parallax: Optional[Quantity] = None
+    ) -> tuple[Quantity, Quantity]:
         """This body's relative position to the central in the sky plane, in
         separation, position angle coordinates
 
@@ -463,13 +395,13 @@ class KeplerianBody(NamedTuple):
             east of north) of the planet relative to the star.
         """
         X, Y, _ = self.relative_position(t, parallax=parallax)[0]
-        rho = jnp.sqrt(X**2 + Y**2)
-        theta = jnp.arctan2(Y, X)
-        return (rho, theta)
+        rho = jnpu.sqrt(X**2 + Y**2)
+        theta = jnpu.arctan2(Y, X)
+        return rho, theta
 
     def velocity(
-        self, t: Scalar, semiamplitude: Optional[Scalar] = None
-    ) -> tuple[Scalar, Scalar, Scalar]:
+        self, t: Quantity, semiamplitude: Optional[Quantity] = None
+    ) -> tuple[Quantity, Quantity, Quantity]:
         """This body's velocity in the barycentric frame
 
         Args:
@@ -484,14 +416,14 @@ class KeplerianBody(NamedTuple):
             ``M_sun/day``.
         """
         if semiamplitude is None:
-            mass = -self.central.mass
+            mass: Quantity = -self.central.mass  # type: ignore
             return self._get_position_and_velocity(t, mass=mass)[1]
         k = -semiamplitude * self.central.mass / self.mass
         return self._get_position_and_velocity(t, semiamplitude=k)[1]
 
     def central_velocity(
-        self, t: Scalar, semiamplitude: Optional[Scalar] = None
-    ) -> tuple[Scalar, Scalar, Scalar]:
+        self, t: Quantity, semiamplitude: Optional[Quantity] = None
+    ) -> tuple[Quantity, Quantity, Quantity]:
         """The central's velocity in the barycentric frame
 
         Args:
@@ -511,8 +443,8 @@ class KeplerianBody(NamedTuple):
         return v
 
     def relative_velocity(
-        self, t: Scalar, semiamplitude: Optional[Scalar] = None
-    ) -> tuple[Scalar, Scalar, Scalar]:
+        self, t: Quantity, semiamplitude: Optional[Quantity] = None
+    ) -> tuple[Quantity, Quantity, Quantity]:
         """This body's velocity relative to the central
 
         Args:
@@ -527,14 +459,15 @@ class KeplerianBody(NamedTuple):
             ``M_sun/day``.
         """
         if semiamplitude is None:
-            return self._get_position_and_velocity(t, mass=-self.total_mass)[1]
+            mass: Quantity = -self.total_mass  # type: ignore
+            return self._get_position_and_velocity(t, mass=mass)[1]
         k = -semiamplitude * self.total_mass / self.mass
         _, v = self._get_position_and_velocity(t, semiamplitude=k)
         return v
 
     def radial_velocity(
-        self, t: Scalar, semiamplitude: Optional[Scalar] = None
-    ) -> Scalar:
+        self, t: Quantity, semiamplitude: Optional[Quantity] = None
+    ) -> Quantity:
         """Get the radial velocity of the central
 
         .. note:: The convention is that positive `z` points *towards* the
@@ -551,20 +484,21 @@ class KeplerianBody(NamedTuple):
         Returns:
             The reflex radial velocity evaluated at ``t``.
         """
-        return -self.central_velocity(t, semiamplitude=semiamplitude)[2]
+        return -self.central_velocity(t, semiamplitude=semiamplitude)[2]  # type: ignore
 
-    def _warp_times(self, t: Scalar) -> Scalar:
-        return t - self.time_transit
+    def _warp_times(self, t: Quantity) -> Quantity:
+        return t - self.time_transit  # type: ignore
 
-    def _get_true_anomaly(self, t: Scalar) -> tuple[Scalar, Scalar]:
+    @units.quantity_input(t=ureg.d)
+    def _get_true_anomaly(self, t: Quantity) -> tuple[Quantity, Quantity]:
         M = 2 * jnp.pi * (self._warp_times(t) - self.time_ref) / self.period
         if self.eccentricity is None:
-            return jnp.sin(M), jnp.cos(M)
-        return kepler(M, self.eccentricity)
+            return jnpu.sin(M), jnpu.cos(M)
+        return kepler(M.magnitude, self.eccentricity.magnitude)
 
     def _rotate_vector(
-        self, x: Scalar, y: Scalar, *, include_inclination: bool = True
-    ) -> tuple[Scalar, Scalar, Scalar]:
+        self, x: Quantity, y: Quantity, *, include_inclination: bool = True
+    ) -> tuple[Quantity, Quantity, Quantity]:
         """Apply the rotation matrices to go from orbit to observer frame
 
         In order,
@@ -603,33 +537,62 @@ class KeplerianBody(NamedTuple):
 
         # 3) rotate about z2 axis by Omega
         if self.cos_asc_node is None:
-            return (x2, y2, Z)
+            return x2, y2, Z  # type: ignore
 
         X = self.cos_asc_node * x2 - self.sin_asc_node * y2
         Y = self.sin_asc_node * x2 + self.cos_asc_node * y2
-        return X, Y, Z
+        return X, Y, Z  # type: ignore
 
+    @units.quantity_input(
+        t=ureg.d,
+        semimajor=ureg.R_sun,
+        mass=ureg.M_sun,
+        parallax=ureg.arcsec,
+    )
     def _get_position_and_velocity(
         self,
-        t: Scalar,
-        semimajor: Optional[Scalar] = None,
-        mass: Optional[Scalar] = None,
-        semiamplitude: Optional[Scalar] = None,
-        parallax: Optional[Scalar] = None,
-    ) -> tuple[tuple[Scalar, Scalar, Scalar], tuple[Scalar, Scalar, Scalar]]:
-        sinf, cosf = self._get_true_anomaly(t)
+        t: Quantity,
+        semimajor: Optional[Quantity] = None,
+        mass: Optional[Quantity] = None,
+        semiamplitude: Optional[Quantity] = None,
+        parallax: Optional[Quantity] = None,
+    ) -> tuple[
+        tuple[Quantity, Quantity, Quantity], tuple[Quantity, Quantity, Quantity]
+    ]:
+        if self.shape != ():
+            raise ValueError(
+                "Cannot evaluate the position or velocity of a Keplerian 'Body' "
+                "with multiple planets. Use 'jax.vmap' instead."
+            )
 
         if semiamplitude is None:
-            factor = 1 if mass is None else mass
-            factor *= 1 if parallax is None else parallax * AU_PER_R_SUN
-            k0 = factor * self._baseline_rv_semiamplitude
+            semiamplitude = self.radial_velocity_semiamplitude
+
+        if parallax is None:
+            parallax = self.parallax
+
+        if semiamplitude is None:
+            if self.radial_velocity_semiamplitude is None:
+                m = 1 * ureg.M_sun if mass is None else mass
+                k0 = 2 * jnp.pi * self.semimajor * m / (self.total_mass * self.period)
+                if self.eccentricity is not None:
+                    k0 /= jnpu.sqrt(1 - self.eccentricity**2)
+            else:
+                k0 = self.radial_velocity_semiamplitude
+
+            if parallax is not None:
+                k0 = k0.to(ureg.au / ureg.d).magnitude * parallax / ureg.day
         else:
             k0 = semiamplitude
 
         r0 = 1
         if semimajor is not None:
-            r0 *= semimajor if parallax is None else semimajor * parallax * AU_PER_R_SUN
+            if parallax is None:
+                r0 = semimajor
+            else:
+                r0 = semimajor.to(ureg.au).magnitude * parallax
 
+        sinf, cosf = self._get_true_anomaly(t)
         if self.eccentricity is None:
             v1, v2 = -k0 * sinf, k0 * cosf
         else:
@@ -641,71 +604,90 @@ class KeplerianBody(NamedTuple):
             v1, v2, include_inclination=semiamplitude is None
         )
 
+        # In the case a semiamplitude was passed without units, we strip the
+        # units of the output
+        if semiamplitude is not None and not (
+            hasattr(semiamplitude, "_magnitude") and hasattr(semiamplitude, "_units")
+        ):
+            vx = vx.magnitude
+            vy = vy.magnitude
+            vz = vz.magnitude
+
         return (x, y, z), (vx, vy, vz)
 
 
-class KeplerianOrbit(NamedTuple):
-    bodies: KeplerianBody
+class System(eqx.Module):
+    central: Central
+    bodies: tuple[Body, ...]
+    _body_stack: Optional[Body]
 
-    def __len__(self) -> int:
-        return len(self.bodies.period)
+    def __init__(
+        self, central: Optional[Central] = None, *, bodies: tuple[Body, ...] = ()
+    ):
+        self.central = Central() if central is None else central
+        self.bodies = bodies
+
+        # If all the bodies have matching Pytree structure then we save a
+        # stacked version that we can use for vmaps below. This allows for more
+        # efficient evaluations in the case of multiple bodies.
+        self._body_stack = None
+        if len(bodies):
+            spec = list(map(jax.tree_util.tree_structure, bodies))
+            if spec.count(spec[0]) == len(spec):
+                self._body_stack = jax.tree_util.tree_map(
+                    lambda *x: jnp.stack(x, axis=0), *bodies
+                )
 
     @property
     def shape(self) -> tuple[int, ...]:
-        return self.bodies.shape
+        return (len(self.bodies),)
 
     @property
-    def radius(self) -> Scalar:
-        return self.bodies.radius
+    def radius(self) -> Quantity:
+        return jax.tree_util.tree_map(
+            lambda *x: jnp.stack(x, axis=0),
+            *[body.radius for body in self.bodies],
+        )
 
     @property
-    def central_radius(self) -> Scalar:
-        return self.bodies.central.radius
-
-    @classmethod
-    def init(
-        cls, central: Optional[KeplerianCentral] = None, **body_args: Scalar
-    ) -> "KeplerianOrbit":
-        names, values = zip(*body_args.items())
-        values = jnp.broadcast_arrays(*(jnp.atleast_1d(x) for x in values))
-        bodies = jax.vmap(partial(KeplerianBody.init, central=central))(
-            **dict(zip(names, values))
-        )
-        return cls(bodies=bodies)
-
-    def position(
-        self, t: Scalar, parallax: Optional[Scalar] = None
-    ) -> tuple[Scalar, Scalar, Scalar]:
-        return jax.vmap(partial(KeplerianBody.position, t=t, parallax=parallax))(
-            self.bodies
+    def central_radius(self) -> Quantity:
+        return jax.tree_util.tree_map(
+            lambda *x: jnp.stack(x, axis=0),
+            *[body.central_radius for body in self.bodies],
         )
 
-    def central_position(
-        self, t: Scalar, parallax: Optional[Scalar] = None
-    ) -> tuple[Scalar, Scalar, Scalar]:
-        return jax.vmap(
-            partial(KeplerianBody.central_position, t=t, parallax=parallax)
-        )(self.bodies)
+    def add_body(self, body: Optional[Body] = None, **kwargs: Any) -> "System":
+        if body is None:
+            body = Body(self.central, **kwargs)
+        return System(central=self.central, bodies=self.bodies + (body,))
 
-    def relative_position(
-        self, t: Scalar, parallax: Optional[Scalar] = None
-    ) -> tuple[Scalar, Scalar, Scalar]:
-        return jax.vmap(
-            partial(KeplerianBody.relative_position, t=t, parallax=parallax)
-        )(self.bodies)
-
-    def velocity(self, t: Scalar) -> tuple[Scalar, Scalar, Scalar]:
-        return jax.vmap(partial(KeplerianBody.velocity, t=t))(self.bodies)
-
-    def central_velocity(self, t: Scalar) -> tuple[Scalar, Scalar, Scalar]:
-        return jax.vmap(partial(KeplerianBody.central_velocity, t=t))(self.bodies)
-
-    def relative_velocity(self, t: Scalar) -> tuple[Scalar, Scalar, Scalar]:
-        return jax.vmap(partial(KeplerianBody.relative_velocity, t=t))(self.bodies)
-
-    def radial_velocity(
-        self, t: Scalar, semiamplitude: Optional[Scalar] = None
-    ) -> tuple[Scalar, Scalar, Scalar]:
-        return jax.vmap(partial(KeplerianBody.radial_velocity, t=t))(
-            self.bodies, semiamplitude=semiamplitude
+    def _body_vmap(self, func_name: str, t: Quantity) -> Any:
+        if self._body_stack is not None:
+            return jax.vmap(getattr(Body, func_name), in_axes=(0, None))(
+                self._body_stack, t
+            )
+        return jax.tree_util.tree_map(
+            lambda *x: jnp.stack(x, axis=0),
+            *[getattr(body, func_name)(t) for body in self.bodies],
         )
+
+    def position(self, t: Quantity) -> tuple[Quantity, Quantity, Quantity]:
+        return self._body_vmap("position", t)
+
+    def central_position(self, t: Quantity) -> tuple[Quantity, Quantity, Quantity]:
+        return self._body_vmap("central_position", t)
+
+    def relative_position(self, t: Quantity) -> tuple[Quantity, Quantity, Quantity]:
+        return self._body_vmap("relative_position", t)
+
+    def velocity(self, t: Quantity) -> tuple[Quantity, Quantity, Quantity]:
+        return self._body_vmap("velocity", t)
+
+    def central_velocity(self, t: Quantity) -> tuple[Quantity, Quantity, Quantity]:
+        return self._body_vmap("central_velocity", t)
+
+    def relative_velocity(self, t: Quantity) -> tuple[Quantity, Quantity, Quantity]:
+        return self._body_vmap("relative_velocity", t)
+
+    def radial_velocity(self, t: Quantity) -> Quantity:
+        return self._body_vmap("radial_velocity", t)

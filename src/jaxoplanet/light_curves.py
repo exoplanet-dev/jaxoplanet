@@ -1,30 +1,33 @@
 from functools import partial
-from typing import NamedTuple, Optional
+from typing import Optional
 
+import equinox as eqx
 import jax.numpy as jnp
+import jpu.numpy as jnpu
 
+from jaxoplanet import units
 from jaxoplanet.core.limb_dark import light_curve
 from jaxoplanet.proto import LightCurveOrbit
-from jaxoplanet.types import Array
+from jaxoplanet.types import Array, Quantity
+from jaxoplanet.units import unit_registry as ureg
 
 
-class LimbDarkLightCurve(NamedTuple):
+class LimbDarkLightCurve(eqx.Module):
     u: Array
 
-    @classmethod
-    def init(cls, *u: Array) -> "LimbDarkLightCurve":
+    def __init__(self, *u: Array):
         if u:
-            u = jnp.concatenate([jnp.atleast_1d(u0) for u0 in u], axis=0)
+            self.u = jnp.concatenate([jnp.atleast_1d(u0) for u0 in u], axis=0)
         else:
-            u = jnp.array([])
-        return cls(u=u)
+            self.u = jnp.array([])
 
+    @units.quantity_input(t=ureg.d, texp=ureg.s)
     def light_curve(
         self,
         orbit: LightCurveOrbit,
-        t: Array,
+        t: Quantity,
         *,
-        texp: Optional[Array] = None,
+        texp: Optional[Quantity] = None,
         oversample: Optional[int] = 7,
         texp_order: Optional[int] = 0,
         limbdark_order: Optional[int] = 10,
@@ -57,7 +60,7 @@ class LimbDarkLightCurve(NamedTuple):
                 which implements Gauss-Legendre quadrature. Defaults to 10.
         """
 
-        t = jnp.atleast_1d(t)
+        t = jnpu.atleast_1d(t)
 
         # Handle exposure time integration
         if texp is None:
@@ -89,18 +92,18 @@ class LimbDarkLightCurve(NamedTuple):
             if texp.ndim == 0:  # Unnecessary since I check the shapes above?
                 dt = texp * dt
             else:
-                dt = jnp.outer(texp, dt)
-            tgrid = (t.reshape(t.size, 1) + dt).flatten()
+                dt = jnpu.outer(texp, dt)
+            tgrid = (jnpu.reshape(t, newshape=(t.size, 1)) + dt).flatten()
 
         # Evaluate the coordinates of the transiting body
         x, y, z = orbit.relative_position(tgrid)
-        b = jnp.sqrt(x**2 + y**2)
+        b = jnpu.sqrt(x**2 + y**2)
         r_star = orbit.central_radius
         r = orbit.radius / r_star
         lc_func = partial(light_curve, self.u, order=limbdark_order)
         if orbit.shape == ():
             b /= r_star
-            lc = lc_func(b, r)
+            lc: Array = lc_func(b.magnitude, r.magnitude)
         else:
             b /= r_star[..., None]
             lc = jnp.vectorize(lc_func, signature="(k),()->(k)")(b, r)
@@ -108,8 +111,6 @@ class LimbDarkLightCurve(NamedTuple):
 
         # Integrate over exposure time
         if texp is not None:
-            lc = lc[0]
             lc = jnp.reshape(lc, newshape=(t.size, oversample))
-            stencil = jnp.reshape(stencil, newshape=stencil.shape + (1,))
-            lc = (lc @ stencil).T
+            lc = jnp.dot(lc, stencil)
         return lc

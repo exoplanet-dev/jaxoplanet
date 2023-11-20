@@ -1,36 +1,52 @@
 import math
 from collections import defaultdict
+from functools import partial
 
+import jax.numpy as jnp
 import numpy as np
+import scipy.sparse.linalg
+from jax.experimental.sparse import BCOO
 from scipy.special import gamma
+
+try:
+    from scipy.sparse import csc_array
+except ImportError:
+    # With older versions of scipy, the data structures were called "matrices"
+    # not "arrays"; this allows us to support either.
+    from scipy.sparse import csc_matrix as csc_array
+
+
+def basis(lmax):
+    matrix = scipy.sparse.linalg.spsolve(A2_inv(lmax), A1(lmax))
+    if lmax > 0:
+        return BCOO.from_scipy_sparse(matrix)
+    else:
+        return BCOO.fromdense(np.squeeze(matrix)[None, None])
 
 
 def A1(lmax):
-    """Note: The normalization here matches the starry paper, but not the
-    code. To get the code's normalization, multiply the result by 2 /
-    sqrt(pi).
-    """
+    return _A_impl(lmax, p_Y) * 2 / np.sqrt(np.pi)
+
+
+def A2_inv(lmax):
+    return _A_impl(lmax, p_G)
+
+
+def _A_impl(lmax, func):
     n = (lmax + 1) ** 2
-    res = np.zeros((n, n))
+    data = []
+    row_ind = []
+    col_ind = []
     p = {ptilde(m): m for m in range(n)}
     n = 0
     for l in range(lmax + 1):
         for m in range(-l, l + 1):
-            p_Y(p, l, m, res[:, n])
+            idx, val = func(p, l, m, n)
+            data.extend(val)
+            row_ind.extend(idx)
+            col_ind.extend([n] * len(idx))
             n += 1
-    return res
-
-
-def A2_inv(lmax):
-    n = (lmax + 1) ** 2
-    res = np.zeros((n, n))
-    p = {ptilde(m): m for m in range(n)}
-    n = 0
-    for l in range(lmax + 1):
-        for _ in range(-l, l + 1):
-            p_G(p, n, res[:, n])
-            n += 1
-    return res
+    return csc_array((np.array(data), (row_ind, col_ind)), shape=(n, n))
 
 
 def ptilde(n):
@@ -116,12 +132,19 @@ def Ylm(l, m):
     return dict(res)
 
 
-def p_Y(p, l, m, res):
+def p_Y(p, l, m, n):
+    del n
+    indicies = []
+    data = []
     for k, v in Ylm(l, m).items():
         if k not in p:
             continue
-        res[p[k]] = v
-    return res
+        indicies.append(p[k])
+        data.append(v)
+    indicies = np.array(indicies, dtype=int)
+    data = np.array(data, dtype=float)
+    idx = np.argsort(indicies)
+    return indicies[idx], data[idx]
 
 
 def gtilde(n):
@@ -160,9 +183,77 @@ def gtilde(n):
     return res
 
 
-def p_G(p, n, res):
+def p_G(p, l, m, n):
+    del l, m
+    indicies = []
+    data = []
     for k, v in gtilde(n).items():
         if k not in p:
             continue
-        res[p[k]] = v
-    return res
+        indicies.append(p[k])
+        data.append(v)
+    indicies = np.array(indicies, dtype=int)
+    data = np.array(data, dtype=float)
+    idx = np.argsort(indicies)
+    return indicies[idx], data[idx]
+
+
+def poly_basis(deg):
+    N = (deg + 1) * (deg + 1)
+
+    @partial(jnp.vectorize, signature=f"(),(),()->({N})")
+    def impl(x, y, z):
+        xarr = [None for _ in range(N)]
+        yarr = [None for _ in range(N)]
+
+        # Ensures we get `nan`s off the disk
+        xterm = 1.0 + 0.0 * z
+        yterm = 1.0 + 0.0 * z
+
+        i0 = 0
+        di0 = 3
+        j0 = 0
+        dj0 = 2
+        for n in range(deg + 1):
+            i = i0
+            di = di0
+            xarr[i] = xterm
+            j = j0
+            dj = dj0
+            yarr[j] = yterm
+            i = i0 + di - 1
+            j = j0 + dj - 1
+            while i + 1 < N:
+                xarr[i] = xterm
+                xarr[i + 1] = xterm
+                di += 2
+                i += di
+                yarr[j] = yterm
+                yarr[j + 1] = yterm
+                dj += 2
+                j += dj - 1
+            xterm *= x
+            i0 += 2 * n + 1
+            di0 += 2
+            yterm *= y
+            j0 += 2 * (n + 1) + 1
+            dj0 += 2
+
+        assert all(v is not None for v in xarr)
+        assert all(v is not None for v in yarr)
+
+        inds = []
+        n = 0
+        for ell in range(deg + 1):
+            for m in range(-ell, ell + 1):
+                if (ell + m) % 2 != 0:
+                    inds.append(n)
+                n += 1
+
+        p = jnp.array(xarr) * jnp.array(yarr)
+        if len(inds):
+            return p.at[np.array(inds)].multiply(z)
+        else:
+            return p
+
+    return impl

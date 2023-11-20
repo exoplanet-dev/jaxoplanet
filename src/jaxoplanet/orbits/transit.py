@@ -1,104 +1,93 @@
-from typing import NamedTuple, Optional
+from typing import Optional
 
-import jax
+import equinox as eqx
 import jax.numpy as jnp
+import jpu.numpy as jnpu
 
-from jaxoplanet.types import Array
+from jaxoplanet import units
+
+# from jaxoplanet.types import Array
+from jaxoplanet.types import Quantity
+from jaxoplanet.units import unit_registry as ureg
 
 
-class TransitOrbit(NamedTuple):
-    period: Array
-    speed: Array
-    duration: Array
-    time_transit: Array
-    impact_param: Array
-    radius: Array
+class TransitOrbit(eqx.Module):
+    period: Quantity = units.field(units=ureg.d)
+    speed: Quantity = units.field(units=1 / ureg.d)
+    duration: Quantity = units.field(units=ureg.d)
+    time_transit: Quantity = units.field(units=ureg.d)
+    impact_param: Quantity = units.field(units=ureg.dimensionless)
+    radius: Quantity = units.field(units=ureg.dimensionless)
 
-    @property
-    def shape(self) -> tuple[int, ...]:
-        return self.period.shape
-
-    @classmethod
-    def init(
-        cls,
+    @units.quantity_input(
+        period=ureg.d,
+        duration=ureg.d,
+        speed=1 / ureg.d,
+        time_transit=ureg.d,
+        impact_param=ureg.dimensionless,
+        radius=ureg.dimensionless,
+    )
+    def __init__(
+        self,
         *,
-        period: Array,
-        duration: Optional[Array] = None,
-        speed: Optional[Array] = None,
-        time_transit: Optional[Array] = None,
-        impact_param: Optional[Array] = None,
-        radius: Optional[Array] = None,
-    ) -> "TransitOrbit":
+        period: Quantity,
+        duration: Optional[Quantity] = None,
+        speed: Optional[Quantity] = None,
+        time_transit: Optional[Quantity] = None,
+        impact_param: Optional[Quantity] = None,
+        radius: Optional[Quantity] = None,
+    ):
         if duration is None:
             if speed is None:
                 raise ValueError("Either 'speed' or 'duration' must be provided")
-            period, speed = jnp.broadcast_arrays(
-                jnp.atleast_1d(period), jnp.atleast_1d(speed)
-            )
+            self.period = period
+            self.speed = speed
         else:
-            period, duration = jnp.broadcast_arrays(
-                jnp.atleast_1d(period), jnp.atleast_1d(duration)
-            )
+            self.period = period
+            self.duration = duration
 
-        shape = period.shape
-        time_transit = (
-            jnp.zeros_like(period)
-            if time_transit is None
-            else jnp.broadcast_to(time_transit, shape)
-        )
-        impact_param = (
-            jnp.zeros_like(period)
-            if impact_param is None
-            else jnp.broadcast_to(impact_param, shape)
-        )
-        radius = (
-            jnp.zeros_like(period)
-            if radius is None
-            else jnp.broadcast_to(radius, shape)
-        )
+        if time_transit is None:
+            self.time_transit = 0.0 * ureg.d
+        else:
+            self.time_transit = time_transit
 
-        x2 = (1 + radius) ** 2 - impact_param**2
+        if impact_param is None:
+            self.impact_param = 0.0 * ureg.dimensionless
+        else:
+            self.impact_param = impact_param
+
+        if radius is None:
+            self.radius = 0.0 * ureg.dimensionless
+        else:
+            self.radius = radius
+
+        x2 = jnpu.square(1 + self.radius) - jnpu.square(self.impact_param)
         if duration is None:
-            assert speed is not None
-            duration = 2 * jnp.sqrt(jnp.maximum(0, x2)) / speed
+            self.duration = 2 * jnpu.sqrt(jnpu.maximum(0, x2)) / self.speed
         else:
-            speed = 2 * jnp.sqrt(jnp.maximum(0, x2)) / duration
-
-        return cls(
-            period=period,
-            speed=speed,
-            duration=duration,
-            time_transit=time_transit,
-            impact_param=impact_param,
-            radius=radius,
-        )
+            self.speed = 2 * jnpu.sqrt(jnpu.maximum(0, x2)) / self.duration
 
     @property
-    def central_radius(self) -> Array:
-        return jnp.ones_like(self.period)
+    def shape(self) -> tuple[int, ...]:
+        return jnp.shape(self.period)
 
+    @property
+    def central_radius(self) -> Quantity:
+        return jnp.ones_like(self.period) * ureg.dimensionless
+
+    @units.quantity_input(t=ureg.d, parallax=ureg.arcsec)
     def relative_position(
-        self, t: Array, parallax: Optional[Array] = None
-    ) -> tuple[Array, Array, Array]:
+        self, t: Quantity, parallax: Optional[Quantity] = None
+    ) -> tuple[Quantity, Quantity, Quantity]:
         del parallax
 
-        def impl(
-            period: Array,
-            speed: Array,
-            duration: Array,
-            time_transit: Array,
-            impact_param: Array,
-            radius: Array,
-        ) -> tuple[Array, Array, Array]:
-            del radius
-            half_period = 0.5 * period
-            ref_time = time_transit - half_period
-            dt = (t - ref_time) % period - half_period
+        half_period = 0.5 * self.period
+        ref_time = self.time_transit - half_period
+        dt = jnpu.mod(t - ref_time, self.period) - half_period
 
-            x = speed * dt
-            y = jnp.broadcast_to(impact_param, dt.shape)
-            m = jnp.abs(dt) < 0.5 * duration
-            z = m * 1.0 - (~m) * 1.0
-            return x, y, z
+        x = self.speed * dt
+        y = jnpu.full_like(dt, self.impact_param)
+        m = jnpu.fabs(dt) < 0.5 * self.duration
+        z = (m * 1.0 - (~m) * 1.0) * ureg.dimensionless
 
-        return jax.vmap(impl)(*self)
+        return x, y, z

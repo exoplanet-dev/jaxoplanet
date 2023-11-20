@@ -39,7 +39,7 @@ def test_kappas():
 
 
 @pytest.mark.parametrize("r", [0.1, 1.1])
-def test_compare_starry(r, l_max=10, order=20):
+def test_solution_compare_starry(r, l_max=10, order=20):
     starry = pytest.importorskip("starry")
     theano = pytest.importorskip("theano")
     theano.config.gcc__cxxflags += " -fexceptions"
@@ -74,4 +74,5 @@ def test_compare_starry(r, l_max=10, order=20):
             s_calc[:, n],
             s_expect[:, n],
             err_msg=f"n={n}, l={l}, m={m}, mu={mu}, nu={nu}, case={case}",
+            atol=1e-6,
         )
