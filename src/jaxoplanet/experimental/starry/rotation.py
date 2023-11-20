@@ -67,9 +67,7 @@ def dot_rotation_matrix(ydeg, x, y, z, theta):
     return do_dot
 
 
-def right_project(ydeg, inc, obl, theta, x):
-    # np = jnp
-
+def right_project_axis_angle(inc, obl, theta):
     f = 0.5 * math.sqrt(2)
     si = jnp.sin(inc / 2)
     ci = jnp.cos(inc / 2)
@@ -90,7 +88,17 @@ def right_project(ydeg, inc, obl, theta, x):
 
     angle = 2 * jnp.arccos(f * arg)
 
+    return axis_x, axis_y, axis_z, angle
+
+
+def right_project(ydeg, inc, obl, theta, x):
+    axis_x, axis_y, axis_z, angle = right_project_axis_angle(inc, obl, theta)
     return dot_rotation_matrix(ydeg, axis_x, axis_y, axis_z, angle)(x)
+
+
+def left_project(ydeg, inc, obl, theta, x):
+    axis_x, axis_y, axis_z, angle = right_project_axis_angle(inc, obl, theta)
+    return dot_rotation_matrix(ydeg, -axis_x, -axis_y, -axis_z, angle)(x)
 
 
 @partial(jax.jit, static_argnums=(0,))
