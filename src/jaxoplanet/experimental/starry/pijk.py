@@ -18,8 +18,8 @@ class Pijk(eqx.Module):
 
     def __init__(self, data: Mapping[tuple[int, int, int], Array]):
         self.data = dict(data)
-        self.degree = max(self.lm(*ijk)[0] for ijk in data.keys())
-        self.diagonal = all(self.lm(*ijk)[1] == 0.0 for ijk in data.keys())
+        self.degree = max(self.ijk2lm(*ijk)[0] for ijk in data.keys())
+        self.diagonal = all(self.ijk2lm(*ijk)[1] == 0.0 for ijk in data.keys())
 
     @property
     def shape(self):
@@ -29,7 +29,8 @@ class Pijk(eqx.Module):
     def indices(self):
         return self.data.keys()
 
-    def lm(self, i, j, k):
+    @staticmethod
+    def ijk2lm(i, j, k):
         assert k in (0, 1)
 
         if k == 0:
@@ -44,8 +45,32 @@ class Pijk(eqx.Module):
 
         return l, m
 
+    @staticmethod
+    def n2lm(n):
+        l = int(np.floor(np.sqrt(n)))
+        m = n - l**2 - l
+        return l, m
+
+    @staticmethod
+    def lm2n(l, m):
+        return l**2 + l + m
+
+    @staticmethod
+    def lm2ijk(l, m):
+        mu = l - m
+        nu = l + m
+
+        if nu % 2 == 0:
+            return mu // 2, nu // 2, 0
+        else:
+            return (mu - 1) // 2, (nu - 1) // 2, 1
+
+    @staticmethod
+    def n2ijk(n):
+        return Pijk.lm2ijk(*Pijk.n2lm(n))
+
     def index(self, i, j, k):
-        l, m = self.lm(i, j, k)
+        l, m = self.ijk2lm(i, j, k)
         return int((l + 1) * l + m)
 
     def tosparse(self) -> BCOO:
@@ -55,6 +80,15 @@ class Pijk(eqx.Module):
 
     def todense(self) -> Array:
         return self.tosparse().todense()
+
+    @classmethod
+    def from_dense(cls, x: Array) -> "Pijk":
+        data = defaultdict(float)
+        for i in range(len(x)):
+            if x[i] != 0:
+                data[Pijk.n2ijk(i)] = x[i]
+
+        return cls(data)
 
     def __mul__(self, other: Any) -> "Pijk":
         if isinstance(other, Pijk):
