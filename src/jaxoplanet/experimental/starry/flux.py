@@ -3,7 +3,7 @@ import numpy as np
 
 from jaxoplanet.experimental.starry.basis import A1, basis
 from jaxoplanet.experimental.starry.solution import solution_vector
-from jaxoplanet.experimental.starry.wigner import dot_rotation_matrix
+from jaxoplanet.experimental.starry.rotation import dot_rotation_matrix
 
 
 def flux(deg, theta, xo, yo, zo, ro, inc, obl, y, u, f):
