@@ -82,11 +82,11 @@ class Pijk(eqx.Module):
         return self.tosparse().todense()
 
     @classmethod
-    def from_dense(cls, x: Array) -> "Pijk":
+    def from_dense(cls, x: Array, degree: int) -> "Pijk":
         data = defaultdict(float)
-        for i in range(len(x)):
-            if x[i] != 0:
-                data[Pijk.n2ijk(i)] = x[i]
+        n = (degree + 1) ** 2
+        for i in range(n):
+            data[Pijk.n2ijk(i)] = x[i]
 
         return cls(data)
 
