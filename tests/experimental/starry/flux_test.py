@@ -1,6 +1,7 @@
-import pytest
-import numpy as np
 import jax.numpy as jnp
+import numpy as np
+import pytest
+
 from jaxoplanet.experimental.starry.flux import flux
 from jaxoplanet.test_utils import assert_allclose
 

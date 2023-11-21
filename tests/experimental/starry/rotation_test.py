@@ -5,8 +5,8 @@ import pytest
 
 from jaxoplanet.experimental.starry.rotation import (
     dot_rotation_matrix,
-    right_project,
     left_project,
+    right_project,
 )
 from jaxoplanet.test_utils import assert_allclose
 
