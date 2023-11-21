@@ -1,33 +1,38 @@
 import jax.numpy as jnp
 import numpy as np
 
-from jaxoplanet.experimental.starry.basis import A1, basis
+from jaxoplanet.experimental.starry.basis import A1, A2_inv, U0
 from jaxoplanet.experimental.starry.solution import solution_vector
-from jaxoplanet.experimental.starry.rotation import dot_rotation_matrix
+from jaxoplanet.experimental.starry.rotation import left_project
+from jaxoplanet.experimental.starry.pijk import Pijk
 
 
+# TODO: figure out the sparse matrices (and Pijk) to avoid todense()
 def flux(deg, theta, xo, yo, zo, ro, inc, obl, y, u, f):
+    u_deg = len(u)
+    U = jnp.array([1, *u])
+    full_deg = deg + u_deg
     b = jnp.sqrt(jnp.square(xo) + jnp.square(yo))
     b_rot = jnp.logical_or(jnp.greater_equal(b, 1.0 + ro), jnp.less_equal(zo, 0.0))
     b_occ = jnp.logical_not(b_rot)
 
     # Occultation
     theta_z = jnp.arctan2(xo, yo)
-    sT = solution_vector(deg)(b, ro)
-    sTA = sT @ basis(deg)
-    sTAR = dot_rotation_matrix(deg, 0.0, 0.0, 1.0, theta_z)(sTA)
+    sT = solution_vector(full_deg)(b, ro)
+    sTA2 = jnp.linalg.solve(A2_inv(full_deg).T.todense(), sT.T).T
 
-    x = jnp.where(b_occ, sTAR, rTA1(deg))
+    # full rotation
+    rotated_y = left_project(deg, inc, obl, theta, theta_z, y)
 
-    x = dot_rotation_matrix(
-        deg, -jnp.cos(obl), -jnp.sin(obl), 0.0, -(0.5 * jnp.pi - inc)
-    )(x)
-    x = dot_rotation_matrix(deg, 0.0, 0.0, 1.0, obl)(x)
-    x = dot_rotation_matrix(deg, 1.0, 0.0, 0.0, -0.5 * jnp.pi)(x)
-    x = dot_rotation_matrix(deg, 0.0, 0.0, 1.0, theta)(x)
-    x = dot_rotation_matrix(deg, 1.0, 0.0, 0.0, 0.5 * jnp.pi)(x)
+    # limb darkening product
+    p_y = Pijk.from_dense(A1(deg).todense() @ rotated_y, degree=deg)
+    p_u = Pijk.from_dense(U @ U0(len(u), deg), degree=u_deg)
+    p_y = p_y * p_u
 
-    return x @ y
+    x = jnp.where(b_occ, sTA2, rT(full_deg))
+    norm = np.pi / (rT(u_deg) @ p_u.todense())
+
+    return (x @ p_y.todense()) * norm
 
 
 def rT(lmax):
