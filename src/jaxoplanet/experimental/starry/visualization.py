@@ -37,7 +37,7 @@ def rotation(inc, obl, theta):
     R = Rotation.from_rotvec(u)
     R *= Rotation.from_rotvec([0, 0, obl])
     R *= Rotation.from_rotvec([np.pi / 2, 0, 0])
-    R *= Rotation.from_rotvec([0, 0, theta])
+    R *= Rotation.from_rotvec([0, 0, -theta])
     return R
 
 
