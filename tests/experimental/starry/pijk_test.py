@@ -1,4 +1,3 @@
-import pytest
 from jaxoplanet.experimental.starry.pijk import Pijk
 
 

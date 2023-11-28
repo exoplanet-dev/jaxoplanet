@@ -1,4 +1,3 @@
-import math
 from collections import defaultdict
 from collections.abc import Mapping
 from typing import Any
@@ -8,6 +7,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from jax.experimental.sparse import BCOO
+
 from jaxoplanet.types import Array
 
 
