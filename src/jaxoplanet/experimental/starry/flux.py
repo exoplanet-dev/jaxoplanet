@@ -1,13 +1,12 @@
+import jax
 import jax.numpy as jnp
 import numpy as np
+import scipy
 
 from jaxoplanet.experimental.starry.basis import A1, U0, A2_inv
 from jaxoplanet.experimental.starry.pijk import Pijk
 from jaxoplanet.experimental.starry.rotation import left_project
 from jaxoplanet.experimental.starry.solution import solution_vector
-
-import jax
-import scipy
 
 
 # TODO: figure out the sparse matrices (and Pijk) to avoid todense()
