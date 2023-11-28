@@ -296,7 +296,6 @@ def u_p(p, l, m, n):
 
 
 def U0(udeg, ydeg):
-    assert udeg < ydeg
     n = (ydeg + 1) ** 2
     p = {ptilde(m): m for m in range(n)}
     P = np.zeros((udeg + 1, (ydeg + 1) ** 2))
