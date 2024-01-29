@@ -94,12 +94,16 @@ def test_keplerian_body_coordinates_match_batman(time, keplerian_body):
             float(keplerian_body.period.magnitude),
             float(keplerian_body.semimajor.magnitude),
             float(keplerian_body.inclination.magnitude),
-            float(keplerian_body.eccentricity.magnitude)
-            if keplerian_body.eccentricity
-            else 0.0,
-            float(keplerian_body.omega_peri.magnitude)
-            if keplerian_body.omega_peri
-            else 0.0,
+            (
+                float(keplerian_body.eccentricity.magnitude)
+                if keplerian_body.eccentricity
+                else 0.0
+            ),
+            (
+                float(keplerian_body.omega_peri.magnitude)
+                if keplerian_body.omega_peri
+                else 0.0
+            ),
             1,
             1,
         )
@@ -139,12 +143,16 @@ def test_keplerian_body_positions_small_star(time):
             float(keplerian_body.period.magnitude),
             float(keplerian_body.semimajor.magnitude),
             float(keplerian_body.inclination.magnitude),
-            float(keplerian_body.eccentricity.magnitude)
-            if keplerian_body.eccentricity
-            else 0.0,
-            float(keplerian_body.omega_peri.magnitude)
-            if keplerian_body.omega_peri
-            else 0.0,
+            (
+                float(keplerian_body.eccentricity.magnitude)
+                if keplerian_body.eccentricity
+                else 0.0
+            ),
+            (
+                float(keplerian_body.omega_peri.magnitude)
+                if keplerian_body.omega_peri
+                else 0.0
+            ),
             1,
             1,
         )
