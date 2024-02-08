@@ -43,7 +43,7 @@ class Central(eqx.Module):
             density (Optional[Quantity]): Density of central body [mass/length**3 unit].
         """
 
-        if radius is None and mass is None:  # shouldn't this fail anyway?
+        if radius is None and mass is None:
             radius = 1.0 * ureg.R_sun
             if density is None:
                 mass = 1.0 * ureg.M_sun
