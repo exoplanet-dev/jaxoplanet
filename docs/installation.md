@@ -59,7 +59,7 @@ pip install .
 
 You could install `jaxoplanet` and its depedencies with
 ```bash
-pip install . [docs]
+pip install ".[docs]"
 ```
 
 Follow these instructions to successfully install jax and jaxoplanet on your system.
