@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Callable, Tuple
+from typing import Callable
 
 import jax
 import jax.numpy as jnp
@@ -7,6 +7,7 @@ import numpy as np
 from scipy.special import binom, roots_legendre
 
 from jaxoplanet.types import Array
+from jaxoplanet.utils import zero_safe_sqrt
 
 
 @partial(jax.jit, static_argnames=("order",))
@@ -76,7 +77,7 @@ def greens_basis_transform(u: Array) -> Array:
     return jnp.stack(g[:-2])
 
 
-def kappas(b: Array, r: Array) -> Tuple[Array, Array, Array]:
+def kappas(b: Array, r: Array) -> tuple[Array, Array, Array]:
     b2 = jnp.square(b)
     factor = (r - 1) * (r + 1)
     cond = jnp.logical_and(jnp.greater(b, jnp.abs(1 - r)), jnp.less(b, 1 + r))
@@ -93,7 +94,7 @@ def s0s2(
     area: Array,
     kappa0: Array,
     kappa1: Array,
-) -> Tuple[Array, Array]:
+) -> tuple[Array, Array]:
     bpr = b + r
     onembpr2 = (1 + bpr) * (1 - bpr)
     eta2 = 0.5 * r2 * (r2 + 2 * b2)
@@ -160,7 +161,7 @@ def p_integral(
 
 
 def kite_area(a: Array, b: Array, c: Array) -> Array:
-    def sort2(a: Array, b: Array) -> Tuple[Array, Array]:
+    def sort2(a: Array, b: Array) -> tuple[Array, Array]:
         return jnp.minimum(a, b), jnp.maximum(a, b)
 
     a, b = sort2(a, b)
@@ -169,19 +170,3 @@ def kite_area(a: Array, b: Array, c: Array) -> Array:
 
     square_area = (a + (b + c)) * (c - (a - b)) * (c + (a - b)) * (a + (b - c))
     return zero_safe_sqrt(jnp.maximum(0, square_area))
-
-
-@jax.custom_jvp
-def zero_safe_sqrt(x):
-    return jnp.sqrt(x)
-
-
-@zero_safe_sqrt.defjvp
-def zero_safe_sqrt_jvp(primals, tangents):
-    (x,) = primals
-    (x_dot,) = tangents
-    primal_out = jnp.sqrt(x)
-    cond = jnp.less(x, 10 * jnp.finfo(jax.dtypes.result_type(x)).eps)
-    denom = jnp.where(cond, jnp.ones_like(x), x)
-    tangent_out = 0.5 * x_dot * primal_out / denom
-    return primal_out, tangent_out

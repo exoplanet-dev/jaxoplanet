@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Callable, Tuple
+from typing import Callable
 
 import jax
 import jax.numpy as jnp
@@ -26,7 +26,7 @@ def solution_vector(l_max: int, order: int = 20) -> Callable[[Array, Array], Arr
     return impl
 
 
-def kappas(b: Array, r: Array) -> Tuple[Array, Array]:
+def kappas(b: Array, r: Array) -> tuple[Array, Array]:
     b2 = jnp.square(b)
     factor = (r - 1) * (r + 1)
     b_cond = jnp.logical_and(jnp.greater(b, jnp.abs(1 - r)), jnp.less(b, 1 + r))

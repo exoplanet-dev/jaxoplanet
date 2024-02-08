@@ -1,52 +1,57 @@
-from typing import Optional, Tuple
+from typing import Optional, Protocol
 
-from typing_extensions import Protocol
-
-from jaxoplanet.types import Array
+from jaxoplanet.types import Quantity
 
 
 class LightCurveBody(Protocol):
     @property
-    def shape(self) -> Tuple[int, ...]:
-        ...
+    def shape(self) -> tuple[int, ...]: ...
 
     @property
-    def radius(self) -> Array:
-        ...
+    def radius(self) -> Quantity: ...
 
 
-class LightCurveOrbit(LightCurveBody):
+class LightCurveOrbit(Protocol):
+    @property
+    def shape(self) -> tuple[int, ...]: ...
+
+    @property
+    def radius(self) -> Quantity: ...
+
+    def relative_position(self, t: Quantity) -> tuple[Quantity, Quantity, Quantity]: ...
+
+    @property
+    def central_radius(self) -> Quantity: ...
+
+
+class Orbit(Protocol):
+    @property
+    def shape(self) -> tuple[int, ...]: ...
+
+    @property
+    def radius(self) -> Quantity: ...
+
     def relative_position(
-        self, t: Array, parallax: Optional[Array] = None
-    ) -> Tuple[Array, Array, Array]:
-        ...
+        self, t: Quantity, parallax: Optional[Quantity] = None
+    ) -> tuple[Quantity, Quantity, Quantity]: ...
 
     @property
-    def central_radius(self) -> Array:
-        ...
+    def central_radius(self) -> Quantity: ...
 
-
-class Orbit(LightCurveOrbit):
     def position(
-        self, t: Array, parallax: Optional[Array] = None
-    ) -> Tuple[Array, Array, Array]:
-        ...
+        self, t: Quantity, parallax: Optional[Quantity] = None
+    ) -> tuple[Quantity, Quantity, Quantity]: ...
 
     def central_position(
-        self, t: Array, parallax: Optional[Array] = None
-    ) -> Tuple[Array, Array, Array]:
-        ...
+        self, t: Quantity, parallax: Optional[Quantity] = None
+    ) -> tuple[Quantity, Quantity, Quantity]: ...
 
-    def velocity(self, t: Array) -> Tuple[Array, Array, Array]:
-        ...
+    def velocity(self, t: Quantity) -> tuple[Quantity, Quantity, Quantity]: ...
 
-    def central_velocity(self, t: Array) -> Tuple[Array, Array, Array]:
-        ...
+    def central_velocity(self, t: Quantity) -> tuple[Quantity, Quantity, Quantity]: ...
 
-    def relative_velocity(self, t: Array) -> Tuple[Array, Array, Array]:
-        ...
+    def relative_velocity(self, t: Quantity) -> tuple[Quantity, Quantity, Quantity]: ...
 
     def radial_velocity(
-        self, t: Array, semiamplitude: Optional[Array] = None
-    ) -> Tuple[Array, Array, Array]:
-        ...
+        self, t: Quantity, semiamplitude: Optional[Quantity] = None
+    ) -> tuple[Quantity, Quantity, Quantity]: ...
