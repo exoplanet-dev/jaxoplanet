@@ -12,7 +12,7 @@ from jaxoplanet.units import unit_registry as ureg
 
 
 class Central(eqx.Module):
-    """ A central body in an orbital system
+    """A central body in an orbital system
 
     If the input parameters are not defined the default values and units are:
         mass: 1 M_sun
@@ -20,6 +20,7 @@ class Central(eqx.Module):
         density: 3 * mass / (4 * jnp.pi * radius**3) = 0.238732415 M_sun / R_sun ** 3
 
     """
+
     mass: Quantity = units.field(units=ureg.M_sun)
     radius: Quantity = units.field(units=ureg.R_sun)
     density: Quantity = units.field(units=ureg.M_sun / ureg.R_sun**3)
@@ -34,7 +35,7 @@ class Central(eqx.Module):
         radius: Optional[Quantity] = None,
         density: Optional[Quantity] = None,
     ):
-        """ Initialize the central body (e.g. a star) of an orbital system using two of radius, mass and/or density.
+        """Initialize the central body (e.g. a star) of an orbital system using two of radius, mass and/or density.
 
         Args:
             mass (Optional[Quantity]): Mass of central body [mass unit].
@@ -86,7 +87,7 @@ class Central(eqx.Module):
         radius: Optional[Quantity] = None,
         body_mass: Optional[Quantity] = None,
     ) -> "Central":
-        """ Initialize the central body (e.g. a star) of an orbital system using orbital parameters to derive radius
+        """Initialize the central body (e.g. a star) of an orbital system using orbital parameters to derive radius
         and mass.
 
         Args:
@@ -188,7 +189,7 @@ class Body(eqx.Module):
         radial_velocity_semiamplitude: Optional[Quantity] = None,
         parallax: Optional[Quantity] = None,
     ):
-        """ Initialize an orbiting body (e.g. a planet) using orbital parameters. See
+        """Initialize an orbiting body (e.g. a planet) using orbital parameters. See
         https://docs.exoplanet.codes/en/latest/tutorials/data-and-models/ for a description of the orbital geometry.
 
         Args:
