@@ -452,7 +452,6 @@ def utilde(n):
             c2 = comb(k2, j) * (-1) ** j
             for l in range(j + 1):
                 c3 = comb(j, l)
-                idxs = (2 * (j - l), 2 * l, k % 2)
                 res[(2 * (j - l), 2 * l, k % 2)] += -c1 * c2 * c3
 
     return res
