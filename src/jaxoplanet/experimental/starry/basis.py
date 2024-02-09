@@ -6,7 +6,9 @@ import jax.numpy as jnp
 import numpy as np
 import scipy.sparse.linalg
 from jax.experimental.sparse import BCOO
-from scipy.special import gamma
+from scipy.special import gamma, comb
+from scipy.special import comb
+
 
 try:
     from scipy.sparse import csc_array
@@ -437,3 +439,52 @@ def poly_basis(deg):
             return p
 
     return impl
+
+
+def utilde(n):
+    res = defaultdict(float)
+
+    if n == 0:
+        return {(0, 0, 0): 1.0}
+
+    for k in range(n + 1):
+        c1 = comb(n, k) * (-1) ** k
+        k2 = k // 2
+        for j in range(k2 + 1):
+            c2 = comb(k2, j) * (-1) ** j
+            for l in range(j + 1):
+                c3 = comb(j, l)
+                idxs = (2 * (j - l), 2 * l, k % 2)
+                res[(2 * (j - l), 2 * l, k % 2)] += -c1 * c2 * c3
+
+    return res
+
+
+def u_p(p, l, m, n):
+    # this is very similar to gtilde, might be a more general
+    # way of doing the _A_impl function without dummy variables
+    del l, m
+    indicies = []
+    data = []
+    for k, v in utilde(n).items():
+        if k not in p:
+            continue
+        indicies.append(p[k])
+        data.append(v)
+    indicies = np.array(indicies, dtype=int)
+    data = np.array(data, dtype=float)
+    idx = np.argsort(indicies)
+    return indicies[idx], data[idx]
+
+
+def U0(udeg, ydeg):
+    assert udeg < ydeg
+    n = (ydeg + 1) ** 2
+    p = {ptilde(m): m for m in range(n)}
+    P = np.zeros((udeg + 1, (ydeg + 1) ** 2))
+    for i in range(udeg + 1):
+        idxs, values = u_p(p, None, None, i)
+        for j, v in zip(idxs, values):
+            P[i, j] += v
+
+    return P

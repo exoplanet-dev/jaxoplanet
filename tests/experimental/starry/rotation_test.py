@@ -1,75 +1,141 @@
 import jax
+import jax.numpy as jnp
 import numpy as np
 import pytest
 
 from jaxoplanet.experimental.starry.rotation import (
-    R_full,
-    Rdot,
-    axis_to_euler,
-    dotR,
+    dot_rotation_matrix,
+    right_project,
+    left_project,
 )
 from jaxoplanet.test_utils import assert_allclose
 
 
-@pytest.mark.parametrize("l_max", [4, 3, 2, 1, 0])
+@pytest.mark.parametrize("l_max", [5, 4, 3, 2, 1, 0])
 @pytest.mark.parametrize("u", [(1, 0, 0), (0, 1, 0), (0, 0, 1), (1, 1, 1)])
-def test_R_full(l_max, u):
+@pytest.mark.parametrize("theta", [0.1])
+def test_dot_rotation(l_max, u, theta):
     """Test full rotation matrix against symbolic one"""
     pytest.importorskip("sympy")
-    theta = 0.1
+    ident = np.eye(l_max**2 + 2 * l_max + 1)
     expected = np.array(R_symbolic(l_max, u, theta)).astype(float)
-    calc = R_full(l_max, u)(theta)
+    calc = dot_rotation_matrix(l_max, u[0], u[1], u[2], theta)(ident)
     assert_allclose(calc, expected)
 
 
-@pytest.mark.parametrize("l_max", [10, 7, 5, 4])
-@pytest.mark.parametrize("u", [(1, 0, 0), (0, 1, 0), (0, 0, 1), (0.5, 0.1, 0)])
-def test_compare_starry_R_full(l_max, u):
-    """Comparison test with starry full rotation matrix
-    obtained from OpsYlm.dotR"""
+@pytest.mark.parametrize("l_max", [5, 4, 3, 2, 1, 0])
+@pytest.mark.parametrize("theta", [-0.5, 0.0, 0.1, 1.5 * np.pi])
+def test_dot_rotation_z(l_max, theta):
+    ident = np.eye(l_max**2 + 2 * l_max + 1)
+    expected = dot_rotation_matrix(l_max, 0.0, 0.0, 1.0, theta)(ident)
+    calc = dot_rotation_matrix(l_max, None, None, 1.0, theta)(ident)
+    assert_allclose(calc, expected)
+
+
+def test_dot_rotation_negative():
     starry = pytest.importorskip("starry")
-    theta = 0.1
-    m = starry._core.core.OpsYlm(l_max, 0, 0, 1)
-    I = np.eye(l_max**2 + 2 * l_max + 1)
-    expected = m.dotR(I, *u, theta)
-    calc = R_full(l_max, u)(theta)
+    l_max = 5
+    n_max = l_max**2 + 2 * l_max + 1
+    y = np.linspace(-1, 1, n_max)
+    starry_op = starry._core.core.OpsYlm(l_max, 0, 0, 1)
+    expected = starry_op.dotR(y[None, :], 1.0, 0, 0.0, -0.5 * np.pi)[0]
+    calc = dot_rotation_matrix(l_max, 1.0, 0.0, 0.0, -0.5 * np.pi)(y)
     assert_allclose(calc, expected)
 
 
-@pytest.mark.parametrize("l_max", [10, 7, 5, 4])
-@pytest.mark.parametrize("u", [(1, 0, 0), (0, 1, 0), (0, 0, 1)])
-def test_Rdot(l_max, u):
-    """Test Rdot against R_full@"""
-    np.random.seed(l_max)
-    y = np.random.rand(l_max**2 + 2 * l_max + 1)
-    r = Rdot(l_max, u)
-    r_full = R_full(l_max, u)
-    theta = 0.1 * np.pi
-    assert_allclose(r(y, theta), r_full(theta) @ y)
+def test_dot_rotation_edge_cases():
+    l_max = 5
+    n_max = l_max**2 + 2 * l_max + 1
+    ident = np.eye(n_max)
+    assert np.all(np.isfinite(dot_rotation_matrix(l_max, 0, 0, 1, 0)(ident)))
+
+    g = jax.grad(
+        lambda *args: dot_rotation_matrix(l_max, *args)(ident).sum(),
+        argnums=(0, 1, 2, 3),
+    )(0.0, 0.0, 1.0, 0.0)
+    for g_ in g:
+        assert np.all(np.isfinite(g_))
 
 
 @pytest.mark.parametrize("l_max", [10, 7, 5, 4])
-@pytest.mark.parametrize("u", [(1, 0, 0), (0, 1, 0), (0, 0, 1)])
-def test_compare_starry_dotR(l_max, u):
+@pytest.mark.parametrize("u", [(1, 0, 0), (0, 1, 0), (0, 0, 1), (1, 1, 1)])
+@pytest.mark.parametrize("theta", [0.1])
+def test_dot_rotation_compare_starry(l_max, u, theta):
     """Comparison test with starry OpsYlm.dotR"""
     starry = pytest.importorskip("starry")
-    theta = 0.1
-    np.random.seed(l_max)
+    random = np.random.default_rng(l_max)
     n_max = l_max**2 + 2 * l_max + 1
-    M = np.random.rand(n_max, n_max)
-    m = starry._core.core.OpsYlm(l_max, 0, 0, 1)
-    expected = m.dotR(M, *u, theta)
-    calc = dotR(l_max, u)(M, theta)
-    assert_allclose(calc, expected)
+    M1 = np.eye(n_max)
+    M2 = random.normal(size=(5, n_max))
+    starry_op = starry._core.core.OpsYlm(l_max, 0, 0, 1)
+    jax_op = dot_rotation_matrix(l_max, *u, theta)
+    for M in [M1, M2]:
+        norm = np.sqrt(u[0] ** 2 + u[1] ** 2 + u[2] ** 2)
+        expected = starry_op.dotR(M, u[0] / norm, u[1] / norm, u[2] / norm, theta)
+        calc = jax_op(M)
+        assert_allclose(calc, expected)
 
 
-def test_u1u2_null_grad(u1=0.0, u2=0.0, u3=1.0):
-    """Test gradient of axis_to_euler against nan in jnp.where"""
+def right_project_reference(deg, inc, obl, theta, theta_z, x):
+    x = dot_rotation_matrix(deg, 0, 0, 1.0, theta_z)(x)
+    x = dot_rotation_matrix(
+        deg, -jnp.cos(obl), -jnp.sin(obl), 0.0, -(0.5 * jnp.pi - inc)
+    )(x)
+    x = dot_rotation_matrix(deg, None, None, 1.0, obl)(x)
+    x = dot_rotation_matrix(deg, 1.0, 0.0, 0.0, -0.5 * jnp.pi)(x)
+    x = dot_rotation_matrix(deg, None, None, 1.0, theta)(x)
+    x = dot_rotation_matrix(deg, 1.0, 0.0, 0.0, 0.5 * jnp.pi)(x)
+    return x
 
-    def grad_beta(u1, u2, u3, theta):
-        return axis_to_euler(u1, u2, u3, theta)[1]
 
-    assert ~jax.numpy.isnan(jax.grad(grad_beta)(u1, u2, u3, np.pi / 4))
+def left_project_reference(deg, inc, obl, theta, theta_z, x):
+    x = dot_rotation_matrix(deg, 1.0, 0.0, 0.0, -0.5 * jnp.pi)(x)
+    x = dot_rotation_matrix(deg, None, None, 1.0, -theta)(x)
+    x = dot_rotation_matrix(deg, 1.0, 0.0, 0.0, 0.5 * jnp.pi)(x)
+    x = dot_rotation_matrix(deg, None, None, 1.0, -obl)(x)
+    x = dot_rotation_matrix(
+        deg, -jnp.cos(obl), -jnp.sin(obl), 0.0, (0.5 * jnp.pi - inc)
+    )(x)
+    x = dot_rotation_matrix(deg, 0, 0, 1.0, -theta_z)(x)
+    return x
+
+
+@pytest.mark.parametrize("deg", [5, 2, 1, 0])
+@pytest.mark.parametrize(
+    "angles",
+    [
+        (0.1, 0.2, 0.3, 0.1),
+        (0.1, -0.2, 0.3, 0.0),
+        (0, 0, 0, 0.1),
+        (-0.1, 0, 0, 0.0),
+        (0, 0.4, 0, 0.1),
+        (0, 0, 0.5, 0.0),
+    ],
+)
+def test_right_project(deg, angles):
+    n_max = deg**2 + 2 * deg + 1
+    expect = right_project_reference(deg, *angles, jnp.ones(n_max))
+    calc = right_project(deg, *angles, jnp.ones(n_max))
+    assert_allclose(calc, expect)
+
+
+@pytest.mark.parametrize("deg", [5, 2, 1, 0])
+@pytest.mark.parametrize(
+    "angles",
+    [
+        (0.1, 0.2, 0.3, 0.1),
+        (0.1, -0.2, 0.3, 0.0),
+        (0, 0, 0, 0.1),
+        (-0.1, 0, 0, 0.0),
+        (0, 0.4, 0, 0.1),
+        (0, 0, 0.5, 0.0),
+    ],
+)
+def test_left_project(deg, angles):
+    n_max = deg**2 + 2 * deg + 1
+    expect = left_project_reference(deg, *angles, jnp.ones(n_max))
+    calc = left_project(deg, *angles, jnp.ones(n_max))
+    assert_allclose(calc, expect)
 
 
 def R_symbolic(lmax, u, theta):
@@ -215,4 +281,6 @@ def R_symbolic(lmax, u, theta):
         blocks = [RAxisAngle(l, *u, theta) for l in range(lmax + 1)]
         return sm.BlockDiagMatrix(*blocks)
 
+    u = np.array(u, dtype=float)
+    u /= np.sqrt(np.sum(u**2))
     return R(lmax, u, theta)
