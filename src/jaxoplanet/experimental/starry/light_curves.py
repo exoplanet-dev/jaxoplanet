@@ -10,10 +10,10 @@ from jaxoplanet.experimental.starry.solution import solution_vector
 
 
 # TODO: figure out the sparse matrices (and Pijk) to avoid todense()
-def flux(deg, theta, xo, yo, zo, ro, inc, obl, y, u, f):
+def light_curve(ydeg, y, u, inc, obl, theta, xo, yo, zo, ro):
     u_deg = len(u)
     U = jnp.array([1, *u])
-    full_deg = deg + u_deg
+    full_deg = ydeg + u_deg
     b = jnp.sqrt(jnp.square(xo) + jnp.square(yo))
     b_rot = jnp.logical_or(jnp.greater_equal(b, 1.0 + ro), jnp.less_equal(zo, 0.0))
     b_occ = jnp.logical_not(b_rot)
@@ -26,12 +26,12 @@ def flux(deg, theta, xo, yo, zo, ro, inc, obl, y, u, f):
     sTA2 = sT @ A2
 
     # full rotation
-    rotated_y = left_project(deg, inc, obl, theta, theta_z, y)
+    rotated_y = left_project(ydeg, inc, obl, theta, theta_z, y)
 
     # limb darkening product
-    A1_val = jax.experimental.sparse.BCOO.from_scipy_sparse(A1(deg))
-    p_y = Pijk.from_dense(A1_val @ rotated_y, degree=deg)
-    p_u = Pijk.from_dense(U @ U0(len(u), deg), degree=u_deg)
+    A1_val = jax.experimental.sparse.BCOO.from_scipy_sparse(A1(ydeg))
+    p_y = Pijk.from_dense(A1_val @ rotated_y, degree=ydeg)
+    p_u = Pijk.from_dense(U @ U0(len(u), ydeg), degree=u_deg)
     p_y = p_y * p_u
 
     x = jnp.where(b_occ, sTA2, rT(full_deg))

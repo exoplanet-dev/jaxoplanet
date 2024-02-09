@@ -2,7 +2,7 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 
-from jaxoplanet.experimental.starry.flux import flux
+from jaxoplanet.experimental.starry.light_curves import light_curve
 from jaxoplanet.test_utils import assert_allclose
 
 
@@ -34,7 +34,7 @@ def test_compare_starry(deg, u):
 
     # jaxoplanet
     calc = jnp.vectorize(
-        flux, signature="(),(),(),(),(),(),(),(n),()->()", excluded={0, 9}
-    )(deg, 0.0, xo, yo, zo, ro, inc, 0.0, y, u, 0.0)
+        light_curve, signature="(n),(),(),(),(),(),(),()->()", excluded={0, 2}
+    )(deg, y, u, inc, 0.0, 0.0, xo, yo, zo, ro)
 
     assert_allclose(calc, expected)
