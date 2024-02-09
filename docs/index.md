@@ -79,4 +79,5 @@ maxdepth: 2
 start
 api
 tutorials/autodiff.ipynb
+tutorials/rv.ipynb
 ```
