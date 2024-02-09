@@ -6,9 +6,7 @@ import jax.numpy as jnp
 import numpy as np
 import scipy.sparse.linalg
 from jax.experimental.sparse import BCOO
-from scipy.special import gamma, comb
-from scipy.special import comb
-
+from scipy.special import comb, gamma
 
 try:
     from scipy.sparse import csc_array
@@ -478,7 +476,6 @@ def u_p(p, l, m, n):
 
 
 def U0(udeg, ydeg):
-    assert udeg < ydeg
     n = (ydeg + 1) ** 2
     p = {ptilde(m): m for m in range(n)}
     P = np.zeros((udeg + 1, (ydeg + 1) ** 2))

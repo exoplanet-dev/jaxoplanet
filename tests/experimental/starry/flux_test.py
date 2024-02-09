@@ -1,6 +1,7 @@
-import pytest
-import numpy as np
 import jax.numpy as jnp
+import numpy as np
+import pytest
+
 from jaxoplanet.experimental.starry.flux import flux
 from jaxoplanet.test_utils import assert_allclose
 
@@ -9,6 +10,7 @@ from jaxoplanet.test_utils import assert_allclose
 @pytest.mark.parametrize("u", [[], [0.1], [0.2, 0.1]])
 def test_compare_starry(deg, u):
     starry = pytest.importorskip("starry")
+    starry.config.lazy = False
 
     # map
     np.random.seed(deg)
@@ -26,7 +28,8 @@ def test_compare_starry(deg, u):
     # starry
     ms = starry.Map(ydeg=deg, udeg=len(u), inc=np.rad2deg(inc))
     ms[:, :] = y
-    ms[1 : (len(u) + 1)] = u
+    if len(u) > 0:
+        ms[1:] = u
     expected = ms.flux(xo=xo, yo=yo, ro=ro, zo=zo)
 
     # jaxoplanet
