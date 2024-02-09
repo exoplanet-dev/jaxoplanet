@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import matplotlib.pyplot as plt
 import math
+import equinox as eqx
 
 import jax
 import jax.numpy as jnp
@@ -17,16 +18,44 @@ from jaxoplanet.experimental.starry.render import ortho_grid
 from jaxoplanet.experimental.starry.pijk import Pijk
 from jaxoplanet.experimental.starry.ylm import Ylm
 
+from typing import Optional
 
-@dataclass
-class Map:
-    y: Ylm = Ylm({(0, 0): 1})
-    inc: float = math.pi / 2
-    obl: float = 0.0
-    u: tuple = ()
 
-    def __post_init__(self):
-        self._poly_basis = jax.jit(poly_basis(self.deg))
+class Map(eqx.Module):
+    y: Optional[Ylm] = Ylm({(0, 0): 1})
+    inc: Optional[float] = math.pi / 2
+    obl: Optional[float] = 0.0
+    u: Optional[tuple] = ()
+    period: Optional[float] = None
+
+    def __init__(
+        self,
+        *,
+        y: Optional[Ylm] = None,
+        inc: Optional[float] = None,
+        obl: Optional[float] = None,
+        u: Optional[tuple] = None,
+        period: Optional[float] = None,
+    ):
+
+        if y is None:
+            y = Ylm({(0, 0): 1})
+        if inc is None:
+            inc = math.pi / 2
+        if obl is None:
+            obl = 0.0
+        if u is None:
+            u = ()
+
+        self.y = y
+        self.inc = inc
+        self.obl = obl
+        self.u = u
+        self.period = period
+
+    @property
+    def poly_basis(self):
+        return jax.jit(poly_basis(self.deg))
 
     @property
     def udeg(self):
@@ -42,13 +71,12 @@ class Map:
 
     def render(self, theta=0, res=400):
         _, xyz = ortho_grid(res)
-        pT = self._poly_basis(*xyz)
+        pT = self.poly_basis(*xyz)
         Ry = left_project(self.ydeg, self.inc, self.obl, theta, 0.0, self.y.todense())
         A1Ry = A1(self.ydeg) @ Ry
-        ydeg = np.max([self.ydeg, self.udeg])
-        p_y = Pijk.from_dense(A1Ry, degree=ydeg)
+        p_y = Pijk.from_dense(A1Ry, degree=self.deg)
         U = np.array([1, *self.u])
-        p_u = Pijk.from_dense(U @ U0(self.udeg, ydeg), degree=self.udeg)
+        p_u = Pijk.from_dense(U @ U0(self.udeg, self.deg), degree=self.udeg)
         p = (p_y * p_u).todense()
         return jnp.reshape(pT @ p, (res, res))
 
