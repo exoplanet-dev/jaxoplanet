@@ -1,5 +1,3 @@
-import math
-from collections import defaultdict
 from collections.abc import Mapping
 from typing import Any
 
@@ -9,8 +7,10 @@ import jax.numpy as jnp
 import numpy as np
 from jax.experimental.sparse import BCOO
 
-from jaxoplanet.experimental.starry.wigner3j import Wigner3jCalculator
 from jaxoplanet.types import Array
+import numpy as np
+from scipy.special import legendre as LegendreP
+from jax import numpy as jnp
 
 
 class Ylm(eqx.Module):
@@ -59,11 +59,9 @@ class Ylm(eqx.Module):
             data[(ell, m)] = ylm
         return cls(data)
 
+    # TODO (lgrcia): multiply using polynomials
     def __mul__(self, other: Any) -> "Ylm":
-        if isinstance(other, Ylm):
-            return _mul(self, other)
-        else:
-            return jax.tree_util.tree_map(lambda x: x * other, self)
+        raise NotImplementedError
 
     def __rmul__(self, other: Any) -> "Ylm":
         assert not isinstance(other, Ylm)
@@ -74,46 +72,112 @@ class Ylm(eqx.Module):
         return self.todense()[self.index(*key)]
 
 
-def _mul(f: Ylm, g: Ylm) -> Ylm:
-    """
-    Based closely on the implementation from the MIT-licensed spherical package:
+def _Bp_expansion(l_max, pts=1000, eps=1e-9, smoothing=None):
+    # From the starry_process paper (Luger 2022) Bplus equation C36
+    # The default smoothing depends on `l_max`
+    if smoothing is None:
+        if l_max < 4:
+            smoothing = 0.5
+        else:
+            smoothing = 2.0 / l_max
 
-    https://github.com/moble/spherical/blob/0aa81c309cac70b90f8dfb743ce35d2cc9ae6dee/spherical/multiplication.py
+    # Pre-compute the linalg stuff
+    theta = jnp.linspace(0, np.pi, pts)
+    cost = jnp.cos(theta)
+    B = jnp.hstack(
+        [
+            jnp.sqrt(2 * l + 1) * LegendreP(l)(cost).reshape(-1, 1)
+            for l in range(l_max + 1)
+        ]
+    )
+    A = jnp.linalg.solve(B.T @ B + eps * jnp.eye(l_max + 1), B.T)
+    l = jnp.arange(l_max + 1)
+    idxs = l * (l + 1)
+    S = jnp.exp(-0.5 * idxs * smoothing**2)
+    Bp = S[:, None] * A
+
+    return Bp, theta, idxs
+
+
+def spot_y(l_max, pts=1000, eps=1e-9, fac=300, smoothing=None):
+    """Spot expansion
+
+    Parameters
+    ----------
+    l_max : int
+        degree of the spherical harmonics
+    pts : int, optional
+        _description_, by default 1000
+    eps : float, optional
+        _description_, by default 1e-9
+    fac : int, optional
+        _description_, by default 300
+    smoothing : float, optional
+        _description_, by default None
+
+    Returns
+    -------
+    Callable
+        spherical harmonics coefficients of the spot expansion
     """
-    ellmax_f = f.ell_max
-    ellmax_g = g.ell_max
-    ellmax_fg = ellmax_f + ellmax_g
-    fg = defaultdict(lambda *_: 0.0)
-    m_calculator = Wigner3jCalculator(ellmax_f, ellmax_g)
-    for ell1 in range(ellmax_f + 1):
-        sqrt1 = math.sqrt((2 * ell1 + 1) / (4 * math.pi))
-        for m1 in range(-ell1, ell1 + 1):
-            idx1 = (ell1, m1)
-            if idx1 not in f.data:
-                continue
-            sum1 = sqrt1 * f.data[idx1]
-            for ell2 in range(ellmax_g + 1):
-                sqrt2 = math.sqrt(2 * ell2 + 1)
-                # w3j_s = s_calculator.calculate(ell1, ell2, s_f, s_g)
-                for m2 in range(-ell2, ell2 + 1):
-                    idx2 = (ell2, m2)
-                    if idx2 not in g.data:
-                        continue
-                    w3j_m = m_calculator.calculate(ell1, ell2, m1, m2)
-                    sum2 = sqrt2 * g.data[idx2]
-                    m3 = m1 + m2
-                    for ell3 in range(
-                        max(abs(m3), abs(ell1 - ell2)), min(ell1 + ell2, ellmax_fg) + 1
-                    ):
-                        # Could loop over same (ell3, m3) more than once, so add all
-                        # contributions together
-                        fg[(ell3, m3)] += (
-                            (
-                                math.pow(-1, ell1 + ell2 + ell3 + m3)
-                                * math.sqrt(2 * ell3 + 1)
-                                * w3j_m[ell3]  # Wigner3j(ell1, ell2, ell3, m1, m2, -m3)
-                            )
-                            * sum1
-                            * sum2
-                        )
-    return Ylm(fg)
+    Bp, theta, idxs = _Bp_expansion(l_max, pts=pts, eps=eps, smoothing=smoothing)
+    n_max = l_max**2 + 2 * l_max + 1
+
+    def _y(contrast: float, radius: float):
+        """Return the spherical harmonics coefficients of the spot expansion
+
+        Parameters
+        ----------
+        contrast : float
+            spot contrast
+        radius : float
+            spot radius
+
+        Returns
+        -------
+        Array
+            spherical harmonics coefficients of the spot expansion
+        """
+
+        # Compute unit-intensity spot at (0, 0)
+        z = fac * (theta - radius)
+        b = 1.0 / (1.0 + jnp.exp(-z)) - 1.0
+        y = jnp.zeros(n_max)
+        y = y.at[idxs].set(Bp @ b)
+        y = y.at[0].set(1.0)
+        return y * contrast
+
+    return _y
+
+
+def ring_y(l_max, pts=1000, eps=1e-9, smoothing=None):
+    """Ring expansion
+
+    Parameters
+    ----------
+    l_max : int
+        degree of the spherical harmonics
+    pts : int, optional
+        _description_, by default 1000
+    eps : float, optional
+        _description_, by default 1e-9
+    fac : int, optional
+        _description_, by default 300
+    smoothing : float, optional
+        _description_, by default None
+
+    Returns
+    -------
+    Callable
+        spherical harmonics coefficients of the ring expansion
+    """
+    Bp, theta, idxs = _Bp_expansion(l_max, pts=pts, eps=eps, smoothing=smoothing)
+    n_max = l_max**2 + 2 * l_max + 1
+
+    def _y(contrast: float, width: float, latitude: float):
+        b = 1 - jnp.array((theta > latitude - width) & (theta < latitude + width))
+        y = jnp.zeros(n_max)
+        y = y.at[idxs].set(Bp @ b)
+        return y * contrast
+
+    return _y
