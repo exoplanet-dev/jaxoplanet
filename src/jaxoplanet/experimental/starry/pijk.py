@@ -85,7 +85,7 @@ class Pijk(eqx.Module):
     def from_dense(cls, x: Array, degree: int) -> "Pijk":
         data = defaultdict(float)
         n = (degree + 1) ** 2
-        for i in range(n):
+        for i in range(len(x)):
             data[Pijk.n2ijk(i)] = x[i]
 
         return cls(data)

@@ -4,6 +4,7 @@ import math
 
 import jax
 import jax.numpy as jnp
+import numpy as np
 
 from jaxoplanet.experimental.starry.visualization import (
     lon_lat_lines,
@@ -18,7 +19,7 @@ from jaxoplanet.experimental.starry.ylm import Ylm
 
 
 @dataclass
-class Star:
+class Map:
     y: Ylm = Ylm({(0, 0): 1})
     inc: float = math.pi / 2
     obl: float = 0.0
@@ -44,9 +45,10 @@ class Star:
         pT = self._poly_basis(*xyz)
         Ry = left_project(self.ydeg, self.inc, self.obl, theta, 0.0, self.y.todense())
         A1Ry = A1(self.ydeg) @ Ry
-        p_y = Pijk.from_dense(A1Ry, degree=self.ydeg)
+        ydeg = np.max([self.ydeg, self.udeg])
+        p_y = Pijk.from_dense(A1Ry, degree=ydeg)
         U = np.array([1, *self.u])
-        p_u = Pijk.from_dense(U @ U0(self.udeg, self.ydeg), degree=self.udeg)
+        p_u = Pijk.from_dense(U @ U0(self.udeg, ydeg), degree=self.udeg)
         p = (p_y * p_u).todense()
         return jnp.reshape(pT @ p, (res, res))
 
