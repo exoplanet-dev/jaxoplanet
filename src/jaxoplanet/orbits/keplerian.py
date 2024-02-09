@@ -99,12 +99,13 @@ class Central(eqx.Module):
         Returns:
             Central object
         """
-        # Check that input semimajor is a scalar - what about period/radius/body mass?
-        if jnp.ndim(semimajor) != 0:
+        # Check that inputs are scalar
+        if any(
+                jnp.ndim(arg) != 0 for arg in (semimajor, period, body_mass) if arg is not None
+            ):
             raise ValueError(
-                "The 'semimajor' argument to "
-                "'KeplerianCentral.from_orbital_properties' "
-                "must be a scalar; for multi-planet systems, "
+                "All parameters of 'KeplerianCentral.from_orbital_properties' must be scalars"
+                "; for multi-planet systems, "
                 "use 'jax.vmap'"
             )
 
