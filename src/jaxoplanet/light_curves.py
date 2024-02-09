@@ -66,6 +66,10 @@ class LimbDarkLightCurve(eqx.Module):
         if texp is None:
             tgrid = t
         else:
+            if (
+                texp.ndim == 0
+            ):  # If a scalr is passed, automatically broadcast to the shape of t
+                texp = jnpu.repeat(texp, len(t))
             assert texp.shape == t.shape, "texp must have the same shape as t (change?)"
 
             # Ensure oversample is an odd number
@@ -106,11 +110,16 @@ class LimbDarkLightCurve(eqx.Module):
             lc: Array = lc_func(b.magnitude, r.magnitude)
         else:
             b /= r_star[..., None]
-            lc = jnp.vectorize(lc_func, signature="(k),()->(k)")(b, r)
+            lc = jnp.vectorize(lc_func, signature="(k),()->(k)")(
+                b.magnitude, r.magnitude
+            )
         lc = jnp.where(z > 0, lc, 0)
 
         # Integrate over exposure time
         if texp is not None:
-            lc = jnp.reshape(lc, newshape=(t.size, oversample))
+            if orbit.shape == ():
+                lc = jnp.reshape(lc, newshape=(t.size, oversample))
+            else:
+                lc = jnp.reshape(lc, newshape=(orbit.shape[0], t.size, oversample))
             lc = jnp.dot(lc, stencil)
         return lc
