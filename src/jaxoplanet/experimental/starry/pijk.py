@@ -6,7 +6,6 @@ import equinox as eqx
 import jax
 import jax.numpy as jnp
 import numpy as np
-import math
 from jax.experimental.sparse import BCOO
 
 from jaxoplanet.types import Array

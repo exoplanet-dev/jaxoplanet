@@ -1,22 +1,22 @@
-import matplotlib.pyplot as plt
-import equinox as eqx
-from typing import Optional
 from functools import partial
+from typing import Optional
 
+import equinox as eqx
 import jax
 import jax.numpy as jnp
+import matplotlib.pyplot as plt
 import numpy as np
 
+from jaxoplanet.experimental.starry.basis import A1, U0, poly_basis
+from jaxoplanet.experimental.starry.light_curves import light_curve
+from jaxoplanet.experimental.starry.pijk import Pijk
+from jaxoplanet.experimental.starry.rotation import left_project
 from jaxoplanet.experimental.starry.utils import (
     lon_lat_lines,
-    rotate_lines,
+    ortho_grid,
     plot_lines,
+    rotate_lines,
 )
-from jaxoplanet.experimental.starry.light_curves import light_curve
-from jaxoplanet.experimental.starry.basis import poly_basis, A1, U0
-from jaxoplanet.experimental.starry.rotation import left_project
-from jaxoplanet.experimental.starry.utils import ortho_grid
-from jaxoplanet.experimental.starry.pijk import Pijk
 from jaxoplanet.experimental.starry.ylm import Ylm
 
 

@@ -6,11 +6,9 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from jax.experimental.sparse import BCOO
+from scipy.special import legendre as LegendreP
 
 from jaxoplanet.types import Array
-import numpy as np
-from scipy.special import legendre as LegendreP
-from jax import numpy as jnp
 
 
 class Ylm(eqx.Module):

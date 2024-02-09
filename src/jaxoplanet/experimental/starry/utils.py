@@ -1,8 +1,8 @@
-import numpy as np
-import matplotlib.pyplot as plt
 import jax.numpy as jnp
-
+import matplotlib.pyplot as plt
+import numpy as np
 from scipy.spatial.transform import Rotation
+
 from jaxoplanet.experimental.starry.basis import A1, poly_basis
 from jaxoplanet.experimental.starry.rotation import left_project
 
