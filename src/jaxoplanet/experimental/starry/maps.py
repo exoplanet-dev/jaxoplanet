@@ -1,31 +1,30 @@
-from dataclasses import dataclass
 import matplotlib.pyplot as plt
-import math
 import equinox as eqx
+from typing import Optional
+from functools import partial
 
 import jax
 import jax.numpy as jnp
 import numpy as np
 
-from jaxoplanet.experimental.starry.visualization import (
+from jaxoplanet.experimental.starry.utils import (
     lon_lat_lines,
     rotate_lines,
     plot_lines,
 )
+from jaxoplanet.experimental.starry.light_curves import light_curve
 from jaxoplanet.experimental.starry.basis import poly_basis, A1, U0
 from jaxoplanet.experimental.starry.rotation import left_project
-from jaxoplanet.experimental.starry.render import ortho_grid
+from jaxoplanet.experimental.starry.utils import ortho_grid
 from jaxoplanet.experimental.starry.pijk import Pijk
 from jaxoplanet.experimental.starry.ylm import Ylm
 
-from typing import Optional
-
 
 class Map(eqx.Module):
-    y: Optional[Ylm] = Ylm({(0, 0): 1})
-    inc: Optional[float] = math.pi / 2
-    obl: Optional[float] = 0.0
-    u: Optional[tuple] = ()
+    y: Optional[Ylm] = None
+    inc: Optional[float] = None
+    obl: Optional[float] = None
+    u: Optional[tuple] = None
     period: Optional[float] = None
 
     def __init__(
@@ -41,7 +40,7 @@ class Map(eqx.Module):
         if y is None:
             y = Ylm({(0, 0): 1})
         if inc is None:
-            inc = math.pi / 2
+            inc = jnp.pi / 2
         if obl is None:
             obl = 0.0
         if u is None:
@@ -74,7 +73,7 @@ class Map(eqx.Module):
         pT = self.poly_basis(*xyz)
         Ry = left_project(self.ydeg, self.inc, self.obl, theta, 0.0, self.y.todense())
         A1Ry = A1(self.ydeg) @ Ry
-        p_y = Pijk.from_dense(A1Ry, degree=self.deg)
+        p_y = Pijk.from_dense(A1Ry, degree=self.ydeg)
         U = np.array([1, *self.u])
         p_u = Pijk.from_dense(U @ U0(self.udeg, self.deg), degree=self.udeg)
         p = (p_y * p_u).todense()
@@ -101,3 +100,26 @@ class Map(eqx.Module):
         plot_lines(lon, **kwargs)
         theta = np.linspace(0, 2 * np.pi, 2 * pts)
         plt.plot(np.cos(theta), np.sin(theta), **kwargs)
+
+    def light_curve(self, system, time):
+        theta = 0.0 if self.period is None else 2.0 * np.pi * time / self.period
+        lc_func = jnp.vectorize(
+            partial(
+                light_curve,
+                self.ydeg,
+                self.y.todense(),
+                self.u,
+                self.inc,
+                self.obl,
+                theta,
+            ),
+            signature="(),(),(),()->()",
+        )
+
+        def body_lc(body):
+            x, y, z = body.relative_position(time)
+            return lc_func(x.magnitude, y.magnitude, z.magnitude, body.radius.magnitude)
+
+        lc = jax.vmap(body_lc)(system._body_stack).sum(0) / len(system.bodies)
+
+        return lc
