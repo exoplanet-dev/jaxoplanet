@@ -11,9 +11,9 @@ from jaxoplanet.experimental.starry.solution import solution_vector
 
 # TODO: figure out the sparse matrices (and Pijk) to avoid todense()
 def light_curve(ydeg, y, u, inc, obl, theta, xo, yo, zo, ro):
-    u_deg = len(u)
+    udeg = len(u)
     U = jnp.array([1, *u])
-    full_deg = ydeg + u_deg
+    full_deg = ydeg + udeg
     b = jnp.sqrt(jnp.square(xo) + jnp.square(yo))
     b_rot = jnp.logical_or(jnp.greater_equal(b, 1.0 + ro), jnp.less_equal(zo, 0.0))
     b_occ = jnp.logical_not(b_rot)
@@ -31,11 +31,11 @@ def light_curve(ydeg, y, u, inc, obl, theta, xo, yo, zo, ro):
     # limb darkening product
     A1_val = jax.experimental.sparse.BCOO.from_scipy_sparse(A1(ydeg))
     p_y = Pijk.from_dense(A1_val @ rotated_y, degree=ydeg)
-    p_u = Pijk.from_dense(U @ U0(len(u), ydeg), degree=u_deg)
+    p_u = Pijk.from_dense(U @ U0(len(u), full_deg), degree=udeg)
     p_y = p_y * p_u
 
     x = jnp.where(b_occ, sTA2, rT(full_deg))
-    norm = np.pi / (p_u.tosparse() @ rT(u_deg))
+    norm = np.pi / (p_u.tosparse() @ rT(udeg))
 
     return (p_y.tosparse() @ x) * norm
 
