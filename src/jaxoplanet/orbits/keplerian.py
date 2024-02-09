@@ -101,8 +101,10 @@ class Central(eqx.Module):
         """
         # Check that inputs are scalar
         if any(
-                jnp.ndim(arg) != 0 for arg in (semimajor, period, body_mass) if arg is not None
-            ):
+            jnp.ndim(arg) != 0
+            for arg in (semimajor, period, body_mass)
+            if arg is not None
+        ):
             raise ValueError(
                 "All parameters of 'KeplerianCentral.from_orbital_properties' must be scalars"
                 "; for multi-planet systems, "
