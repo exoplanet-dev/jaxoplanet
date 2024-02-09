@@ -120,6 +120,6 @@ class Map(eqx.Module):
             x, y, z = body.relative_position(time)
             return lc_func(x.magnitude, y.magnitude, z.magnitude, body.radius.magnitude)
 
-        lc = jax.vmap(body_lc)(system._body_stack).sum(0) / len(system.bodies)
+        lc = jax.vmap(body_lc)(system._body_stack)
 
         return lc
