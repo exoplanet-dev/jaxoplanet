@@ -21,3 +21,14 @@ def test_light_curve():
     t = jnp.linspace(-0.3, 0.3, 1000)
 
     LimbDarkLightCurve(params["u"]).light_curve(orbit, t=t)
+
+
+def test_multiplanetary():
+    star = orbits.keplerian.Central(mass=5, radius=2)
+    planet_a = orbits.keplerian.Body(radius=0.05, period=1)
+    planet_b = orbits.keplerian.Body(radius=0.2, period=2)
+    system = orbits.keplerian.System(central=star, bodies=[planet_a, planet_b])
+
+    t = jnp.linspace(-5, 5, 500)
+    lc = LimbDarkLightCurve().light_curve(system, t)
+    assert lc.shape == (system.shape[0], t.size)
