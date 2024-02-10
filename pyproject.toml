@@ -70,7 +70,6 @@ ignore = [
 ]
 # exclude = []
 
-
 [tool.ruff.lint.isort]
 known-first-party = ["jaxoplanet"]
 combine-as-imports = true
