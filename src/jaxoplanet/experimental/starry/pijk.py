@@ -19,8 +19,8 @@ class Pijk(eqx.Module):
     - Indices (l, m) represent the orders of the spherical harmonics.
     - Index n represent the index of the polynomial in the flattened array.
 
-    Flattened array `to_dense` and `from_dense` follow th convention from Luger et al. (2019).
-    More specifically:
+    Flattened array `to_dense` and `from_dense` follow th convention from Luger et al.
+    (2019). More specifically:
 
     .. math::
 
