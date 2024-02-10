@@ -37,6 +37,7 @@ docs = [
     "myst-nb",
     "sphinx-book-theme",
     "sphinx-design",
+    "ipywidgets"
 ]
 
 [build-system]
@@ -68,6 +69,7 @@ ignore = [
     "PLR2004", # Allow magic numbers in comparisons
 ]
 # exclude = []
+
 
 [tool.ruff.lint.isort]
 known-first-party = ["jaxoplanet"]

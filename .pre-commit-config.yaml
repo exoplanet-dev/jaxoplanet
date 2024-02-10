@@ -19,3 +19,13 @@ repos:
     rev: "0.7.1"
     hooks:
       - id: nbstripout
+  # - repo: https://github.com/RobertCraigie/pyright-python
+  #   rev: v1.1.324
+  #   hooks:
+  #     - id: pyright
+  #       additional_dependencies:
+  #         - nox
+  #         - pytest
+  #         - jax
+  #         - equinox
+  #         - jpu>=0.0.2
