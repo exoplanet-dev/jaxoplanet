@@ -2,7 +2,7 @@
 
 Follow these steps to install `jax` and `jaxoplanet` on your system, with special instructions for Mac M1 chip or newer.
 
-### Step 1: Check Your Python Architecture
+## Step 1: Check Your Python Architecture
 
 First, verify your Python architecture to determine if you're on an ARM or Intel-based chip.
 
@@ -26,7 +26,7 @@ bash Mambaforge-23.11.0-0-MacOSX-arm64.sh
 
 Restart the terminal.
 
-### Step 2: Install `jax` and `jaxoplanet`
+## Step 2: Install `jax` and `jaxoplanet`
 
 Create a New Environment (Optional) in miniforge.
 
