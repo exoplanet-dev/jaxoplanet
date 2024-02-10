@@ -26,7 +26,7 @@ class Ylm(eqx.Module):
         self.diagonal = all(m == 0 for _, m in data.keys())
 
     @property
-    def degree(self):
+    def shape(self):
         return self.ell_max**2 + 2 * self.ell_max + 1
 
     @property
@@ -43,7 +43,7 @@ class Ylm(eqx.Module):
     def tosparse(self) -> BCOO:
         indices, values = zip(*self.data.items())
         idx = np.array([self.index(ell, m) for ell, m in indices])[:, None]
-        return BCOO((jnp.asarray(values), idx), shape=(self.degree,))
+        return BCOO((jnp.asarray(values), idx), shape=(self.shape,))
 
     def todense(self) -> Array:
         return self.tosparse().todense()
