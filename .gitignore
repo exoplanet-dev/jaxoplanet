@@ -14,4 +14,4 @@ build
 dist
 poetry.lock
 .*_cache
-.jupyter/
+.jupyter
