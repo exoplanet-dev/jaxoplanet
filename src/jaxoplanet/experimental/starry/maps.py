@@ -75,7 +75,7 @@ class Map(eqx.Module):
         A1Ry = A1(self.ydeg) @ Ry
         p_y = Pijk.from_dense(A1Ry, degree=self.ydeg)
         U = np.array([1, *self.u])
-        p_u = Pijk.from_dense(U @ U0(self.udeg, self.deg), degree=self.udeg)
+        p_u = Pijk.from_dense(U @ U0(self.udeg), degree=self.udeg)
         p = (p_y * p_u).todense()
         return jnp.reshape(pT @ p, (res, res))
 

@@ -474,10 +474,22 @@ def u_p(p, l, m, n):
     return indicies[idx], data[idx]
 
 
-def U0(udeg, ydeg):
-    n = (ydeg + 1) ** 2
+def U0(udeg: int):
+    """Change of basis matrix from limb darkening basis to polynomial basis
+
+    Parameters
+    ----------
+    udeg : int
+        degree of the limb darkening basis
+
+    Returns
+    -------
+    _type_
+        _description_
+    """
+    n = (udeg + 1) ** 2
     p = {ptilde(m): m for m in range(n)}
-    P = np.zeros((udeg + 1, (ydeg + 1) ** 2))
+    P = np.zeros((udeg + 1, n))
     for i in range(udeg + 1):
         idxs, values = u_p(p, None, None, i)
         for j, v in zip(idxs, values):

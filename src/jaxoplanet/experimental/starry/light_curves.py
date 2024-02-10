@@ -31,7 +31,7 @@ def light_curve(ydeg, y, u, inc, obl, theta, xo, yo, zo, ro):
     # limb darkening product
     A1_val = jax.experimental.sparse.BCOO.from_scipy_sparse(A1(ydeg))
     p_y = Pijk.from_dense(A1_val @ rotated_y, degree=ydeg)
-    p_u = Pijk.from_dense(U @ U0(len(u), full_deg), degree=udeg)
+    p_u = Pijk.from_dense(U @ U0(udeg), degree=udeg)
     p_y = p_y * p_u
 
     x = jnp.where(b_occ, sTA2, rT(full_deg))
