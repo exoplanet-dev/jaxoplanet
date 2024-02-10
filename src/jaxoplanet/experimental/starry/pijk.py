@@ -32,9 +32,13 @@ class Pijk(eqx.Module):
     degree: int = eqx.field(static=True)
     diagonal: bool = eqx.field(static=True)
 
-    def __init__(self, data: Mapping[tuple[int, int, int], Array]):
+    def __init__(self, data: Mapping[tuple[int, int, int], Array], degree: int = None):
         self.data = dict(data)
-        self.degree = max(self.ijk2lm(*ijk)[0] for ijk in data.keys())
+        self.degree = (
+            max(self.ijk2lm(*ijk)[0] for ijk in data.keys())
+            if degree is None
+            else degree
+        )
         self.diagonal = all(self.ijk2lm(*ijk)[1] == 0.0 for ijk in data.keys())
 
     @property
@@ -100,15 +104,10 @@ class Pijk(eqx.Module):
     @classmethod
     def from_dense(cls, x: Array, degree: int = None) -> "Pijk":
         data = defaultdict(float)
-        if degree is None:
-            for i in range(len(x)):
-                data[Pijk.n2ijk(i)] = x[i]
-        else:
-            n = (degree + 1) ** 2
-            for i in range(n):
-                data[Pijk.n2ijk(i)] = x[i] if i < len(x) else 0.0
+        for i in range(len(x)):
+            data[Pijk.n2ijk(i)] = x[i]
 
-        return cls(data)
+        return cls(data, degree=degree)
 
     def __mul__(self, other: Any) -> "Pijk":
         if isinstance(other, Pijk):
