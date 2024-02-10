@@ -89,6 +89,8 @@ class Map(eqx.Module):
         plt.axis(False)
 
     def graticule(self, theta=0, pts=100, **kwargs):
+        import matplotlib.pyplot as plt
+
         kwargs.setdefault("c", kwargs.pop("color", "k"))
         kwargs.setdefault("lw", kwargs.pop("linewidth", 1))
         kwargs.setdefault("alpha", 0.5)
