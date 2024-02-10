@@ -4,7 +4,6 @@ from typing import Optional
 import equinox as eqx
 import jax
 import jax.numpy as jnp
-import matplotlib.pyplot as plt
 import numpy as np
 
 from jaxoplanet.experimental.starry.basis import A1, U0, poly_basis
@@ -80,6 +79,8 @@ class Map(eqx.Module):
         return jnp.reshape(pT @ p, (res, res))
 
     def show(self, theta=0, res=400, graticule=6, **kwargs):
+        import matplotlib.pyplot as plt
+
         plt.imshow(
             self.render(theta, res), origin="lower", **kwargs, extent=(-1, 1, -1, 1)
         )

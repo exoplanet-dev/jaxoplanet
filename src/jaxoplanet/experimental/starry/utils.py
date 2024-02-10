@@ -1,5 +1,4 @@
 import jax.numpy as jnp
-import matplotlib.pyplot as plt
 import numpy as np
 from scipy.spatial.transform import Rotation
 
@@ -74,6 +73,8 @@ def rotate_lines(lines, inc, obl, theta):
 
 
 def plot_lines(lines, axis=(0, 1), ax=None, **kwargs):
+    import matplotlib.pyplot as plt
+
     if ax is None:
         ax = plt.gca()
         if ax is None:
