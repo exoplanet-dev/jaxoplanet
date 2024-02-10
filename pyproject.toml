@@ -56,6 +56,8 @@ line-length = 88
 [tool.ruff]
 line-length = 89
 target-version = "py39"
+
+[tool.ruff.lint]
 select = ["F", "I", "E", "W", "YTT", "B", "Q", "PLE", "PLR", "PLW", "UP"]
 ignore = [
     "B023",    # Allow using global variables in lambdas
@@ -65,8 +67,8 @@ ignore = [
     "PLR0915", # Allow many statements
     "PLR2004", # Allow magic numbers in comparisons
 ]
-exclude = []
+# exclude = []
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 known-first-party = ["jaxoplanet"]
 combine-as-imports = true
