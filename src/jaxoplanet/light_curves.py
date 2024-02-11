@@ -67,9 +67,9 @@ class LimbDarkLightCurve(eqx.Module):
             tgrid = t
         else:
             if (
-                texp.ndim == 0
-            ):  # If a scalr is passed, automatically broadcast to the shape of t
-                texp = jnpu.repeat(texp, len(t))
+                jnp.ndim(texp) == 0
+            ):  # If a scalar is passed, automatically broadcast to the shape of t
+                texp = jnpu.broadcast_to(texp, jnp.shape(t))
             assert texp.shape == t.shape, "texp must have the same shape as t (change?)"
 
             # Ensure oversample is an odd number
