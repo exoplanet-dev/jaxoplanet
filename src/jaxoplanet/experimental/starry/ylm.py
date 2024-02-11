@@ -1,6 +1,7 @@
+import math
+from collections import defaultdict
 from collections.abc import Mapping
 from typing import Any
-import math
 
 import equinox as eqx
 import jax
@@ -9,9 +10,8 @@ import numpy as np
 from jax.experimental.sparse import BCOO
 from scipy.special import legendre as LegendreP
 
-from jaxoplanet.types import Array
 from jaxoplanet.experimental.starry.wigner3j import Wigner3jCalculator
-from collections import defaultdict
+from jaxoplanet.types import Array
 
 
 class Ylm(eqx.Module):
