@@ -82,11 +82,13 @@ def right_project_axis_angle(inc, obl, theta, theta_z):
     arg = si * cm + ci * cp
     denominator = jnp.sqrt(1 - 0.5 * arg**2)
 
-    axis_x = numerator1 / denominator
-    axis_y = numerator2 / denominator
-    axis_z = numerator3 / denominator
-
     angle = 2 * jnp.arccos(f * arg)
+
+    # this is mostly useful for the float32 case, where
+    # (1 - 0.5 * arg**2) in denominator can be negative due to numerical error
+    axis_x = jnp.where(angle != 0.0, numerator1 / denominator, 1.0)
+    axis_y = jnp.where(angle != 0.0, numerator2 / denominator, 0.0)
+    axis_z = jnp.where(angle != 0.0, numerator3 / denominator, 0.0)
 
     return axis_x, axis_y, axis_z, angle
 
