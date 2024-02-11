@@ -166,7 +166,9 @@ def test_keplerian_body_positions_small_star(time):
 
 def test_keplerian_system_stack_construction():
     sys = keplerian.System().add_body(period=0.1).add_body(period=0.2)
-    assert_quantity_allclose(sys._body_stack.period, jnp.array([0.1, 0.2]) * ureg.day)
+    assert_quantity_allclose(
+        sys._body_stack.stack.period, jnp.array([0.1, 0.2]) * ureg.day
+    )
 
     sys = (
         keplerian.System()
@@ -186,7 +188,7 @@ def test_keplerian_system_radial_velocity():
     assert sys1._body_stack is not None
     assert sys2._body_stack is None
     with pytest.raises(ValueError):
-        sys1._body_stack.radial_velocity(0.0)
+        sys1._body_stack.stack.radial_velocity(0.0)
 
     for t in [0.0, jnp.linspace(0, 1, 5)]:
         assert_quantity_allclose(
