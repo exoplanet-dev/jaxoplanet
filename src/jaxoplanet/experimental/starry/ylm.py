@@ -1,5 +1,6 @@
 from collections.abc import Mapping
 from typing import Any
+import math
 
 import equinox as eqx
 import jax
@@ -9,6 +10,8 @@ from jax.experimental.sparse import BCOO
 from scipy.special import legendre as LegendreP
 
 from jaxoplanet.types import Array
+from jaxoplanet.experimental.starry.wigner3j import Wigner3jCalculator
+from collections import defaultdict
 
 
 class Ylm(eqx.Module):
@@ -57,9 +60,11 @@ class Ylm(eqx.Module):
             data[(ell, m)] = ylm
         return cls(data)
 
-    # TODO (lgrcia): multiply using polynomials
     def __mul__(self, other: Any) -> "Ylm":
-        raise NotImplementedError
+        if isinstance(other, Ylm):
+            return _mul(self, other)
+        else:
+            return jax.tree_util.tree_map(lambda x: x * other, self)
 
     def __rmul__(self, other: Any) -> "Ylm":
         assert not isinstance(other, Ylm)
@@ -68,6 +73,51 @@ class Ylm(eqx.Module):
     def __getitem__(self, key) -> Array:
         assert isinstance(key, tuple)
         return self.todense()[self.index(*key)]
+
+
+def _mul(f: Ylm, g: Ylm) -> Ylm:
+    """
+    Based closely on the implementation from the MIT-licensed spherical package:
+
+    https://github.com/moble/spherical/blob/0aa81c309cac70b90f8dfb743ce35d2cc9ae6dee/spherical/multiplication.py
+    """
+    ellmax_f = f.ell_max
+    ellmax_g = g.ell_max
+    ellmax_fg = ellmax_f + ellmax_g
+    fg = defaultdict(lambda *_: 0.0)
+    m_calculator = Wigner3jCalculator(ellmax_f, ellmax_g)
+    for ell1 in range(ellmax_f + 1):
+        sqrt1 = math.sqrt((2 * ell1 + 1) / (4 * math.pi))
+        for m1 in range(-ell1, ell1 + 1):
+            idx1 = (ell1, m1)
+            if idx1 not in f.data:
+                continue
+            sum1 = sqrt1 * f.data[idx1]
+            for ell2 in range(ellmax_g + 1):
+                sqrt2 = math.sqrt(2 * ell2 + 1)
+                # w3j_s = s_calculator.calculate(ell1, ell2, s_f, s_g)
+                for m2 in range(-ell2, ell2 + 1):
+                    idx2 = (ell2, m2)
+                    if idx2 not in g.data:
+                        continue
+                    w3j_m = m_calculator.calculate(ell1, ell2, m1, m2)
+                    sum2 = sqrt2 * g.data[idx2]
+                    m3 = m1 + m2
+                    for ell3 in range(
+                        max(abs(m3), abs(ell1 - ell2)), min(ell1 + ell2, ellmax_fg) + 1
+                    ):
+                        # Could loop over same (ell3, m3) more than once, so add all
+                        # contributions together
+                        fg[(ell3, m3)] += (
+                            (
+                                math.pow(-1, ell1 + ell2 + ell3 + m3)
+                                * math.sqrt(2 * ell3 + 1)
+                                * w3j_m[ell3]  # Wigner3j(ell1, ell2, ell3, m1, m2, -m3)
+                            )
+                            * sum1
+                            * sum2
+                        )
+    return Ylm(fg)
 
 
 def _Bp_expansion(l_max, pts=1000, eps=1e-9, smoothing=None):
