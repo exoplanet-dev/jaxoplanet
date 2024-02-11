@@ -18,4 +18,4 @@ def test_starry_ylm_compare(data):
         if (ell, m) == (0, 0):
             continue
         starry_map[ell, m] = c
-    assert_allclose(ylm.todense(), starry_map._y.eval())
+    assert_allclose(ylm.todense(), starry_map._y)
