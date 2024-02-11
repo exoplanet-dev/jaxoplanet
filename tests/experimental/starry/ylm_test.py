@@ -9,6 +9,7 @@ def test_starry_ylm_compare(data):
     starry = pytest.importorskip("starry")
     theano = pytest.importorskip("theano")
     theano.config.gcc__cxxflags += " -fexceptions"
+    starry.config.lazy = False
 
     data = dict(data)
     data.update({(0, 0): 1.0})
@@ -18,4 +19,6 @@ def test_starry_ylm_compare(data):
         if (ell, m) == (0, 0):
             continue
         starry_map[ell, m] = c
-    assert_allclose(ylm.todense(), starry_map._y)
+    expected = starry_map._y
+    calc = ylm.todense()
+    assert_allclose(expected, calc)
