@@ -78,5 +78,6 @@ maxdepth: 2
 
 start
 api
+installation.md
 tutorials/autodiff.ipynb
 ```
