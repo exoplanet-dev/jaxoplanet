@@ -70,7 +70,7 @@ class LimbDarkLightCurve(eqx.Module):
                 jnp.ndim(texp) == 0
             ):  # If a scalar is passed, automatically broadcast to the shape of t
                 texp = jnpu.broadcast_to(texp, jnp.shape(t))
-            assert texp.shape == t.shape, "texp must have the same shape as t (change?)"
+            assert texp.shape == t.shape
 
             # Ensure oversample is an odd number
             oversample = int(oversample)
@@ -93,7 +93,7 @@ class LimbDarkLightCurve(eqx.Module):
                 raise ValueError("order must be 0, 1, or 2")
             stencil /= jnp.sum(stencil)
 
-            if texp.ndim == 0:  # Unnecessary since I check the shapes above?
+            if jnp.ndim(texp) == 0:  # Unnecessary since I check the shapes above?
                 dt = texp * dt
             else:
                 dt = jnpu.outer(texp, dt)
