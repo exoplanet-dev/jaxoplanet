@@ -78,6 +78,8 @@ maxdepth: 2
 
 start
 api
+installation.md
 tutorials/autodiff.ipynb
+tutorials/transit.ipynb
 tutorials/rv.ipynb
 ```
