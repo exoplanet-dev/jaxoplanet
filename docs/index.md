@@ -81,4 +81,5 @@ api
 installation.md
 tutorials/autodiff.ipynb
 tutorials/transit.ipynb
+tutorials/core-from-scratch.ipynb
 ```
