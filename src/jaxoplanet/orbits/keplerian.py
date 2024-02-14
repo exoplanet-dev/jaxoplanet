@@ -378,7 +378,9 @@ class Body(eqx.Module):
             ``R_sun``.
         """
         return self._get_position_and_velocity(
-            t, semimajor=-self.semimajor, parallax=parallax  # type: ignore
+            t,
+            semimajor=-self.semimajor,
+            parallax=parallax,  # type: ignore
         )[0]
 
     def relative_angles(
@@ -616,10 +618,14 @@ class Body(eqx.Module):
         return (x, y, z), (vx, vy, vz)
 
 
+class BodyStack(eqx.Module):
+    stack: Body
+
+
 class System(eqx.Module):
     central: Central
     bodies: tuple[Body, ...]
-    _body_stack: Optional[Body]
+    _body_stack: Optional[BodyStack]
 
     def __init__(
         self, central: Optional[Central] = None, *, bodies: tuple[Body, ...] = ()
@@ -634,9 +640,16 @@ class System(eqx.Module):
         if len(bodies):
             spec = list(map(jax.tree_util.tree_structure, bodies))
             if spec.count(spec[0]) == len(spec):
-                self._body_stack = jax.tree_util.tree_map(
-                    lambda *x: jnp.stack(x, axis=0), *bodies
+                self._body_stack = BodyStack(
+                    stack=jax.tree_util.tree_map(
+                        lambda *x: jnp.stack(x, axis=0), *bodies
+                    )
                 )
+
+    def __repr__(self) -> str:
+        return eqx.tree_pformat(
+            self, truncate_leaf=lambda obj: isinstance(obj, BodyStack)
+        )
 
     @property
     def shape(self) -> tuple[int, ...]:
@@ -664,7 +677,7 @@ class System(eqx.Module):
     def _body_vmap(self, func_name: str, t: Quantity) -> Any:
         if self._body_stack is not None:
             return jax.vmap(getattr(Body, func_name), in_axes=(0, None))(
-                self._body_stack, t
+                self._body_stack.stack, t
             )
         return jax.tree_util.tree_map(
             lambda *x: jnp.stack(x, axis=0),

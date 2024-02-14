@@ -80,4 +80,5 @@ start
 api
 installation.md
 tutorials/autodiff.ipynb
+tutorials/transit.ipynb
 ```
