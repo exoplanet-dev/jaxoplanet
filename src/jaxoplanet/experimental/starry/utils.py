@@ -1,3 +1,4 @@
+import jax
 import jax.numpy as jnp
 import numpy as np
 from scipy.spatial.transform import Rotation
@@ -5,8 +6,11 @@ from scipy.spatial.transform import Rotation
 from jaxoplanet.experimental.starry.basis import A1, poly_basis
 from jaxoplanet.experimental.starry.rotation import left_project
 
+from functools import partial
 
-def ortho_grid(res):
+
+@partial(jax.jit, static_argnums=0)
+def ortho_grid(res: int):
     x, y = jnp.meshgrid(jnp.linspace(-1, 1, res), jnp.linspace(-1, 1, res))
     z = jnp.sqrt(1 - x**2 - y**2)
     y = y + 0.0 * z  # propagate nans
@@ -89,3 +93,29 @@ def plot_lines(lines, axis=(0, 1), ax=None, **kwargs):
 
     for i, j in _xyzs[:, axis, :]:
         ax.plot(i, j, **kwargs)
+
+
+def show_map(m, theta=0, res=400, n=6, **kwargs):
+    import matplotlib.pyplot as plt
+
+    plt.imshow(m.render(theta, res), origin="lower", **kwargs, extent=(-1, 1, -1, 1))
+    if n is not None:
+        graticule(m.inc, m.obl, theta)
+    plt.axis(False)
+
+
+def graticule(inc, obl, theta=0, pts=100, **kwargs):
+    import matplotlib.pyplot as plt
+
+    kwargs.setdefault("c", kwargs.pop("color", "k"))
+    kwargs.setdefault("lw", kwargs.pop("linewidth", 1))
+    kwargs.setdefault("alpha", 0.5)
+
+    # plot lines
+    lat, lon = lon_lat_lines(pts=pts)
+    lat = rotate_lines(lat, inc, obl, theta)
+    plot_lines(lat, **kwargs)
+    lon = rotate_lines(lon, inc, obl, theta)
+    plot_lines(lon, **kwargs)
+    theta = np.linspace(0, 2 * np.pi, 2 * pts)
+    plt.plot(np.cos(theta), np.sin(theta), **kwargs)
