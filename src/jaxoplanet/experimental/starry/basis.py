@@ -32,59 +32,44 @@ def basis(lmax):
     if lmax > 0:
         return BCOO.from_scipy_sparse(matrix)
     else:
-        return BCOO.fromdense(np.squeeze(matrix)[None, None])
+            return BCOO.fromdense(np.squeeze(matrix)[None, None])
 
 
 def A1(lmax):
-    """Change of basis matrix from spherical harmonics to polynomial basis
+    """Change of basis matrix from spherical harmonics to polynomial basis.
 
-    Parameters
-    ----------
-    lmax : int
-        maximum degree of the spherical harmonic basis
+    Args:
+        lmax (int): Maximum degree of the spherical harmonic basis.
 
-    Returns
-    -------
-    TODO
+    Returns:
+        TODO: Description of the return value.
     """
     return _A_impl(lmax, p_Y) * 2 / np.sqrt(np.pi)
 
 
 def A2_inv(lmax):
-    """Change of basis matrix from polynomial basis to Green's basis
+    """Change of basis matrix from polynomial basis to Green's basis.
 
-    Parameters
-    ----------
-    lmax : int
-        maximum degree of the spherical harmonic basis
+    Args:
+        lmax (int): Maximum degree of the spherical harmonic basis.
 
-    Returns
-    -------
-    TODO
+    Returns:
+        TODO: Description of the return value.
     """
     return _A_impl(lmax, p_G)
 
 
 def _A_impl(lmax, func):
-    """Return a sparse change of basis matrix given a function that
-    map to the polynomial basis
+    """Return a sparse change of basis matrix given a function that maps to the polynomial basis.
 
-    Parameters
-    ----------
-    lmax : int
-        maximum degree of the spherical harmonic basis
-    func : callable
-        function that maps to the polynomial basis (signature
-        irrelevant here and used for convenience). the output must
-        be a tuple of (indicies, data) where indicies is a list of
-        indicies of the polynomial basis terms and data is a list
-        of the coefficients of the polynomial basis terms (see
-        `p_Y` and `p_G`)
+    Args:
+        lmax (int): Maximum degree of the spherical harmonic basis.
+        func (callable): Function that maps to the polynomial basis (signature irrelevant here and used for convenience).
+            The output must be a tuple of (indices, data) where indices is a list of indices of the polynomial basis terms
+            and data is a list of the coefficients of the polynomial basis terms (see `p_Y` and `p_G`).
 
-    Returns
-    -------
-    _type_
-        _description_
+    Returns:
+        _type_: _description_
     """
     n = (lmax + 1) ** 2
     data = []
@@ -105,29 +90,20 @@ def _A_impl(lmax, func):
 def ptilde(n):
     """Compute the x, y, and z powers of the n-th polynomial basis term.
 
-    if n-th term is x^i y^j z^k, return (i, j, k)
+    If the n-th term is x^i y^j z^k, return (i, j, k).
 
-    Parameters
-    ----------
-    n : int
-        index of the polynomial basis term
+    Args:
+        n (int): Index of the polynomial basis term.
 
-    Returns
-    -------
-    tuple
-        (i, j, k)
+    Returns:
+        tuple: (i, j, k)
 
-    Example
-    -------
-    >>> ptilde(2) # z
-    ```
-    (0, 0, 1)
-    ```
+    Example:
+        >>> ptilde(2) # z
+        (0, 0, 1)
 
-    >>> ptilde(3) # x + y
-    ```
-    (1, 1, 0)
-    ```
+        >>> ptilde(3) # x + y
+        (1, 1, 0)
     """
     l = math.floor(math.sqrt(n))
     m = n - l * l - l
@@ -182,28 +158,20 @@ def Cpqk(p, q, k):
 
 
 def Ylm(l, m):
-    """Compute the coefficients of the spherical harmonic Y_{l,m}
+    """Compute the coefficients of the spherical harmonic Y_{l,m}.
 
-    Parameters
-    ----------
-    l : int
-        degree of the spherical harmonic
-    m : int
-        order of the spherical harmonic in the range [-l, l]
+    Args:
+        l (int): Degree of the spherical harmonic.
+        m (int): Order of the spherical harmonic in the range [-l, l].
 
-    Returns
-    -------
-    dict
-        {(i, j, k): coeff} where i, j, k are the powers of x, y, z (see `ptilde`)
+    Returns:
+        dict: {(i, j, k): coeff} where i, j, k are the powers of x, y, z (see `ptilde`).
 
-    Example
-    -------
-    >>> Ylm(2, 0)
-    ```
-    {(0, 0, 0): 0.6307831305050402,
-     (2, 0, 0): -0.9461746957575603,
-     (0, 2, 0): -0.9461746957575603}
-    ```
+    Example:
+        >>> Ylm(2, 0)
+        {(0, 0, 0): 0.6307831305050402,
+            (2, 0, 0): -0.9461746957575603,
+            (0, 2, 0): -0.9461746957575603}
     """
     res = defaultdict(lambda: 0)
     A = Alm(l, abs(m))
@@ -235,69 +203,50 @@ def Ylm(l, m):
 
 
 def p_Y(p, l, m, n):
-    """Return a representation of Y_{l, m} in the polynomial basis
+    """Return a representation of Y_{l, m} in the polynomial basis.
 
-    Parameters
-    ----------
-    p : dict
-        powers of xyz as returned by `ptilde`
-    l : int
-        degree of the spherical harmonic
-    m : int
-        order of the spherical harmonic in the range [-l, l]
-    n : None
-        dummy variable
+    Args:
+        p (dict): Powers of xyz as returned by `ptilde`.
+        l (int): Degree of the spherical harmonic.
+        m (int): Order of the spherical harmonic in the range [-l, l].
+        n (None): Dummy variable.
 
-    Returns
-    -------
-    indicies : np.array
-        indices of the polynomial basis terms (from input `p`)
+    Returns:
+        tuple: (indices, data) where indices is an np.array of indices of the polynomial basis terms
+            and data is an np.array of the coefficients of the polynomial basis terms.
 
-    data : np.array
-        coefficients of the polynomial basis terms
-
-    Example
-    -------
-    >>> p = {ptilde(m): m for m in range(9)}
-    >>> p_Y(p, 2, 0, 0)
-    ```
-    (array([0, 4, 8]), array([ 0.63078313, -0.9461747 , -0.9461747 ]))
-    ```
-    see correspondence with `Ylm` example
+    Example:
+        >>> p = {ptilde(m): m for m in range(9)}
+        >>> p_Y(p, 2, 0, 0)
+        (array([0, 4, 8]), array([ 0.63078313, -0.9461747 , -0.9461747 ]))
+        # see correspondence with `Ylm` example
     """
     del n
-    indicies = []
+    indices = []
     data = []
     for k, v in Ylm(l, m).items():
         if k not in p:
             continue
-        indicies.append(p[k])
+        indices.append(p[k])
         data.append(v)
-    indicies = np.array(indicies, dtype=int)
+    indices = np.array(indices, dtype=int)
     data = np.array(data, dtype=float)
-    idx = np.argsort(indicies)
-    return indicies[idx], data[idx]
+    idx = np.argsort(indices)
+    return indices[idx], data[idx]
 
 
 def gtilde(n):
-    """Compute the n-th term of the Green basis in the polynomial basis
+    """Compute the n-th term of the Green basis in the polynomial basis.
 
-    Parameters
-    ----------
-    n : int
-        index of the Green basis term
+    Args:
+        n (int): Index of the Green basis term.
 
-    Returns
-    -------
-    dict
-        {(i, j, k): coeff} where i, j, k are the powers of x, y, z (see `ptilde`)
+    Returns:
+        dict: {(i, j, k): coeff} where i, j, k are the powers of x, y, z (see `ptilde`).
 
-    Example
-    -------
-    >>> gtilde(50)
-    ```
-    {(4, 0, 1): 5, (4, 2, 1): -5, (6, 0, 1): -8}
-    ```
+    Example:
+        >>> gtilde(50)
+        {(4, 0, 1): 5, (4, 2, 1): -5, (6, 0, 1): -8}
     """
     l = math.floor(math.sqrt(n))
     m = n - l * l - l
@@ -335,47 +284,35 @@ def gtilde(n):
 
 
 def p_G(p, l, m, n):
-    """Return a representation of Green's basis n-th term in the polynomial basis
+    """Return a representation of Green's basis n-th term in the polynomial basis.
 
-    Parameters
-    ----------
-    p : dict
-        powers of xyz as returned by `ptilde`
-    l : None
-        dummy variable
-    m : None
-        dummy variable
-    n : int
-        index of the Green basis term
+    Args:
+        p (dict): Powers of xyz as returned by `ptilde`.
+        l (None): Dummy variable.
+        m (None): Dummy variable.
+        n (int): Index of the Green basis term.
 
-    Returns
-    -------
-    indicies : np.array
-        indices of the polynomial basis terms (from input `p`)
+    Returns:
+        tuple: (indices, data) where indices is an np.array of indices of the polynomial basis terms
+            and data is an np.array of the coefficients of the polynomial basis terms.
 
-    data : np.array
-        coefficients of the polynomial basis terms
-
-    Example
-    -------
-    >>> p = {ptilde(n): n for n in range(100)}
-    >>> p_G(p, None, None, 50)
-    ```
-    (array([26, 50, 54]), array([ 5., -8., -5.]))
-    ```
+    Example:
+        >>> p = {ptilde(n): n for n in range(100)}
+        >>> p_G(p, None, None, 50)
+        (array([26, 50, 54]), array([ 5., -8., -5.]))
     """
     del l, m
-    indicies = []
+    indices = []
     data = []
     for k, v in gtilde(n).items():
         if k not in p:
             continue
-        indicies.append(p[k])
+        indices.append(p[k])
         data.append(v)
-    indicies = np.array(indicies, dtype=int)
+    indices = np.array(indices, dtype=int)
     data = np.array(data, dtype=float)
-    idx = np.argsort(indicies)
-    return indicies[idx], data[idx]
+    idx = np.argsort(indices)
+    return indices[idx], data[idx]
 
 
 def poly_basis(deg):
@@ -461,31 +398,27 @@ def u_p(p, l, m, n):
     # this is very similar to gtilde, might be a more general
     # way of doing the _A_impl function without dummy variables
     del l, m
-    indicies = []
+    indices = []
     data = []
     for k, v in utilde(n).items():
         if k not in p:
             continue
-        indicies.append(p[k])
+        indices.append(p[k])
         data.append(v)
-    indicies = np.array(indicies, dtype=int)
+    indices = np.array(indices, dtype=int)
     data = np.array(data, dtype=float)
-    idx = np.argsort(indicies)
-    return indicies[idx], data[idx]
+    idx = np.argsort(indices)
+    return indices[idx], data[idx]
 
 
 def U0(udeg: int):
-    """Change of basis matrix from limb darkening basis to polynomial basis
+    """Change of basis matrix from limb darkening basis to polynomial basis.
 
-    Parameters
-    ----------
-    udeg : int
-        degree of the limb darkening basis
+    Args:
+        udeg (int): Degree of the limb darkening basis.
 
-    Returns
-    -------
-    _type_
-        _description_
+    Returns:
+        TODO
     """
     n = (udeg + 1) ** 2
     p = {ptilde(m): m for m in range(n)}
