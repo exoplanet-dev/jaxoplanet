@@ -4,7 +4,6 @@ from typing import Optional
 import equinox as eqx
 import jax
 import jax.numpy as jnp
-import numpy as np
 
 from jaxoplanet.experimental.starry.basis import A1, U0, poly_basis
 from jaxoplanet.experimental.starry.pijk import Pijk
@@ -15,7 +14,7 @@ from jaxoplanet.experimental.starry.ylm import Ylm
 
 class Map(eqx.Module):
     y: Optional[Ylm] = None
-    """Ylm object representing the spherical harmonic expansion 
+    """Ylm object representing the spherical harmonic expansion
     of the map."""
     inc: Optional[float] = None
     """Inclination of the map in radians."""
@@ -24,7 +23,7 @@ class Map(eqx.Module):
     u: Optional[tuple] = None
     """Tuple of limb darkening coefficients."""
     period: Optional[float] = None
-    """Rotation period of the map in days (attribute subject 
+    """Rotation period of the map in days (attribute subject
     to change)"""
 
     """
