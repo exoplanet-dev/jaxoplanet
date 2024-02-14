@@ -32,7 +32,7 @@ def basis(lmax):
     if lmax > 0:
         return BCOO.from_scipy_sparse(matrix)
     else:
-            return BCOO.fromdense(np.squeeze(matrix)[None, None])
+        return BCOO.fromdense(np.squeeze(matrix)[None, None])
 
 
 def A1(lmax):
@@ -60,13 +60,16 @@ def A2_inv(lmax):
 
 
 def _A_impl(lmax, func):
-    """Return a sparse change of basis matrix given a function that maps to the polynomial basis.
+    """Return a sparse change of basis matrix given a function that maps
+    to the polynomial basis.
 
     Args:
         lmax (int): Maximum degree of the spherical harmonic basis.
-        func (callable): Function that maps to the polynomial basis (signature irrelevant here and used for convenience).
-            The output must be a tuple of (indices, data) where indices is a list of indices of the polynomial basis terms
-            and data is a list of the coefficients of the polynomial basis terms (see `p_Y` and `p_G`).
+        func (callable): Function that maps to the polynomial basis (signature
+        irrelevant here and used for convenience). The output must be a tuple
+        of (indices, data) where indices is a list of indices of the polynomial basis
+        terms and data is a list of the coefficients of the polynomial basis terms
+        (see `p_Y` and `p_G`).
 
     Returns:
         _type_: _description_
@@ -212,8 +215,9 @@ def p_Y(p, l, m, n):
         n (None): Dummy variable.
 
     Returns:
-        tuple: (indices, data) where indices is an np.array of indices of the polynomial basis terms
-            and data is an np.array of the coefficients of the polynomial basis terms.
+        tuple: (indices, data) where indices is an np.array of indices of the polynomial
+            basis terms and data is an np.array of the coefficients of the polynomial
+            basis terms.
 
     Example:
         >>> p = {ptilde(m): m for m in range(9)}
@@ -293,8 +297,9 @@ def p_G(p, l, m, n):
         n (int): Index of the Green basis term.
 
     Returns:
-        tuple: (indices, data) where indices is an np.array of indices of the polynomial basis terms
-            and data is an np.array of the coefficients of the polynomial basis terms.
+        tuple: (indices, data) where indices is an np.array of indices of the polynomial
+            basis terms and data is an np.array of the coefficients of the polynomial
+            basis terms.
 
     Example:
         >>> p = {ptilde(n): n for n in range(100)}
