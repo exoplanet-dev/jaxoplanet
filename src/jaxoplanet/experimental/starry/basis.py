@@ -32,7 +32,7 @@ def basis(lmax):
     if lmax > 0:
         return BCOO.from_scipy_sparse(matrix)
     else:
-            return BCOO.fromdense(np.squeeze(matrix)[None, None])
+        return BCOO.fromdense(np.squeeze(matrix)[None, None])
 
 
 def A1(lmax):

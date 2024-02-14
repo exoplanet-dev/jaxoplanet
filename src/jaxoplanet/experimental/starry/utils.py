@@ -1,3 +1,5 @@
+from functools import partial
+
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -5,8 +7,6 @@ from scipy.spatial.transform import Rotation
 
 from jaxoplanet.experimental.starry.basis import A1, poly_basis
 from jaxoplanet.experimental.starry.rotation import left_project
-
-from functools import partial
 
 
 @partial(jax.jit, static_argnums=0)
