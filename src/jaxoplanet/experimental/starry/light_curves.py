@@ -11,32 +11,32 @@ from jaxoplanet.experimental.starry.solution import solution_vector
 
 # TODO: figure out the sparse matrices (and Pijk) to avoid todense()
 # TODO this is failing for ydeg=0
-def light_curve(ydeg, y, u, inc, obl, r, xo, yo, zo, theta):
-    udeg = len(u)
-    U = jnp.array([1, *u])
-    full_deg = ydeg + udeg
+def light_curve(map, r, xo, yo, zo, theta):
+    U = jnp.array([1, *map.u])
     b = jnp.sqrt(jnp.square(xo) + jnp.square(yo))
     b_rot = jnp.logical_or(jnp.greater_equal(b, 1.0 + r), jnp.less_equal(zo, 0.0))
     b_occ = jnp.logical_not(b_rot)
 
     # Occultation
     theta_z = jnp.arctan2(xo, yo)
-    sT = solution_vector(full_deg)(b, r)
-    A2 = scipy.sparse.linalg.inv(A2_inv(full_deg))
+    sT = solution_vector(map.deg)(b, r)
+    A2 = scipy.sparse.linalg.inv(A2_inv(map.deg))
     A2 = jax.experimental.sparse.BCOO.from_scipy_sparse(A2)
     sTA2 = sT @ A2
 
     # full rotation
-    rotated_y = left_project(ydeg, inc, obl, theta, theta_z, y)
+    rotated_y = left_project(
+        map.ydeg, map.inc, map.obl, theta, theta_z, map.y.todense()
+    )
 
     # limb darkening product
-    A1_val = jax.experimental.sparse.BCOO.from_scipy_sparse(A1(ydeg))
-    p_y = Pijk.from_dense(A1_val @ rotated_y, degree=ydeg)
-    p_u = Pijk.from_dense(U @ U0(udeg), degree=udeg)
+    A1_val = jax.experimental.sparse.BCOO.from_scipy_sparse(A1(map.ydeg))
+    p_y = Pijk.from_dense(A1_val @ rotated_y, degree=map.ydeg)
+    p_u = Pijk.from_dense(U @ U0(map.udeg), degree=map.udeg)
     p_y = p_y * p_u
 
-    x = jnp.where(b_occ, sTA2, rT(full_deg))
-    norm = np.pi / (p_u.tosparse() @ rT(udeg))
+    x = jnp.where(b_occ, sTA2, rT(map.deg))
+    norm = np.pi / (p_u.tosparse() @ rT(map.udeg))
 
     return (p_y.tosparse() @ x) * norm
 
