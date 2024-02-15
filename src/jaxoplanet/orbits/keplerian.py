@@ -35,7 +35,8 @@ class Central(eqx.Module):
         radius: Optional[Quantity] = None,
         density: Optional[Quantity] = None,
     ):
-        """Initialize the central body (e.g. a star) of an orbital system using two of radius, mass and/or density.
+        """Initialize the central body (e.g. a star) of an orbital system using two of
+        radius, mass and/or density.
 
         Args:
             mass (Optional[Quantity]): Mass of central body [mass unit].
@@ -87,8 +88,8 @@ class Central(eqx.Module):
         radius: Optional[Quantity] = None,
         body_mass: Optional[Quantity] = None,
     ) -> "Central":
-        """Initialize the central body (e.g. a star) of an orbital system using orbital parameters to derive radius
-        and mass.
+        """Initialize the central body (e.g. a star) of an orbital system using
+        orbital parameters to derive radius and mass.
 
         Args:
             period: The orbital period of the orbiting body [time unit].
@@ -193,7 +194,8 @@ class Body(eqx.Module):
         parallax: Optional[Quantity] = None,
     ):
         """Initialize an orbiting body (e.g. a planet) using orbital parameters. See
-        https://docs.exoplanet.codes/en/latest/tutorials/data-and-models/ for a description of the orbital geometry.
+        https://docs.exoplanet.codes/en/latest/tutorials/data-and-models/ for a description
+        of the orbital geometry.
 
         Args:
             central (Optional[Central]): The Central object that this Body orbits [Central].
@@ -203,7 +205,8 @@ class Body(eqx.Module):
             semimajor (Optional[Quantity]): Semi-major axis in [length unit].
             inclination (Optional[Quantity]): Inclination of orbital plane in [angular unit].
             impact_param (Optional): Impact parameter.
-            eccentricity (Optional): Eccentricity, must be ``0 <= eccentricity < 1`` where 0 = circular orbit.
+            eccentricity (Optional): Eccentricity, must be ``0 <= eccentricity < 1`` where 0 =
+            circular orbit.
             omega_peri (Optional[Quantity]): Argument of periastron [angular unit].
             sin_omega_peri (Optional): sin(argument of periastron).
             cos_omega_peri (Optional): cos(argument of periastron).
@@ -213,7 +216,8 @@ class Body(eqx.Module):
             mass (Optional[Quantity]): Mass of orbiting body [mass unit].
             radius (Optional[Quantity]): Radius of orbiting body [length unit].
             central_radius (Optional[Quantity]): Radius of central body [length unit].
-            radial_velocity_semiamplitude (Optional[Quantity]): The radial velocity semi-amplitude [length/time unit].
+            radial_velocity_semiamplitude (Optional[Quantity]): The radial velocity semi-amplitude
+            [length/time unit].
             parallax (Optional[Quantity]): Parallax (to convert position/velocity into arcsec).
             [length unit].
         """
