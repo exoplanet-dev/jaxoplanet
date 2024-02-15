@@ -15,6 +15,11 @@
       "affiliation": "Center for Computational Astrophysics, Flatiron Institute, New York, NY, USA",
       "name": "Lionel Garcia"
     }
+    {
+      "orcid": "0000-0001-8504-5862",
+      "affiliation": "Department of Astrophysical and Planetary Sciences, University of Colorado Boulder, Boulder, CO, USA",
+      "name": "Catriona Murray"
+    }
   ],
   "license": "MIT",
   "title": "exoplanet-dev/jaxoplanet: Astronomical time series analysis with JAX "
