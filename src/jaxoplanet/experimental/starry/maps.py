@@ -10,6 +10,7 @@ from jaxoplanet.experimental.starry.pijk import Pijk
 from jaxoplanet.experimental.starry.rotation import left_project
 from jaxoplanet.experimental.starry.utils import ortho_grid
 from jaxoplanet.experimental.starry.ylm import Ylm
+from jaxoplanet.experimental.starry.light_curves import light_curve
 
 
 class Map(eqx.Module):
@@ -32,7 +33,8 @@ class Map(eqx.Module):
         import numpy as np
         import jax
         from jaxoplanet.experimental.starry.utils import show_map
-        from jaxoplanet.experimental.starry import Map, Ylm
+        from jaxoplanet.experimental.starry.maps import Map
+        from jaxoplanet.experimental.starry.ylm import Ylm
 
         jax.config.update("jax_enable_x64", True)
 
@@ -53,13 +55,15 @@ class Map(eqx.Module):
     ):
 
         if y is None:
-            y = Ylm({(0, 0): 1})
+            y = Ylm({(0, 0): 1, (1, 0): 0.0})
         if inc is None:
             inc = jnp.pi / 2
         if obl is None:
             obl = 0.0
         if u is None:
             u = ()
+        if period is None:
+            period = 1e15
 
         self.y = y
         self.inc = inc
@@ -94,3 +98,20 @@ class Map(eqx.Module):
         p_u = Pijk.from_dense(U @ U0(self.udeg), degree=self.udeg)
         p = (p_y * p_u).todense()
         return jnp.reshape(pT @ p, (res, res))
+
+    def flux(self, time):
+        theta = time * 2 * jnp.pi / self.period
+        return jnp.vectorize(
+            partial(
+                light_curve,
+                self.ydeg,
+                self.y.todense(),
+                self.u,
+                self.inc,
+                self.obl,
+                0.0,
+                2.0,
+                2.0,
+                2.0,
+            )
+        )(theta)
