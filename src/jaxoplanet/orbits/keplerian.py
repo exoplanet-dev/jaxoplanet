@@ -9,12 +9,14 @@ from jaxoplanet import units
 from jaxoplanet.core.kepler import kepler
 from jaxoplanet.types import Quantity
 from jaxoplanet.units import unit_registry as ureg
+from jaxoplanet.experimental.starry.maps import Map
 
 
 class Central(eqx.Module):
     mass: Quantity = units.field(units=ureg.M_sun)
     radius: Quantity = units.field(units=ureg.R_sun)
     density: Quantity = units.field(units=ureg.M_sun / ureg.R_sun**3)
+    map: Optional[Map] = None
 
     @units.quantity_input(
         mass=ureg.M_sun, radius=ureg.R_sun, density=ureg.M_sun / ureg.R_sun**3
@@ -25,6 +27,7 @@ class Central(eqx.Module):
         mass: Optional[Quantity] = None,
         radius: Optional[Quantity] = None,
         density: Optional[Quantity] = None,
+        map: Optional[Map] = None,
     ):
         if radius is None and mass is None:
             radius = 1.0 * ureg.R_sun
@@ -61,6 +64,11 @@ class Central(eqx.Module):
             self.radius = radius
             self.density = density
 
+        if map is None:
+            self.map = Map()
+        else:
+            self.map = map
+
     @classmethod
     def from_orbital_properties(
         cls,
@@ -90,6 +98,9 @@ class Central(eqx.Module):
     def shape(self) -> tuple[int, ...]:
         return self.mass.shape
 
+    def flux(self, theta: float) -> float:
+        return self.map.flux(theta)
+
 
 class Body(eqx.Module):
     central: Central
@@ -111,6 +122,7 @@ class Body(eqx.Module):
         units=ureg.R_sun / ureg.d
     )
     parallax: Optional[Quantity] = units.field(units=ureg.arcsec)
+    map: Optional[Map] = None
 
     @units.quantity_input(
         time_transit=ureg.d,
@@ -154,6 +166,7 @@ class Body(eqx.Module):
         central_radius: Optional[Quantity] = None,
         radial_velocity_semiamplitude: Optional[Quantity] = None,
         parallax: Optional[Quantity] = None,
+        map: Optional[Map] = None,
     ):
         # Handle the special case when passing both `period` and `semimajor`.
         # This occurs sometimes when doing transit fits, and we want to fit for
@@ -304,6 +317,11 @@ class Body(eqx.Module):
             self.time_transit = time_peri - self.time_ref
         else:
             self.time_transit = jnpu.zeros_like(self.period)
+
+        if map is None:
+            self.map = Map()
+        else:
+            self.map = map
 
     @property
     def shape(self) -> tuple[int, ...]:
@@ -615,6 +633,9 @@ class Body(eqx.Module):
 
         return (x, y, z), (vx, vy, vz)
 
+    def flux(self, theta: float) -> float:
+        return self.map.flux(theta)
+
 
 class System(eqx.Module):
     central: Central
@@ -656,6 +677,13 @@ class System(eqx.Module):
             *[body.central_radius for body in self.bodies],
         )
 
+    @property
+    def map(self):
+        return jax.tree_util.tree_map(
+            lambda *x: jnp.stack(x, axis=0),
+            *[body.map for body in self.bodies],
+        )
+
     def add_body(self, body: Optional[Body] = None, **kwargs: Any) -> "System":
         if body is None:
             body = Body(self.central, **kwargs)
@@ -691,3 +719,6 @@ class System(eqx.Module):
 
     def radial_velocity(self, t: Quantity) -> Quantity:
         return self._body_vmap("radial_velocity", t)
+
+    def flux(self, time: float) -> float:
+        return self._body_vmap("flux", time)
