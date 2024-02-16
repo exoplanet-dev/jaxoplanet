@@ -1,3 +1,4 @@
+from functools import partial
 from typing import Any, Optional
 
 import equinox as eqx
@@ -9,8 +10,6 @@ from jaxoplanet import units
 from jaxoplanet.core.kepler import kepler
 from jaxoplanet.types import Quantity
 from jaxoplanet.units import unit_registry as ureg
-
-from functools import partial
 
 
 class Central(eqx.Module):
