@@ -1,3 +1,4 @@
+from functools import partial
 from typing import Any, Optional
 
 import equinox as eqx
@@ -698,6 +699,34 @@ class System(eqx.Module):
             lambda *x: jnp.stack(x, axis=0),
             *[getattr(body, func_name)(t) for body in self.bodies],
         )
+
+    def body_vmap(self, func: callable, in_axes) -> callable:
+        if self._body_stack is not None:
+
+            def impl(*args):
+                return jax.vmap(func, in_axes=in_axes)(self._body_stack, *args)
+
+        else:
+
+            def impl(*args):
+                sub_in_axes = in_axes[1:]
+                if all(i is None for i in sub_in_axes):
+                    v_args = [
+                        jnp.vstack([arg for _ in range(len(self.bodies))])
+                        for arg in args
+                    ]
+                else:
+                    v_args = jax.vmap(lambda *args: args, in_axes=in_axes[1:])(*args)
+
+                return jax.tree_util.tree_map(
+                    lambda *x: jnp.stack(x, axis=0),
+                    *[
+                        func(body, *[arg[i] for arg in v_args])
+                        for i, body in enumerate(self.bodies)
+                    ],
+                )
+
+        return impl
 
     def position(self, t: Quantity) -> tuple[Quantity, Quantity, Quantity]:
         return self._body_vmap("position", t)
