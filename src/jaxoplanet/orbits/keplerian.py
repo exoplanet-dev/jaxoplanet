@@ -10,6 +10,8 @@ from jaxoplanet.core.kepler import kepler
 from jaxoplanet.types import Quantity
 from jaxoplanet.units import unit_registry as ureg
 
+from functools import partial
+
 
 class Central(eqx.Module):
     mass: Quantity = units.field(units=ureg.M_sun)
@@ -670,6 +672,22 @@ class System(eqx.Module):
             lambda *x: jnp.stack(x, axis=0),
             *[getattr(body, func_name)(t) for body in self.bodies],
         )
+
+    def body_vmap(self, func: callable) -> callable:
+        if self._body_stack is not None:
+
+            def impl(*args):
+                return partial(jax.vmap(func, in_axes=0), self._body_stack)(*args)
+
+        else:
+
+            def impl(*args):
+                return jax.tree_util.tree_map(
+                    lambda *x: jnp.stack(x, axis=0),
+                    *[func(body, *args) for body in self.bodies],
+                )
+
+        return impl
 
     def position(self, t: Quantity) -> tuple[Quantity, Quantity, Quantity]:
         return self._body_vmap("position", t)
