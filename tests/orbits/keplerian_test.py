@@ -219,74 +219,54 @@ def test_keplerian_system_position():
 def test_body_vmap():
     # _body_stack is not None
     central = keplerian.Central()
-    bodies = [
+    bodies = (
         keplerian.Body(radius=0.5, period=1.0),
         keplerian.Body(radius=0.8, period=1.0),
-    ]
+    )
     system_bs = keplerian.System(central, bodies=bodies)
 
     # _body_stack is None
     central = keplerian.Central()
-    bodies = [
+    bodies = (
         keplerian.Body(radius=0.5, period=1.0, eccentricity=0.1, omega_peri=0.1),
         keplerian.Body(radius=0.8, period=1.0),
-    ]
+    )
     system_no_bs = keplerian.System(central, bodies=bodies)
 
-    def func(body, x):
+    x = jnp.array([0.0, 1.0, 2.0])
+
+    def func1(body, x):
         return body.radius * x
 
     # _body_stack is not None
-    np.testing.assert_allclose(
-        system_bs.body_vmap(func, in_axes=(0, None))(jnp.array([0.0, 1.0, 2.0])).shape,
-        (2, 3),
-    )
-    np.testing.assert_allclose(
-        system_bs.body_vmap(func, in_axes=(0, 0))(jnp.array([0.0, 1.0])).shape, (2,)
-    )
+    assert system_bs.body_vmap(func1, in_axes=None)(x).shape == (2, 3)
+    assert system_bs.body_vmap(func1, in_axes=0)(jnp.array([0.0, 1.0])).shape == (2,)
 
     # _body_stack is None
-    np.testing.assert_allclose(
-        system_no_bs.body_vmap(func, in_axes=(0, None))(
-            jnp.array([0.0, 1.0, 2.0])
-        ).shape,
-        (2, 3),
-    )
-    np.testing.assert_allclose(
-        system_no_bs.body_vmap(func, in_axes=(0, 0))(jnp.array([0.0, 1.0])).shape, (2,)
-    )
+    assert system_no_bs.body_vmap(func1, in_axes=None)(x).shape == (2, 3)
+    assert system_no_bs.body_vmap(func1, in_axes=0)(jnp.array([0.0, 1.0])).shape == (2,)
 
     # both equal
-    np.testing.assert_allclose(
-        system_no_bs.body_vmap(func, in_axes=(0, None))(jnp.array([0.0, 1.0, 2.0])),
-        system_bs.body_vmap(func, in_axes=(0, None))(jnp.array([0.0, 1.0, 2.0])),
+    assert_quantity_allclose(
+        system_no_bs.body_vmap(func1, in_axes=None)(x),
+        system_bs.body_vmap(func1, in_axes=None)(x),
     )
 
-    def func(body, x, y):
+    def func2(body, x, y):
         return body.radius * x * y
 
     # _body_stack is not None
-    np.testing.assert_allclose(
-        system_bs.body_vmap(func, in_axes=(0, None, 0))(
-            jnp.array([0.0, 1.0, 2.0]), jnp.array([0.0, 1.0])
-        ).shape,
-        (2, 3),
-    )
+    assert system_bs.body_vmap(func2, in_axes=(None, 0))(
+        x, jnp.array([0.0, 1.0])
+    ).shape == (2, 3)
 
     # _body_stack is None
-    np.testing.assert_allclose(
-        system_no_bs.body_vmap(func, in_axes=(0, None, 0))(
-            jnp.array([0.0, 1.0, 2.0]), jnp.array([0.0, 1.0])
-        ).shape,
-        (2, 3),
-    )
+    assert system_no_bs.body_vmap(func2, in_axes=(None, 0))(
+        x, jnp.array([0.0, 1.0])
+    ).shape == (2, 3)
 
     # both equal
-    np.testing.assert_allclose(
-        system_no_bs.body_vmap(func, in_axes=(0, None, 0))(
-            jnp.array([0.0, 1.0, 2.0]), jnp.array([0.0, 1.0])
-        ),
-        system_bs.body_vmap(func, in_axes=(0, None, 0))(
-            jnp.array([0.0, 1.0, 2.0]), jnp.array([0.0, 1.0])
-        ),
+    assert_quantity_allclose(
+        system_no_bs.body_vmap(func2, in_axes=(None, 0))(x, jnp.array([0.0, 1.0])),
+        system_bs.body_vmap(func2, in_axes=(None, 0))(x, jnp.array([0.0, 1.0])),
     )

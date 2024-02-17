@@ -1,4 +1,6 @@
-from typing import Any, Optional
+from collections.abc import Sequence
+from functools import wraps
+from typing import Any, Callable, Optional
 
 import equinox as eqx
 import jax
@@ -684,31 +686,63 @@ class System(eqx.Module):
             *[getattr(body, func_name)(t) for body in self.bodies],
         )
 
-    def body_vmap(self, func: callable, in_axes) -> callable:
-        if self._body_stack is not None:
+    def body_vmap(
+        self,
+        func: Callable,
+        in_axes: int | None | Sequence[Any] = 0,
+        out_axes: Any = 0,
+    ) -> Callable:
+        @wraps(func)
+        def impl(*args: Any) -> Any:
+            # First, normalize the "in_axes" argument so we always have an iterable
+            if isinstance(in_axes, Sequence):
+                in_axes_ = tuple(in_axes)
+            else:
+                in_axes_ = tuple(in_axes for _ in args)
 
-            def impl(*args):
-                return jax.vmap(func, in_axes=in_axes)(self._body_stack, *args)
-
-        else:
-
-            def impl(*args):
-                sub_in_axes = in_axes[1:]
-                if all(i is None for i in sub_in_axes):
-                    v_args = [
-                        jnp.vstack([arg for _ in range(len(self.bodies))])
-                        for arg in args
-                    ]
-                else:
-                    v_args = jax.vmap(lambda *args: args, in_axes=in_axes[1:])(*args)
-
-                return jax.tree_util.tree_map(
-                    lambda *x: jnp.stack(x, axis=0),
-                    *[
-                        func(body, *[arg[i] for arg in v_args])
-                        for i, body in enumerate(self.bodies)
-                    ],
+            # If we have a "body_stack" we can just vmap and be done
+            if self._body_stack is not None:
+                return jax.vmap(func, in_axes=(0,) + in_axes_, out_axes=out_axes)(
+                    self._body_stack.stack, *args
                 )
+
+            # Otherwise we need to loop over the bodies and apply the function once for
+            # each body
+            if not isinstance(out_axes, int):
+                raise ValueError(
+                    "Only integer values of `out_axes` are supported by `body_vmap`"
+                )
+
+            # Here we flattent the input arguments and `in_axes` so that we don't have
+            # to deal with Pytree logic for the `in_axes` ourselves below.
+            # TODO(dfm): We could probably make all this simpler using `linear_util`.
+            flat_args, args_treedef = jax.tree_util.tree_flatten(args)
+            flat_in_axes = jax.api_util.flatten_axes(  # type: ignore
+                "body_vmap in_axes", args_treedef, in_axes_
+            )
+
+            # Then loop over the bodies and accumulate the function results
+            results = []
+            for n, body in enumerate(self.bodies):
+
+                # Here we index into the input arguments as specified by `in_axes`
+                def index(args):
+                    arg, axis = args
+                    if axis is None:
+                        return arg
+                    else:
+                        idx = (slice(None),) * max(0, axis - 1) + (n,)
+                        return arg[idx]
+
+                flat_argsn = tuple(map(index, zip(flat_args, flat_in_axes)))
+
+                # Actually call the input function with the indexed inputs
+                results.append(func(body, *args_treedef.unflatten(flat_argsn)))
+
+            # Finally, stack the results on the `out_axes` axis
+            return jax.tree_util.tree_map(
+                lambda *x: jnp.stack(x, axis=out_axes), *results
+            )
 
         return impl
 
