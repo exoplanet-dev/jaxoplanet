@@ -6,7 +6,6 @@ import equinox as eqx
 import jax
 import jax.numpy as jnp
 import jpu.numpy as jnpu
-from jax.extend import linear_util as lu
 from jax.interpreters import batching
 from jax.tree_util import tree_flatten
 
@@ -14,6 +13,11 @@ from jaxoplanet import units
 from jaxoplanet.core.kepler import kepler
 from jaxoplanet.types import Quantity
 from jaxoplanet.units import unit_registry as ureg
+
+try:
+    from jax.extend import linear_util as lu
+except ImportError:
+    from jax import linear_util as lu
 
 
 class Central(eqx.Module):
@@ -727,7 +731,8 @@ class System(eqx.Module):
                 "body_vmap out_axes", out_tree, out_axes
             )
             return out_tree.unflatten(  # type: ignore
-                jnp.stack(parts, axis=a) for a, *parts in zip(out_axes_flat, *results)  # type: ignore
+                jnp.stack(parts, axis=a)
+                for a, *parts in zip(out_axes_flat, *results)  # type: ignore
             )
 
         return impl
