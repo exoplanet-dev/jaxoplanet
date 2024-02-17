@@ -107,9 +107,8 @@ class Central(eqx.Module):
             if arg is not None
         ):
             raise ValueError(
-                "All parameters of 'KeplerianCentral.from_orbital_properties' must be scalars"
-                "; for multi-planet systems, "
-                "use 'jax.vmap'"
+                "All parameters of 'KeplerianCentral.from_orbital_properties' must be "
+                "scalars; for multi-planet systems, use 'jax.vmap'"
             )
 
         radius = 1.0 * ureg.R_sun if radius is None else radius
@@ -193,20 +192,25 @@ class Body(eqx.Module):
         radial_velocity_semiamplitude: Optional[Quantity] = None,
         parallax: Optional[Quantity] = None,
     ):
-        """Initialize an orbiting body (e.g. a planet) using orbital parameters. See
-        https://docs.exoplanet.codes/en/latest/tutorials/data-and-models/ for a description
-        of the orbital geometry.
+        """Initialize an orbiting body (e.g. a planet) using orbital parameters
+
+        See https://docs.exoplanet.codes/en/latest/tutorials/data-and-models/ for a
+        description of the orbital geometry.
 
         Args:
-            central (Optional[Central]): The Central object that this Body orbits [Central].
-            time_transit (Optional[Quantity]): The epoch of a reference transit [time unit].
-            time_peri (Optional[Quantity]): The epoch of a reference periastron passage [time unit].
+            central (Optional[Central]): The Central object that this Body orbits
+                [Central].
+            time_transit (Optional[Quantity]): The epoch of a reference transit
+                [time unit].
+            time_peri (Optional[Quantity]): The epoch of a reference periastron passage
+                [time unit].
             period (Optional[Quantity]): Orbital period [time unit].
             semimajor (Optional[Quantity]): Semi-major axis in [length unit].
-            inclination (Optional[Quantity]): Inclination of orbital plane in [angular unit].
+            inclination (Optional[Quantity]): Inclination of orbital plane in
+                [angular unit].
             impact_param (Optional): Impact parameter.
-            eccentricity (Optional): Eccentricity, must be ``0 <= eccentricity < 1`` where 0 =
-            circular orbit.
+            eccentricity (Optional): Eccentricity, must be ``0 <= eccentricity < 1``
+                where 0 = circular orbit.
             omega_peri (Optional[Quantity]): Argument of periastron [angular unit].
             sin_omega_peri (Optional): sin(argument of periastron).
             cos_omega_peri (Optional): cos(argument of periastron).
@@ -216,10 +220,10 @@ class Body(eqx.Module):
             mass (Optional[Quantity]): Mass of orbiting body [mass unit].
             radius (Optional[Quantity]): Radius of orbiting body [length unit].
             central_radius (Optional[Quantity]): Radius of central body [length unit].
-            radial_velocity_semiamplitude (Optional[Quantity]): The radial velocity semi-amplitude
-            [length/time unit].
-            parallax (Optional[Quantity]): Parallax (to convert position/velocity into arcsec).
-            [length unit].
+            radial_velocity_semiamplitude (Optional[Quantity]): The radial velocity
+                semi-amplitude [length/time unit].
+            parallax (Optional[Quantity]): Parallax (to convert position/velocity into
+                arcsec). [length unit].
         """
 
         # Handle the special case when passing both `period` and `semimajor`.
