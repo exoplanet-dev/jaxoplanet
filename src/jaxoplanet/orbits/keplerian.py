@@ -1,11 +1,14 @@
 from collections.abc import Sequence
 from functools import wraps
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Union
 
 import equinox as eqx
 import jax
 import jax.numpy as jnp
 import jpu.numpy as jnpu
+from jax.extend import linear_util as lu
+from jax.interpreters import batching
+from jax.tree_util import tree_flatten
 
 from jaxoplanet import units
 from jaxoplanet.core.kepler import kepler
@@ -659,37 +662,21 @@ class System(eqx.Module):
 
     @property
     def radius(self) -> Quantity:
-        return jax.tree_util.tree_map(
-            lambda *x: jnp.stack(x, axis=0),
-            *[body.radius for body in self.bodies],
-        )
+        return self.body_vmap(lambda body: body.radius)()
 
     @property
     def central_radius(self) -> Quantity:
-        return jax.tree_util.tree_map(
-            lambda *x: jnp.stack(x, axis=0),
-            *[body.central_radius for body in self.bodies],
-        )
+        return self.body_vmap(lambda body: body.central_radius)()
 
     def add_body(self, body: Optional[Body] = None, **kwargs: Any) -> "System":
         if body is None:
             body = Body(self.central, **kwargs)
         return System(central=self.central, bodies=self.bodies + (body,))
 
-    def _body_vmap(self, func_name: str, t: Quantity) -> Any:
-        if self._body_stack is not None:
-            return jax.vmap(getattr(Body, func_name), in_axes=(0, None))(
-                self._body_stack.stack, t
-            )
-        return jax.tree_util.tree_map(
-            lambda *x: jnp.stack(x, axis=0),
-            *[getattr(body, func_name)(t) for body in self.bodies],
-        )
-
     def body_vmap(
         self,
         func: Callable,
-        in_axes: int | None | Sequence[Any] = 0,
+        in_axes: Union[int, None, Sequence[Any]] = 0,
         out_axes: Any = 0,
     ) -> Callable:
         @wraps(func)
@@ -713,56 +700,70 @@ class System(eqx.Module):
                     "Only integer values of `out_axes` are supported by `body_vmap`"
                 )
 
-            # Here we flattent the input arguments and `in_axes` so that we don't have
+            # Here we flatten the input arguments and `in_axes` so that we don't have
             # to deal with Pytree logic for the `in_axes` ourselves below.
-            # TODO(dfm): We could probably make all this simpler using `linear_util`.
-            flat_args, args_treedef = jax.tree_util.tree_flatten(args)
-            flat_in_axes = jax.api_util.flatten_axes(  # type: ignore
-                "body_vmap in_axes", args_treedef, in_axes_
+            args_flat, in_tree = tree_flatten(args, is_leaf=batching.is_vmappable)
+            in_axes_flat = jax.api_util.flatten_axes(  # type: ignore
+                "body_vmap in_axes", in_tree, in_axes_
             )
 
             # Then loop over the bodies and accumulate the function results
             results = []
+            out_tree = None
             for n, body in enumerate(self.bodies):
+                f = lu.wrap_init(func)
+                f, out_tree_ = flatten_func_for_body_vmap(f, in_tree, in_axes_flat, n)
+                results.append(f.call_wrapped(body, *args_flat))  # type: ignore
+                out_tree_ = out_tree_()  # type: ignore
+                if out_tree is not None and out_tree_ != out_tree:
+                    raise ValueError(
+                        "Input function does not return consistent Pytree structure;\n"
+                        f"expected: {out_tree}\n"
+                        f"found: {out_tree_}\n"
+                    )
+                out_tree = out_tree_
 
-                # Here we index into the input arguments as specified by `in_axes`
-                def index(args):
-                    arg, axis = args
-                    if axis is None:
-                        return arg
-                    else:
-                        idx = (slice(None),) * max(0, axis - 1) + (n,)
-                        return arg[idx]
-
-                flat_argsn = tuple(map(index, zip(flat_args, flat_in_axes)))
-
-                # Actually call the input function with the indexed inputs
-                results.append(func(body, *args_treedef.unflatten(flat_argsn)))
-
-            # Finally, stack the results on the `out_axes` axis
-            return jax.tree_util.tree_map(
-                lambda *x: jnp.stack(x, axis=out_axes), *results
+            out_axes_flat = jax.api_util.flatten_axes(  # type: ignore
+                "body_vmap out_axes", out_tree, out_axes
+            )
+            return out_tree.unflatten(  # type: ignore
+                jnp.stack(parts, axis=a) for a, *parts in zip(out_axes_flat, *results)  # type: ignore
             )
 
         return impl
 
     def position(self, t: Quantity) -> tuple[Quantity, Quantity, Quantity]:
-        return self._body_vmap("position", t)
+        return self.body_vmap(Body.position, in_axes=None)(t)
 
     def central_position(self, t: Quantity) -> tuple[Quantity, Quantity, Quantity]:
-        return self._body_vmap("central_position", t)
+        return self.body_vmap(Body.central_position, in_axes=None)(t)
 
     def relative_position(self, t: Quantity) -> tuple[Quantity, Quantity, Quantity]:
-        return self._body_vmap("relative_position", t)
+        return self.body_vmap(Body.relative_position, in_axes=None)(t)
 
     def velocity(self, t: Quantity) -> tuple[Quantity, Quantity, Quantity]:
-        return self._body_vmap("velocity", t)
+        return self.body_vmap(Body.velocity, in_axes=None)(t)
 
     def central_velocity(self, t: Quantity) -> tuple[Quantity, Quantity, Quantity]:
-        return self._body_vmap("central_velocity", t)
+        return self.body_vmap(Body.central_velocity, in_axes=None)(t)
 
     def relative_velocity(self, t: Quantity) -> tuple[Quantity, Quantity, Quantity]:
-        return self._body_vmap("relative_velocity", t)
+        return self.body_vmap(Body.relative_velocity, in_axes=None)(t)
 
     def radial_velocity(self, t: Quantity) -> Quantity:
-        return self._body_vmap("radial_velocity", t)
+        return self.body_vmap(Body.radial_velocity, in_axes=None)(t)
+
+
+def index_helper(n, arg, axis):
+    if axis is None:
+        return arg
+    else:
+        idx = (slice(None),) * max(0, axis - 1) + (n,)
+        return arg[idx]
+
+
+@lu.transformation_with_aux  # type: ignore
+def flatten_func_for_body_vmap(in_tree, in_axes_flat, index, body, *args_flat):
+    args_indexed = (index_helper(index, *args) for args in zip(args_flat, in_axes_flat))
+    ans = yield (body,) + in_tree.unflatten(args_indexed), {}
+    yield tree_flatten(ans, is_leaf=batching.is_vmappable)
