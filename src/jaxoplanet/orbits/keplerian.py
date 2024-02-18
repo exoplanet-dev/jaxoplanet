@@ -683,6 +683,21 @@ class System(eqx.Module):
         in_axes: Union[int, None, Sequence[Any]] = 0,
         out_axes: Any = 0,
     ) -> Callable:
+        """Map a function over the bodies of this system
+
+        If possible, this method will apply the appropriate ``jax.vmap`` to the input
+        function, but if the Pytree structure of the bodies don't match, this requires
+        a loop over bodies, applying the function separately to each body, and stacking
+        the results.
+
+        Args:
+            func: The function to map. It's first positional argument must accept a
+                Keplerian :class:`Body` object.
+            in_axes: The input axis specifications for all arguments after the first.
+                The semantics should match ``jax.vmap``.
+            out_axes: The output axis specifications, matching ``jax.vmap``.
+        """
+
         @wraps(func)
         def impl(*args):
             # First, normalize the "in_axes" argument so we always have an iterable
