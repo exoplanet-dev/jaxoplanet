@@ -792,7 +792,7 @@ def index_helper(n, arg, axis):
     if axis is None:
         return arg
     else:
-        idx = (slice(None),) * max(0, axis) + (n,)
+        idx = (slice(None),) * axis + (n,)
         return arg[idx]
 
 
