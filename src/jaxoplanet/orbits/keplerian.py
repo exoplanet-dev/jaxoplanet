@@ -696,6 +696,24 @@ class System(eqx.Module):
             in_axes: The input axis specifications for all arguments after the first.
                 The semantics should match ``jax.vmap``.
             out_axes: The output axis specifications, matching ``jax.vmap``.
+
+        Returns:
+            The vectorized version of ``func`` mapped over bodies in this system.
+
+        For example, if (for some reason) we wanted to compute the $x$ positions of all
+        the bodies in a system at a particular time, in units of the body radius, we
+        could use the following:
+
+        >>> from jaxoplanet.orbits.keplerian import Central, System
+        >>> sys = System(Central())
+        >>> sys = sys.add_body(period=1.0, radius=0.1)
+        >>> sys = sys.add_body(period=2.0, radius=0.2)
+        >>> pos = sys.body_vmap(
+        ...     lambda body, t: body.position(t)[0] / body.radius,
+        ...     in_axes=None,
+        ... )
+        >>> pos(0.2)
+        <Quantity([40.0231   19.632687], 'dimensionless')>
         """
 
         @wraps(func)
