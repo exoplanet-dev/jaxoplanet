@@ -6,7 +6,11 @@ import numpy as np
 import pytest
 
 from jaxoplanet.orbits import keplerian
-from jaxoplanet.test_utils import assert_allclose, assert_quantity_allclose
+from jaxoplanet.test_utils import (
+    assert_allclose,
+    assert_quantity_allclose,
+    assert_quantity_pytree_allclose,
+)
 from jaxoplanet.units import unit_registry as ureg
 
 
@@ -216,57 +220,61 @@ def test_keplerian_system_position():
         assert_quantity_allclose(z1, z2)
 
 
-def test_body_vmap():
-    # _body_stack is not None
+def body_vmap_func1(body, x):
+    return body.radius * x
+
+
+def body_vmap_func2(body, x):
+    return body.radius * x["x"]
+
+
+def body_vmap_func3(body, x):
+    return {"y": body.radius * x}
+
+
+def body_vmap_func4(body, x):
+    del body
+    return {"y": x}
+
+
+@pytest.mark.parametrize(
+    "func, in_axes, out_axes, args",
+    [
+        (body_vmap_func1, None, 0, (jnp.linspace(0.0, 2.0, 3),)),
+        (body_vmap_func1, 0, 0, (jnp.linspace(0.0, 2.0, 6).reshape(2, 3),)),
+        (body_vmap_func1, (0,), 0, (jnp.linspace(0.0, 2.0, 6).reshape(2, 3),)),
+        (body_vmap_func1, (1,), 0, (jnp.linspace(0.0, 2.0, 6).reshape(3, 2),)),
+        (body_vmap_func2, None, 0, ({"x": jnp.linspace(0.0, 2.0, 3)},)),
+        (body_vmap_func2, {"x": None}, 0, ({"x": jnp.linspace(0.0, 2.0, 3)},)),
+        (
+            body_vmap_func2,
+            {"x": 0},
+            0,
+            ({"x": jnp.linspace(0.0, 2.0, 6).reshape(2, 3)},),
+        ),
+        (body_vmap_func3, None, 0, (jnp.linspace(0.0, 2.0, 3),)),
+        (body_vmap_func3, None, 1, (jnp.linspace(0.0, 2.0, 3),)),
+        (body_vmap_func3, None, {"y": 1}, (jnp.linspace(0.0, 2.0, 3),)),
+        (body_vmap_func4, None, None, (jnp.linspace(0.0, 2.0, 3),)),
+    ],
+)
+def test_body_vmap(func, in_axes, out_axes, args):
     central = keplerian.Central()
-    bodies = (
-        keplerian.Body(radius=0.5, period=1.0),
-        keplerian.Body(radius=0.8, period=1.0),
+    vmap_sys = keplerian.System(
+        central,
+        bodies=(
+            keplerian.Body(radius=0.5, period=1.0),
+            keplerian.Body(radius=0.8, period=1.0),
+        ),
     )
-    system_bs = keplerian.System(central, bodies=bodies)
-
-    # _body_stack is None
-    central = keplerian.Central()
-    bodies = (
-        keplerian.Body(radius=0.5, period=1.0, eccentricity=0.1, omega_peri=0.1),
-        keplerian.Body(radius=0.8, period=1.0),
-    )
-    system_no_bs = keplerian.System(central, bodies=bodies)
-
-    x = jnp.array([0.0, 1.0, 2.0])
-
-    def func1(body, x):
-        return body.radius * x
-
-    # _body_stack is not None
-    assert system_bs.body_vmap(func1, in_axes=None)(x).shape == (2, 3)
-    assert system_bs.body_vmap(func1, in_axes=0)(jnp.array([0.0, 1.0])).shape == (2,)
-
-    # _body_stack is None
-    assert system_no_bs.body_vmap(func1, in_axes=None)(x).shape == (2, 3)
-    assert system_no_bs.body_vmap(func1, in_axes=0)(jnp.array([0.0, 1.0])).shape == (2,)
-
-    # both equal
-    assert_quantity_allclose(
-        system_no_bs.body_vmap(func1, in_axes=None)(x),
-        system_bs.body_vmap(func1, in_axes=None)(x),
+    no_vmap_sys = keplerian.System(
+        central,
+        bodies=(
+            keplerian.Body(radius=0.5, period=1.0, eccentricity=0.1, omega_peri=0.1),
+            keplerian.Body(radius=0.8, period=1.0),
+        ),
     )
 
-    def func2(body, x, y):
-        return body.radius * x * y
-
-    # _body_stack is not None
-    assert system_bs.body_vmap(func2, in_axes=(None, 0))(
-        x, jnp.array([0.0, 1.0])
-    ).shape == (2, 3)
-
-    # _body_stack is None
-    assert system_no_bs.body_vmap(func2, in_axes=(None, 0))(
-        x, jnp.array([0.0, 1.0])
-    ).shape == (2, 3)
-
-    # both equal
-    assert_quantity_allclose(
-        system_no_bs.body_vmap(func2, in_axes=(None, 0))(x, jnp.array([0.0, 1.0])),
-        system_bs.body_vmap(func2, in_axes=(None, 0))(x, jnp.array([0.0, 1.0])),
-    )
+    result1 = vmap_sys.body_vmap(func, in_axes=in_axes, out_axes=out_axes)(*args)
+    result2 = no_vmap_sys.body_vmap(func, in_axes=in_axes, out_axes=out_axes)(*args)
+    assert_quantity_pytree_allclose(result1, result2)

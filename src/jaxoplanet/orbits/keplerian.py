@@ -17,7 +17,7 @@ from jaxoplanet.units import unit_registry as ureg
 try:
     from jax.extend import linear_util as lu
 except ImportError:
-    from jax import linear_util as lu
+    from jax import linear_util as lu  # type: ignore
 
 
 class Central(eqx.Module):
@@ -684,7 +684,7 @@ class System(eqx.Module):
         out_axes: Any = 0,
     ) -> Callable:
         @wraps(func)
-        def impl(*args: Any) -> Any:
+        def impl(*args):
             # First, normalize the "in_axes" argument so we always have an iterable
             if isinstance(in_axes, Sequence):
                 in_axes_ = tuple(in_axes)
@@ -699,10 +699,6 @@ class System(eqx.Module):
 
             # Otherwise we need to loop over the bodies and apply the function once for
             # each body
-            if not isinstance(out_axes, int):
-                raise ValueError(
-                    "Only integer values of `out_axes` are supported by `body_vmap`"
-                )
 
             # Here we flatten the input arguments and `in_axes` so that we don't have
             # to deal with Pytree logic for the `in_axes` ourselves below.
@@ -731,7 +727,7 @@ class System(eqx.Module):
                 "body_vmap out_axes", out_tree, out_axes
             )
             return out_tree.unflatten(  # type: ignore
-                jnp.stack(parts, axis=a)
+                parts[0] if a is None else jnp.stack(parts, axis=a)
                 for a, *parts in zip(out_axes_flat, *results)  # type: ignore
             )
 
@@ -763,7 +759,7 @@ def index_helper(n, arg, axis):
     if axis is None:
         return arg
     else:
-        idx = (slice(None),) * max(0, axis - 1) + (n,)
+        idx = (slice(None),) * max(0, axis) + (n,)
         return arg[idx]
 
 
