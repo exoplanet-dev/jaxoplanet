@@ -117,6 +117,9 @@ class LimbDarkLightCurve(eqx.Module):
 
         # Integrate over exposure time
         if texp is not None:
-            lc = jnp.reshape(lc, newshape=(t.size, oversample))
+            if orbit.shape == ():
+                lc = jnp.reshape(lc, newshape=(t.size, oversample))
+            else:
+                lc = jnp.reshape(lc, newshape=(orbit.shape[0], t.size, oversample))
             lc = jnp.dot(lc, stencil)
         return lc
