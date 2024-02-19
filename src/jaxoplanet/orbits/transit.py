@@ -5,8 +5,6 @@ import jax.numpy as jnp
 import jpu.numpy as jnpu
 
 from jaxoplanet import units
-
-# from jaxoplanet.types import Array
 from jaxoplanet.types import Quantity
 from jaxoplanet.units import unit_registry as ureg
 
