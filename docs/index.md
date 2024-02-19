@@ -82,5 +82,6 @@ installation.md
 tutorials/autodiff.ipynb
 tutorials/orbits.ipynb
 tutorials/transit.ipynb
+tutorials/core-from-scratch.ipynb
 tutorials/rv.ipynb
 ```
