@@ -19,5 +19,8 @@ directly.
 :maxdepth: 1
 
 tutorials/autodiff.ipynb
+tutorials/orbits.ipynb
 tutorials/transit.ipynb
+tutorials/rv.ipynb
+tutorials/core-from-scratch.ipynb
 ```
