@@ -12,6 +12,15 @@ from jaxoplanet.units import unit_registry as ureg
 
 
 class Central(eqx.Module):
+    """A central body in an orbital system
+
+    If the input parameters are not defined the default values and units are:
+        mass: 1 M_sun
+        radius: 1 R_sun
+        density: 3 * mass / (4 * jnp.pi * radius**3) = 0.238732415 M_sun / R_sun ** 3
+
+    """
+
     mass: Quantity = units.field(units=ureg.M_sun)
     radius: Quantity = units.field(units=ureg.R_sun)
     density: Quantity = units.field(units=ureg.M_sun / ureg.R_sun**3)
@@ -26,6 +35,15 @@ class Central(eqx.Module):
         radius: Optional[Quantity] = None,
         density: Optional[Quantity] = None,
     ):
+        """Initialize the central body (e.g. a star) of an orbital system using two of
+        radius, mass and/or density.
+
+        Args:
+            mass (Optional[Quantity]): Mass of central body [mass unit].
+            radius (Optional[Quantity]): Radius of central body [length unit].
+            density (Optional[Quantity]): Density of central body [mass/length**3 unit].
+        """
+
         if radius is None and mass is None:
             radius = 1.0 * ureg.R_sun
             if density is None:
@@ -70,17 +88,32 @@ class Central(eqx.Module):
         radius: Optional[Quantity] = None,
         body_mass: Optional[Quantity] = None,
     ) -> "Central":
-        if jnp.ndim(semimajor) != 0:
+        """Initialize the central body (e.g. a star) of an orbital system using
+        orbital parameters to derive radius and mass.
+
+        Args:
+            period: The orbital period of the orbiting body [time unit].
+            semimajor: The semi-major axis of the orbiting body [length unit].
+            radius (Optional[Quantity]): Radius of central body [length unit].
+            body_mass (Optional[Quantity]): Mass of orbiting body [mass unit].
+
+        Returns:
+            Central object
+        """
+        # Check that inputs are scalar
+        if any(
+            jnp.ndim(arg) != 0
+            for arg in (semimajor, period, body_mass)
+            if arg is not None
+        ):
             raise ValueError(
-                "The 'semimajor' argument to "
-                "'KeplerianCentral.from_orbital_properties' "
-                "must be a scalar; for multi-planet systems, "
-                "use 'jax.vmap'"
+                "All parameters of 'KeplerianCentral.from_orbital_properties' must be "
+                "scalars; for multi-planet systems, use 'jax.vmap'"
             )
 
         radius = 1.0 * ureg.R_sun if radius is None else radius
 
-        mass = semimajor**3 / (ureg.gravitational_constant * period**2)
+        mass = 4 * jnp.pi**2 * semimajor**3 / (ureg.gravitational_constant * period**2)
         if body_mass is not None:
             mass -= body_mass
 
@@ -88,6 +121,10 @@ class Central(eqx.Module):
 
     @property
     def shape(self) -> tuple[int, ...]:
+        """
+        Returns:
+            The shape of the Central object
+        """
         return self.mass.shape
 
 
@@ -155,6 +192,40 @@ class Body(eqx.Module):
         radial_velocity_semiamplitude: Optional[Quantity] = None,
         parallax: Optional[Quantity] = None,
     ):
+        """Initialize an orbiting body (e.g. a planet) using orbital parameters
+
+        See https://docs.exoplanet.codes/en/latest/tutorials/data-and-models/ for a
+        description of the orbital geometry.
+
+        Args:
+            central (Optional[Central]): The Central object that this Body orbits
+                [Central].
+            time_transit (Optional[Quantity]): The epoch of a reference transit
+                [time unit].
+            time_peri (Optional[Quantity]): The epoch of a reference periastron passage
+                [time unit].
+            period (Optional[Quantity]): Orbital period [time unit].
+            semimajor (Optional[Quantity]): Semi-major axis in [length unit].
+            inclination (Optional[Quantity]): Inclination of orbital plane in
+                [angular unit].
+            impact_param (Optional): Impact parameter.
+            eccentricity (Optional): Eccentricity, must be ``0 <= eccentricity < 1``
+                where 0 = circular orbit.
+            omega_peri (Optional[Quantity]): Argument of periastron [angular unit].
+            sin_omega_peri (Optional): sin(argument of periastron).
+            cos_omega_peri (Optional): cos(argument of periastron).
+            asc_node (Optional[Quantity]): Longitude of ascending node [angular unit].
+            sin_asc_node (Optional): sin(longitude of ascending node).
+            cos_asc_node (Optional): cos(longitude of ascending node).
+            mass (Optional[Quantity]): Mass of orbiting body [mass unit].
+            radius (Optional[Quantity]): Radius of orbiting body [length unit].
+            central_radius (Optional[Quantity]): Radius of central body [length unit].
+            radial_velocity_semiamplitude (Optional[Quantity]): The radial velocity
+                semi-amplitude [length/time unit].
+            parallax (Optional[Quantity]): Parallax (to convert position/velocity into
+                arcsec). [length unit].
+        """
+
         # Handle the special case when passing both `period` and `semimajor`.
         # This occurs sometimes when doing transit fits, and we want to fit for
         # the "photoeccentric effect". In this case, the central ends up with an
@@ -307,18 +378,30 @@ class Body(eqx.Module):
 
     @property
     def shape(self) -> tuple[int, ...]:
+        """
+        Returns: The shape of Body object.
+        """
         return self.period.shape
 
     @property
     def central_radius(self) -> Quantity:
+        """
+        Returns: The radius of central object.
+        """
         return self.central.radius
 
     @property
     def time_peri(self) -> Quantity:
+        """
+        Returns: The epoch of a reference periastron passage.
+        """
         return self.time_transit + self.time_ref  # type: ignore
 
     @property
     def inclination(self) -> Quantity:
+        """
+        Returns: Inclination of orbital system
+        """
         return jnpu.arctan2(self.sin_inclination, self.cos_inclination)
 
     @property
@@ -329,6 +412,9 @@ class Body(eqx.Module):
 
     @property
     def total_mass(self) -> Quantity:
+        """
+        Returns: Total mass of orbital system (central object + orbiting bodies).
+        """
         return self.central.mass if self.mass is None else self.mass + self.central.mass
 
     def position(
@@ -415,7 +501,7 @@ class Body(eqx.Module):
 
         Returns:
             The components of the velocity vector at ``t`` in units of
-            ``M_sun/day``.
+            ``R_sun/day``.
         """
         if semiamplitude is None:
             mass: Quantity = -self.central.mass  # type: ignore
