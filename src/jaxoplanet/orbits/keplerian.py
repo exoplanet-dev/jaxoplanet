@@ -11,6 +11,7 @@ from jaxoplanet.core.kepler import kepler
 from jaxoplanet.types import Quantity
 from jaxoplanet.units import unit_registry as ureg
 from jaxoplanet.experimental.starry.maps import Map
+from jaxoplanet.experimental.starry.ylm import Ylm
 
 
 class Central(eqx.Module):
@@ -320,7 +321,7 @@ class Body(eqx.Module):
             self.time_transit = jnpu.zeros_like(self.period)
 
         if map is None:
-            self.map = Map()
+            self.map = Map(y=Ylm({(0, 0): 0, (1, 0): 0.0}))
         else:
             self.map = map
 
