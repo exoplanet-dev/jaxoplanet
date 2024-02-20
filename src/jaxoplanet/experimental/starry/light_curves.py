@@ -8,10 +8,39 @@ from jaxoplanet.experimental.starry.pijk import Pijk
 from jaxoplanet.experimental.starry.rotation import left_project
 from jaxoplanet.experimental.starry.solution import solution_vector
 
+from functools import partial
+
+
+def light_curve(system, time):
+    xos, yos, zos = system.relative_position(time)
+    theta = time * 2 * jnp.pi / system.central.map.period
+
+    central_body_lc = jax.vmap(map_light_curve, in_axes=(None, None, 0, 0, 0, 0))
+    central_bodies_lc = jax.vmap(central_body_lc, in_axes=(None, 0, 0, 0, 0, None))
+    central_light_curve = central_bodies_lc(
+        system.central.map,
+        system.radius.magnitude,
+        xos.magnitude,
+        yos.magnitude,
+        zos.magnitude,
+        theta,
+    )
+
+    @partial(system.body_vmap, in_axes=(0, 0, 0, None))
+    def bodies_lc(body, x, y, z, theta):
+        return jax.vmap(map_light_curve, in_axes=(None, None, 0, 0, 0, 0))(
+            body.map, 1.0, x, y, z, theta
+        )
+
+    bodies_light_curves = bodies_lc(
+        -xos.magnitude, -yos.magnitude, -zos.magnitude, theta
+    )
+    return np.vstack([central_light_curve, bodies_light_curves])
+
 
 # TODO: figure out the sparse matrices (and Pijk) to avoid todense()
 # TODO this is failing for ydeg=0
-def light_curve(map, r, xo, yo, zo, theta):
+def map_light_curve(map, r, xo, yo, zo, theta):
     U = jnp.array([1, *map.u])
     b = jnp.sqrt(jnp.square(xo) + jnp.square(yo))
     b_rot = jnp.logical_or(jnp.greater_equal(b, 1.0 + r), jnp.less_equal(zo, 0.0))
