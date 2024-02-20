@@ -84,4 +84,5 @@ tutorials/orbits.ipynb
 tutorials/transit.ipynb
 tutorials/core-from-scratch.ipynb
 tutorials/rv.ipynb
+tutorials/starry.ipynb
 ```
