@@ -2,7 +2,7 @@ import jax
 import numpy as np
 import pytest
 
-from jaxoplanet.experimental.starry import Ylm, Map
+from jaxoplanet.experimental.starry import Map, Ylm
 from jaxoplanet.experimental.starry.light_curves import map_light_curve
 from jaxoplanet.test_utils import assert_allclose
 
