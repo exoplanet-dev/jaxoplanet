@@ -13,6 +13,8 @@ from jaxoplanet import units
 from jaxoplanet.core.kepler import kepler
 from jaxoplanet.types import Quantity
 from jaxoplanet.units import unit_registry as ureg
+from jaxoplanet.experimental.starry.maps import Map
+from jaxoplanet.experimental.starry.ylm import Ylm
 
 try:
     from jax.extend import linear_util as lu
@@ -33,6 +35,7 @@ class Central(eqx.Module):
     mass: Quantity = units.field(units=ureg.M_sun)
     radius: Quantity = units.field(units=ureg.R_sun)
     density: Quantity = units.field(units=ureg.M_sun / ureg.R_sun**3)
+    map: Optional[Map] = None
 
     @units.quantity_input(
         mass=ureg.M_sun, radius=ureg.R_sun, density=ureg.M_sun / ureg.R_sun**3
@@ -43,6 +46,7 @@ class Central(eqx.Module):
         mass: Optional[Quantity] = None,
         radius: Optional[Quantity] = None,
         density: Optional[Quantity] = None,
+        map: Optional[Map] = None,
     ):
         """Initialize the central body (e.g. a star) of an orbital system using two of
         radius, mass and/or density.
@@ -87,6 +91,11 @@ class Central(eqx.Module):
             self.mass = 4 * jnp.pi * radius**3 * density / 3.0
             self.radius = radius
             self.density = density
+
+        if map is None:
+            self.map = Map()
+        else:
+            self.map = map
 
     @classmethod
     def from_orbital_properties(
@@ -136,6 +145,9 @@ class Central(eqx.Module):
         """
         return self.mass.shape
 
+    def flux(self, theta: float) -> float:
+        return self.map.flux(theta)
+
 
 class Body(eqx.Module):
     central: Central
@@ -157,6 +169,7 @@ class Body(eqx.Module):
         units=ureg.R_sun / ureg.d
     )
     parallax: Optional[Quantity] = units.field(units=ureg.arcsec)
+    map: Optional[Map] = None
 
     @units.quantity_input(
         time_transit=ureg.d,
@@ -200,6 +213,7 @@ class Body(eqx.Module):
         central_radius: Optional[Quantity] = None,
         radial_velocity_semiamplitude: Optional[Quantity] = None,
         parallax: Optional[Quantity] = None,
+        map: Optional[Map] = None,
     ):
         """Initialize an orbiting body (e.g. a planet) using orbital parameters
 
@@ -384,6 +398,11 @@ class Body(eqx.Module):
             self.time_transit = time_peri - self.time_ref
         else:
             self.time_transit = jnpu.zeros_like(self.period)
+
+        if map is None:
+            self.map = Map(y=Ylm({(0, 0): 0, (1, 0): 0.0}))
+        else:
+            self.map = map
 
     @property
     def shape(self) -> tuple[int, ...]:
@@ -712,6 +731,9 @@ class Body(eqx.Module):
 
         return (x, y, z), (vx, vy, vz)
 
+    def flux(self, theta: float) -> float:
+        return self.map.flux(theta)
+
 
 class BodyStack(eqx.Module):
     stack: Body
@@ -757,6 +779,13 @@ class System(eqx.Module):
     @property
     def central_radius(self) -> Quantity:
         return self.body_vmap(lambda body: body.central_radius)()
+
+    @property
+    def map(self):
+        return jax.tree_util.tree_map(
+            lambda *x: jnp.stack(x, axis=0),
+            *[body.map for body in self.bodies],
+        )
 
     def add_body(self, body: Optional[Body] = None, **kwargs: Any) -> "System":
         if body is None:
@@ -849,6 +878,34 @@ class System(eqx.Module):
                 parts[0] if a is None else jnp.stack(parts, axis=a)
                 for a, *parts in zip(out_axes_flat, *results)  # type: ignore
             )
+
+        return impl
+
+    def body_vmap(self, func: callable, in_axes) -> callable:
+        if self._body_stack is not None:
+
+            def impl(*args):
+                return jax.vmap(func, in_axes=in_axes)(self._body_stack, *args)
+
+        else:
+
+            def impl(*args):
+                sub_in_axes = in_axes[1:]
+                if all(i is None for i in sub_in_axes):
+                    v_args = [
+                        jnp.vstack([arg for _ in range(len(self.bodies))])
+                        for arg in args
+                    ]
+                else:
+                    v_args = jax.vmap(lambda *args: args, in_axes=in_axes[1:])(*args)
+
+                return jax.tree_util.tree_map(
+                    lambda *x: jnp.stack(x, axis=0),
+                    *[
+                        func(body, *[arg[i] for arg in v_args])
+                        for i, body in enumerate(self.bodies)
+                    ],
+                )
 
         return impl
 
