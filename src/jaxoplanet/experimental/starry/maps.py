@@ -6,11 +6,11 @@ import jax
 import jax.numpy as jnp
 
 from jaxoplanet.experimental.starry.basis import A1, U0, poly_basis
+from jaxoplanet.experimental.starry.light_curves import light_curve
 from jaxoplanet.experimental.starry.pijk import Pijk
 from jaxoplanet.experimental.starry.rotation import left_project
 from jaxoplanet.experimental.starry.utils import ortho_grid
 from jaxoplanet.experimental.starry.ylm import Ylm
-from jaxoplanet.experimental.starry.light_curves import light_curve
 
 
 class Map(eqx.Module):

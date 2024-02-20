@@ -1,3 +1,5 @@
+from functools import partial
+
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -7,8 +9,6 @@ from jaxoplanet.experimental.starry.basis import A1, U0, A2_inv
 from jaxoplanet.experimental.starry.pijk import Pijk
 from jaxoplanet.experimental.starry.rotation import left_project
 from jaxoplanet.experimental.starry.solution import solution_vector
-
-from functools import partial
 
 
 def light_curve(system, time):
