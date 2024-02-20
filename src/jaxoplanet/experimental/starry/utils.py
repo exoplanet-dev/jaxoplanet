@@ -95,16 +95,21 @@ def plot_lines(lines, axis=(0, 1), ax=None, **kwargs):
         ax.plot(i, j, **kwargs)
 
 
-def show_map(m, theta=0, res=400, n=6, **kwargs):
+def show_map(m, theta=0, res=400, n=6, ax=None, **kwargs):
     import matplotlib.pyplot as plt
 
-    plt.imshow(m.render(theta, res), origin="lower", **kwargs, extent=(-1, 1, -1, 1))
+    if ax is None:
+        ax = plt.gca()
+        if ax is None:
+            ax = plt.subplot(111)
+
+    ax.imshow(m.render(theta, res), origin="lower", **kwargs, extent=(-1, 1, -1, 1))
     if n is not None:
         graticule(m.inc, m.obl, theta)
-    plt.axis(False)
+    ax.axis(False)
 
 
-def graticule(inc, obl, theta=0, pts=100, **kwargs):
+def graticule(inc, obl, theta=0, pts=100, white_contour=True, **kwargs):
     import matplotlib.pyplot as plt
 
     kwargs.setdefault("c", kwargs.pop("color", "k"))
@@ -119,3 +124,6 @@ def graticule(inc, obl, theta=0, pts=100, **kwargs):
     plot_lines(lon, **kwargs)
     theta = np.linspace(0, 2 * np.pi, 2 * pts)
     plt.plot(np.cos(theta), np.sin(theta), **kwargs)
+
+    if white_contour:
+        plt.plot(np.cos(theta), np.sin(theta), c="w", lw=3)
