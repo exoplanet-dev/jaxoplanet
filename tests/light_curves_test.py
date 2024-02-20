@@ -20,4 +20,22 @@ def test_light_curve():
     # Compute a limb-darkened light curve using jaxoplanet
     t = jnp.linspace(-0.3, 0.3, 1000)
 
-    LimbDarkLightCurve(params["u"]).light_curve(orbit, t=t)
+    lc = LimbDarkLightCurve(params["u"]).light_curve(orbit, t=t)
+    assert lc.shape == t.shape
+
+
+def test_multiplanetary():
+    star = orbits.keplerian.Central(mass=5, radius=2)
+    planet_a = orbits.keplerian.Body(radius=0.05, period=1)
+    planet_b = orbits.keplerian.Body(radius=0.2, period=2)
+    system = orbits.keplerian.System(central=star, bodies=[planet_a, planet_b])
+
+    t = jnp.linspace(-5, 5, 500)
+    lc = LimbDarkLightCurve().light_curve(system, t)
+    lc_texp_scalar = LimbDarkLightCurve().light_curve(system, t, texp=10)
+    lc_texp_array = LimbDarkLightCurve().light_curve(
+        system, t, texp=jnp.broadcast_to(10, t.size)
+    )
+    assert lc.shape == (system.shape[0], t.size)
+    assert lc_texp_scalar.shape == (system.shape[0], t.size)
+    assert lc_texp_array.shape == (system.shape[0], t.size)

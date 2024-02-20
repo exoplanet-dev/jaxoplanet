@@ -6,7 +6,11 @@ import numpy as np
 import pytest
 
 from jaxoplanet.orbits import keplerian
-from jaxoplanet.test_utils import assert_allclose, assert_quantity_allclose
+from jaxoplanet.test_utils import (
+    assert_allclose,
+    assert_quantity_allclose,
+    assert_quantity_pytree_allclose,
+)
 from jaxoplanet.units import unit_registry as ureg
 
 
@@ -166,7 +170,9 @@ def test_keplerian_body_positions_small_star(time):
 
 def test_keplerian_system_stack_construction():
     sys = keplerian.System().add_body(period=0.1).add_body(period=0.2)
-    assert_quantity_allclose(sys._body_stack.period, jnp.array([0.1, 0.2]) * ureg.day)
+    assert_quantity_allclose(
+        sys._body_stack.stack.period, jnp.array([0.1, 0.2]) * ureg.day
+    )
 
     sys = (
         keplerian.System()
@@ -186,7 +192,7 @@ def test_keplerian_system_radial_velocity():
     assert sys1._body_stack is not None
     assert sys2._body_stack is None
     with pytest.raises(ValueError):
-        sys1._body_stack.radial_velocity(0.0)
+        sys1._body_stack.stack.radial_velocity(0.0)
 
     for t in [0.0, jnp.linspace(0, 1, 5)]:
         assert_quantity_allclose(
@@ -212,3 +218,63 @@ def test_keplerian_system_position():
         assert_quantity_allclose(x1, x2)
         assert_quantity_allclose(y1, y2)
         assert_quantity_allclose(z1, z2)
+
+
+def body_vmap_func1(body, x):
+    return body.radius * x
+
+
+def body_vmap_func2(body, x):
+    return body.radius * x["x"]
+
+
+def body_vmap_func3(body, x):
+    return {"y": body.radius * x}
+
+
+def body_vmap_func4(body, x):
+    del body
+    return {"y": x}
+
+
+@pytest.mark.parametrize(
+    "func, in_axes, out_axes, args",
+    [
+        (body_vmap_func1, None, 0, (jnp.linspace(0.0, 2.0, 3),)),
+        (body_vmap_func1, 0, 0, (jnp.linspace(0.0, 2.0, 6).reshape(2, 3),)),
+        (body_vmap_func1, (0,), 0, (jnp.linspace(0.0, 2.0, 6).reshape(2, 3),)),
+        (body_vmap_func1, (1,), 0, (jnp.linspace(0.0, 2.0, 6).reshape(3, 2),)),
+        (body_vmap_func2, None, 0, ({"x": jnp.linspace(0.0, 2.0, 3)},)),
+        (body_vmap_func2, {"x": None}, 0, ({"x": jnp.linspace(0.0, 2.0, 3)},)),
+        (
+            body_vmap_func2,
+            {"x": 0},
+            0,
+            ({"x": jnp.linspace(0.0, 2.0, 6).reshape(2, 3)},),
+        ),
+        (body_vmap_func3, None, 0, (jnp.linspace(0.0, 2.0, 3),)),
+        (body_vmap_func3, None, 1, (jnp.linspace(0.0, 2.0, 3),)),
+        (body_vmap_func3, None, {"y": 1}, (jnp.linspace(0.0, 2.0, 3),)),
+        (body_vmap_func4, None, None, (jnp.linspace(0.0, 2.0, 3),)),
+    ],
+)
+def test_body_vmap(func, in_axes, out_axes, args):
+    central = keplerian.Central()
+    vmap_sys = keplerian.System(
+        central,
+        bodies=(
+            keplerian.Body(radius=0.5, period=1.0),
+            keplerian.Body(radius=0.8, period=1.0),
+        ),
+    )
+    no_vmap_sys = keplerian.System(
+        central,
+        bodies=(
+            keplerian.Body(radius=0.5, period=1.0, eccentricity=0.1, omega_peri=0.1),
+            keplerian.Body(radius=0.8, period=1.0),
+        ),
+    )
+
+    result1 = vmap_sys.body_vmap(func, in_axes=in_axes, out_axes=out_axes)(*args)
+    result2 = no_vmap_sys.body_vmap(func, in_axes=in_axes, out_axes=out_axes)(*args)
+    assert_quantity_pytree_allclose(result1, result2)

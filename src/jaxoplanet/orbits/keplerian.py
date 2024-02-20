@@ -1,17 +1,35 @@
-from typing import Any, Optional
+from collections.abc import Sequence
+from functools import wraps
+from typing import Any, Callable, Optional, Union
 
 import equinox as eqx
 import jax
 import jax.numpy as jnp
 import jpu.numpy as jnpu
+from jax.interpreters import batching
+from jax.tree_util import tree_flatten
 
 from jaxoplanet import units
 from jaxoplanet.core.kepler import kepler
 from jaxoplanet.types import Quantity
 from jaxoplanet.units import unit_registry as ureg
 
+try:
+    from jax.extend import linear_util as lu
+except ImportError:
+    from jax import linear_util as lu  # type: ignore
+
 
 class Central(eqx.Module):
+    """A central body in an orbital system
+
+    If the input parameters are not defined the default values and units are:
+        mass: 1 M_sun
+        radius: 1 R_sun
+        density: 3 * mass / (4 * jnp.pi * radius**3) = 0.238732415 M_sun / R_sun ** 3
+
+    """
+
     mass: Quantity = units.field(units=ureg.M_sun)
     radius: Quantity = units.field(units=ureg.R_sun)
     density: Quantity = units.field(units=ureg.M_sun / ureg.R_sun**3)
@@ -26,6 +44,15 @@ class Central(eqx.Module):
         radius: Optional[Quantity] = None,
         density: Optional[Quantity] = None,
     ):
+        """Initialize the central body (e.g. a star) of an orbital system using two of
+        radius, mass and/or density.
+
+        Args:
+            mass (Optional[Quantity]): Mass of central body [mass unit].
+            radius (Optional[Quantity]): Radius of central body [length unit].
+            density (Optional[Quantity]): Density of central body [mass/length**3 unit].
+        """
+
         if radius is None and mass is None:
             radius = 1.0 * ureg.R_sun
             if density is None:
@@ -70,17 +97,32 @@ class Central(eqx.Module):
         radius: Optional[Quantity] = None,
         body_mass: Optional[Quantity] = None,
     ) -> "Central":
-        if jnp.ndim(semimajor) != 0:
+        """Initialize the central body (e.g. a star) of an orbital system using
+        orbital parameters to derive radius and mass.
+
+        Args:
+            period: The orbital period of the orbiting body [time unit].
+            semimajor: The semi-major axis of the orbiting body [length unit].
+            radius (Optional[Quantity]): Radius of central body [length unit].
+            body_mass (Optional[Quantity]): Mass of orbiting body [mass unit].
+
+        Returns:
+            Central object
+        """
+        # Check that inputs are scalar
+        if any(
+            jnp.ndim(arg) != 0
+            for arg in (semimajor, period, body_mass)
+            if arg is not None
+        ):
             raise ValueError(
-                "The 'semimajor' argument to "
-                "'KeplerianCentral.from_orbital_properties' "
-                "must be a scalar; for multi-planet systems, "
-                "use 'jax.vmap'"
+                "All parameters of 'KeplerianCentral.from_orbital_properties' must be "
+                "scalars; for multi-planet systems, use 'jax.vmap'"
             )
 
         radius = 1.0 * ureg.R_sun if radius is None else radius
 
-        mass = semimajor**3 / (ureg.gravitational_constant * period**2)
+        mass = 4 * jnp.pi**2 * semimajor**3 / (ureg.gravitational_constant * period**2)
         if body_mass is not None:
             mass -= body_mass
 
@@ -88,6 +130,10 @@ class Central(eqx.Module):
 
     @property
     def shape(self) -> tuple[int, ...]:
+        """
+        Returns:
+            The shape of the Central object
+        """
         return self.mass.shape
 
 
@@ -155,6 +201,40 @@ class Body(eqx.Module):
         radial_velocity_semiamplitude: Optional[Quantity] = None,
         parallax: Optional[Quantity] = None,
     ):
+        """Initialize an orbiting body (e.g. a planet) using orbital parameters
+
+        See https://docs.exoplanet.codes/en/latest/tutorials/data-and-models/ for a
+        description of the orbital geometry.
+
+        Args:
+            central (Optional[Central]): The Central object that this Body orbits
+                [Central].
+            time_transit (Optional[Quantity]): The epoch of a reference transit
+                [time unit].
+            time_peri (Optional[Quantity]): The epoch of a reference periastron passage
+                [time unit].
+            period (Optional[Quantity]): Orbital period [time unit].
+            semimajor (Optional[Quantity]): Semi-major axis in [length unit].
+            inclination (Optional[Quantity]): Inclination of orbital plane in
+                [angular unit].
+            impact_param (Optional): Impact parameter.
+            eccentricity (Optional): Eccentricity, must be ``0 <= eccentricity < 1``
+                where 0 = circular orbit.
+            omega_peri (Optional[Quantity]): Argument of periastron [angular unit].
+            sin_omega_peri (Optional): sin(argument of periastron).
+            cos_omega_peri (Optional): cos(argument of periastron).
+            asc_node (Optional[Quantity]): Longitude of ascending node [angular unit].
+            sin_asc_node (Optional): sin(longitude of ascending node).
+            cos_asc_node (Optional): cos(longitude of ascending node).
+            mass (Optional[Quantity]): Mass of orbiting body [mass unit].
+            radius (Optional[Quantity]): Radius of orbiting body [length unit].
+            central_radius (Optional[Quantity]): Radius of central body [length unit].
+            radial_velocity_semiamplitude (Optional[Quantity]): The radial velocity
+                semi-amplitude [length/time unit].
+            parallax (Optional[Quantity]): Parallax (to convert position/velocity into
+                arcsec). [length unit].
+        """
+
         # Handle the special case when passing both `period` and `semimajor`.
         # This occurs sometimes when doing transit fits, and we want to fit for
         # the "photoeccentric effect". In this case, the central ends up with an
@@ -307,18 +387,30 @@ class Body(eqx.Module):
 
     @property
     def shape(self) -> tuple[int, ...]:
+        """
+        Returns: The shape of Body object.
+        """
         return self.period.shape
 
     @property
     def central_radius(self) -> Quantity:
+        """
+        Returns: The radius of central object.
+        """
         return self.central.radius
 
     @property
     def time_peri(self) -> Quantity:
+        """
+        Returns: The epoch of a reference periastron passage.
+        """
         return self.time_transit + self.time_ref  # type: ignore
 
     @property
     def inclination(self) -> Quantity:
+        """
+        Returns: Inclination of orbital system
+        """
         return jnpu.arctan2(self.sin_inclination, self.cos_inclination)
 
     @property
@@ -329,6 +421,9 @@ class Body(eqx.Module):
 
     @property
     def total_mass(self) -> Quantity:
+        """
+        Returns: Total mass of orbital system (central object + orbiting bodies).
+        """
         return self.central.mass if self.mass is None else self.mass + self.central.mass
 
     def position(
@@ -378,7 +473,9 @@ class Body(eqx.Module):
             ``R_sun``.
         """
         return self._get_position_and_velocity(
-            t, semimajor=-self.semimajor, parallax=parallax  # type: ignore
+            t,
+            semimajor=-self.semimajor,
+            parallax=parallax,  # type: ignore
         )[0]
 
     def relative_angles(
@@ -413,7 +510,7 @@ class Body(eqx.Module):
 
         Returns:
             The components of the velocity vector at ``t`` in units of
-            ``M_sun/day``.
+            ``R_sun/day``.
         """
         if semiamplitude is None:
             mass: Quantity = -self.central.mass  # type: ignore
@@ -616,10 +713,14 @@ class Body(eqx.Module):
         return (x, y, z), (vx, vy, vz)
 
 
+class BodyStack(eqx.Module):
+    stack: Body
+
+
 class System(eqx.Module):
     central: Central
     bodies: tuple[Body, ...]
-    _body_stack: Optional[Body]
+    _body_stack: Optional[BodyStack]
 
     def __init__(
         self, central: Optional[Central] = None, *, bodies: tuple[Body, ...] = ()
@@ -634,9 +735,16 @@ class System(eqx.Module):
         if len(bodies):
             spec = list(map(jax.tree_util.tree_structure, bodies))
             if spec.count(spec[0]) == len(spec):
-                self._body_stack = jax.tree_util.tree_map(
-                    lambda *x: jnp.stack(x, axis=0), *bodies
+                self._body_stack = BodyStack(
+                    stack=jax.tree_util.tree_map(
+                        lambda *x: jnp.stack(x, axis=0), *bodies
+                    )
                 )
+
+    def __repr__(self) -> str:
+        return eqx.tree_pformat(
+            self, truncate_leaf=lambda obj: isinstance(obj, BodyStack)
+        )
 
     @property
     def shape(self) -> tuple[int, ...]:
@@ -644,50 +752,138 @@ class System(eqx.Module):
 
     @property
     def radius(self) -> Quantity:
-        return jax.tree_util.tree_map(
-            lambda *x: jnp.stack(x, axis=0),
-            *[body.radius for body in self.bodies],
-        )
+        return self.body_vmap(lambda body: body.radius)()
 
     @property
     def central_radius(self) -> Quantity:
-        return jax.tree_util.tree_map(
-            lambda *x: jnp.stack(x, axis=0),
-            *[body.central_radius for body in self.bodies],
-        )
+        return self.body_vmap(lambda body: body.central_radius)()
 
     def add_body(self, body: Optional[Body] = None, **kwargs: Any) -> "System":
         if body is None:
             body = Body(self.central, **kwargs)
         return System(central=self.central, bodies=self.bodies + (body,))
 
-    def _body_vmap(self, func_name: str, t: Quantity) -> Any:
-        if self._body_stack is not None:
-            return jax.vmap(getattr(Body, func_name), in_axes=(0, None))(
-                self._body_stack, t
+    def body_vmap(
+        self,
+        func: Callable,
+        in_axes: Union[int, None, Sequence[Any]] = 0,
+        out_axes: Any = 0,
+    ) -> Callable:
+        """Map a function over the bodies of this system
+
+        If possible, this method will apply the appropriate ``jax.vmap`` to the input
+        function, but if the Pytree structure of the bodies don't match, this requires
+        a loop over bodies, applying the function separately to each body, and stacking
+        the results.
+
+        Args:
+            func: The function to map. It's first positional argument must accept a
+                Keplerian :class:`Body` object.
+            in_axes: The input axis specifications for all arguments after the first.
+                The semantics should match ``jax.vmap``.
+            out_axes: The output axis specifications, matching ``jax.vmap``.
+
+        Returns:
+            The vectorized version of ``func`` mapped over bodies in this system.
+
+        For example, if (for some reason) we wanted to compute the $x$ positions of all
+        the bodies in a system at a particular time, in units of the body radius, we
+        could use the following:
+
+        >>> from jaxoplanet.orbits.keplerian import Central, System
+        >>> sys = System(Central())
+        >>> sys = sys.add_body(period=1.0, radius=0.1)
+        >>> sys = sys.add_body(period=2.0, radius=0.2)
+        >>> pos = sys.body_vmap(
+        ...     lambda body, t: body.position(t)[0] / body.radius,
+        ...     in_axes=None,
+        ... )
+        >>> pos(0.2)
+        <Quantity([40.0231   19.632687], 'dimensionless')>
+        """
+
+        @wraps(func)
+        def impl(*args):
+            # First, normalize the "in_axes" argument so we always have an iterable
+            if isinstance(in_axes, Sequence):
+                in_axes_ = tuple(in_axes)
+            else:
+                in_axes_ = tuple(in_axes for _ in args)
+
+            # If we have a "body_stack" we can just vmap and be done
+            if self._body_stack is not None:
+                return jax.vmap(func, in_axes=(0,) + in_axes_, out_axes=out_axes)(
+                    self._body_stack.stack, *args
+                )
+
+            # Otherwise we need to loop over the bodies and apply the function once for
+            # each body
+
+            # Here we flatten the input arguments and `in_axes` so that we don't have
+            # to deal with Pytree logic for the `in_axes` ourselves below.
+            args_flat, in_tree = tree_flatten(args, is_leaf=batching.is_vmappable)
+            in_axes_flat = jax.api_util.flatten_axes(  # type: ignore
+                "body_vmap in_axes", in_tree, in_axes_
             )
-        return jax.tree_util.tree_map(
-            lambda *x: jnp.stack(x, axis=0),
-            *[getattr(body, func_name)(t) for body in self.bodies],
-        )
+
+            # Then loop over the bodies and accumulate the function results
+            results = []
+            out_tree = None
+            for n, body in enumerate(self.bodies):
+                f = lu.wrap_init(func)
+                f, out_tree_ = flatten_func_for_body_vmap(f, in_tree, in_axes_flat, n)
+                results.append(f.call_wrapped(body, *args_flat))  # type: ignore
+                out_tree_ = out_tree_()  # type: ignore
+                if out_tree is not None and out_tree_ != out_tree:
+                    raise ValueError(
+                        "Input function does not return consistent Pytree structure;\n"
+                        f"expected: {out_tree}\n"
+                        f"found: {out_tree_}\n"
+                    )
+                out_tree = out_tree_
+
+            out_axes_flat = jax.api_util.flatten_axes(  # type: ignore
+                "body_vmap out_axes", out_tree, out_axes
+            )
+            return out_tree.unflatten(  # type: ignore
+                parts[0] if a is None else jnp.stack(parts, axis=a)
+                for a, *parts in zip(out_axes_flat, *results)  # type: ignore
+            )
+
+        return impl
 
     def position(self, t: Quantity) -> tuple[Quantity, Quantity, Quantity]:
-        return self._body_vmap("position", t)
+        return self.body_vmap(Body.position, in_axes=None)(t)
 
     def central_position(self, t: Quantity) -> tuple[Quantity, Quantity, Quantity]:
-        return self._body_vmap("central_position", t)
+        return self.body_vmap(Body.central_position, in_axes=None)(t)
 
     def relative_position(self, t: Quantity) -> tuple[Quantity, Quantity, Quantity]:
-        return self._body_vmap("relative_position", t)
+        return self.body_vmap(Body.relative_position, in_axes=None)(t)
 
     def velocity(self, t: Quantity) -> tuple[Quantity, Quantity, Quantity]:
-        return self._body_vmap("velocity", t)
+        return self.body_vmap(Body.velocity, in_axes=None)(t)
 
     def central_velocity(self, t: Quantity) -> tuple[Quantity, Quantity, Quantity]:
-        return self._body_vmap("central_velocity", t)
+        return self.body_vmap(Body.central_velocity, in_axes=None)(t)
 
     def relative_velocity(self, t: Quantity) -> tuple[Quantity, Quantity, Quantity]:
-        return self._body_vmap("relative_velocity", t)
+        return self.body_vmap(Body.relative_velocity, in_axes=None)(t)
 
     def radial_velocity(self, t: Quantity) -> Quantity:
-        return self._body_vmap("radial_velocity", t)
+        return self.body_vmap(Body.radial_velocity, in_axes=None)(t)
+
+
+def index_helper(n, arg, axis):
+    if axis is None:
+        return arg
+    else:
+        idx = (slice(None),) * axis + (n,)
+        return arg[idx]
+
+
+@lu.transformation_with_aux  # type: ignore
+def flatten_func_for_body_vmap(in_tree, in_axes_flat, index, body, *args_flat):
+    args_indexed = (index_helper(index, *args) for args in zip(args_flat, in_axes_flat))
+    ans = yield (body,) + in_tree.unflatten(args_indexed), {}
+    yield tree_flatten(ans, is_leaf=batching.is_vmappable)
