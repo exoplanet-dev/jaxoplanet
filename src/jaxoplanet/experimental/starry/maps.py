@@ -4,6 +4,7 @@ from typing import Optional, Union
 import equinox as eqx
 import jax
 import jax.numpy as jnp
+from jax.scipy.spatial.transform import Rotation
 
 from jaxoplanet.experimental.starry.basis import A1, U0, poly_basis
 from jaxoplanet.experimental.starry.light_curves import map_light_curve
@@ -14,7 +15,6 @@ from jaxoplanet.experimental.starry.rotation import (
 )
 from jaxoplanet.experimental.starry.utils import ortho_grid
 from jaxoplanet.experimental.starry.ylm import Ylm
-from jax.scipy.spatial.transform import Rotation
 
 
 class Map(eqx.Module):
