@@ -22,9 +22,9 @@ def light_curve(system, time: ArrayLike):
     central_light_curve = central_bodies_lc(
         system.central.map,
         (system.radius / central_radius).magnitude,
-        xos.magnitude,
-        yos.magnitude,
-        zos.magnitude,
+        (xos / central_radius).magnitude,
+        (yos / central_radius).magnitude,
+        (zos / central_radius).magnitude,
         theta,
     )
 
