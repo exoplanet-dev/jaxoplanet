@@ -20,7 +20,7 @@ class LimbDarkLightCurve(eqx.Module):
         else:
             self.u = jnp.array([])
 
-    @units.quantity_input(t=ureg.d, texp=ureg.s)
+    @units.quantity_input(time=ureg.d)
     def __call__(
         self,
         orbit: LightCurveOrbit,
@@ -53,19 +53,12 @@ class LimbDarkLightCurve(eqx.Module):
             )
 
         # Evaluate the coordinates of the transiting body
-        x, y, z = orbit.relative_position(time)
-        b = jnpu.sqrt(x**2 + y**2)  # type: ignore
         r_star = orbit.central_radius
+        x, y, z = orbit.relative_position(time)
+        b = jnpu.sqrt(x**2 + y**2) / r_star  # type: ignore
         r = orbit.radius / r_star
         lc_func = partial(light_curve, self.u, order=order)
-        if orbit.shape == ():
-            b /= r_star
-            lc: Array = lc_func(b.magnitude, r.magnitude)
-        else:
-            b /= r_star[..., None]
-            lc = jnp.vectorize(lc_func, signature="(k),()->(k)")(
-                b.magnitude, r.magnitude
-            )
+        lc: Array = lc_func(b.magnitude, r.magnitude)
         lc = jnp.where(z > 0, lc, 0)
 
         return lc
