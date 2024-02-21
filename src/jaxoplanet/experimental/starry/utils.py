@@ -129,6 +129,7 @@ def show_map(
         n = int(np.ceil(n * np.cbrt(radius)))
     else:
         map = map_or_body
+        radius = 1.0
 
     ax.imshow(
         map.render(
