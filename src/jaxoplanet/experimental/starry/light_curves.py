@@ -41,7 +41,7 @@ def light_curve(system, time: ArrayLike):
         )
 
     bodies_light_curves = bodies_lc(-xos, -yos, -zos)
-    return np.vstack([central_light_curve, bodies_light_curves])
+    return jnp.vstack([central_light_curve, bodies_light_curves])
 
 
 # TODO: figure out the sparse matrices (and Pijk) to avoid todense()
