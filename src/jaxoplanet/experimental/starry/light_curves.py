@@ -1,10 +1,10 @@
-from jax.typing import ArrayLike
 from functools import partial
 
 import jax
 import jax.numpy as jnp
 import numpy as np
 import scipy
+from jax.typing import ArrayLike
 
 from jaxoplanet.experimental.starry.basis import A1, U0, A2_inv
 from jaxoplanet.experimental.starry.pijk import Pijk
