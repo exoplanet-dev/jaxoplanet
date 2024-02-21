@@ -8,9 +8,13 @@ import jax.numpy as jnp
 from jaxoplanet.experimental.starry.basis import A1, U0, poly_basis
 from jaxoplanet.experimental.starry.light_curves import map_light_curve
 from jaxoplanet.experimental.starry.pijk import Pijk
-from jaxoplanet.experimental.starry.rotation import left_project
+from jaxoplanet.experimental.starry.rotation import (
+    left_project,
+    right_project_axis_angle,
+)
 from jaxoplanet.experimental.starry.utils import ortho_grid
 from jaxoplanet.experimental.starry.ylm import Ylm
+from jax.scipy.spatial.transform import Rotation
 
 
 class Map(eqx.Module):
@@ -91,17 +95,34 @@ class Map(eqx.Module):
     def deg(self):
         return self.ydeg + self.udeg
 
-    @partial(jax.jit, static_argnames=("res",))
-    def render(self, theta: float = 0.0, res: int = 400):
-        _, xyz = ortho_grid(res)
-        pT = self.poly_basis(*xyz)
+    def _intensity(self, x, y, z, theta=0.0):
+        pT = self.poly_basis(x, y, z)
         Ry = left_project(self.ydeg, self.inc, self.obl, theta, 0.0, self.y.todense())
         A1Ry = A1(self.ydeg).todense() @ Ry
         p_y = Pijk.from_dense(A1Ry, degree=self.ydeg)
         U = jnp.array([1, *self.u])
         p_u = Pijk.from_dense(U @ U0(self.udeg), degree=self.udeg)
         p = (p_y * p_u).todense()
-        return jnp.reshape(pT @ p, (res, res))
+        return pT @ p
+
+    @partial(jax.jit, static_argnames=("res",))
+    def render(self, theta: float = 0.0, res: int = 400):
+        _, xyz = ortho_grid(res)
+        intensity = self._intensity(*xyz, theta=theta)
+        return jnp.reshape(intensity, (res, res))
+
+    @partial(jax.jit)
+    def intensity(self, lat, lon):
+        x = jnp.sin(lat) * jnp.cos(lon)
+        y = jnp.sin(lat) * jnp.sin(lon)
+        z = jnp.cos(lat) * jnp.ones_like(x)
+
+        axis = right_project_axis_angle(self.inc - jnp.pi / 2, self.obl, 0.0, 0.0)
+        axis = jnp.array(axis[0:3]) * axis[-1]
+        rotation = Rotation.from_rotvec(axis)
+        x, y, z = rotation.apply(jnp.array([x, y, z]).T).T
+
+        return self._intensity(x, y, z)
 
     def flux(self, time):
         theta = time * 2 * jnp.pi / self.period
