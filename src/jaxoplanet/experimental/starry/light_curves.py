@@ -1,3 +1,4 @@
+from jax.typing import ArrayLike
 from functools import partial
 
 import jax
@@ -11,30 +12,35 @@ from jaxoplanet.experimental.starry.rotation import left_project
 from jaxoplanet.experimental.starry.solution import solution_vector
 
 
-def light_curve(system, time):
+def light_curve(system, time: ArrayLike):
     xos, yos, zos = system.relative_position(time)
     theta = time * 2 * jnp.pi / system.central.map.period
+    central_radius = system.central.radius
 
     central_body_lc = jax.vmap(map_light_curve, in_axes=(None, None, 0, 0, 0, 0))
     central_bodies_lc = jax.vmap(central_body_lc, in_axes=(None, 0, 0, 0, 0, None))
     central_light_curve = central_bodies_lc(
         system.central.map,
-        system.radius.magnitude,
+        (system.radius / central_radius).magnitude,
         xos.magnitude,
         yos.magnitude,
         zos.magnitude,
         theta,
     )
 
-    @partial(system.body_vmap, in_axes=(0, 0, 0, None))
-    def bodies_lc(body, x, y, z, theta):
+    @partial(system.body_vmap, in_axes=(0, 0, 0))
+    def bodies_lc(body, x, y, z):
+        theta = time * 2 * jnp.pi / body.map.period
         return jax.vmap(map_light_curve, in_axes=(None, None, 0, 0, 0, 0))(
-            body.map, 1.0, x, y, z, theta
+            body.map,
+            (central_radius / body.radius).magnitude,
+            (x / body.radius).magnitude,
+            (y / body.radius).magnitude,
+            (z / body.radius).magnitude,
+            theta,
         )
 
-    bodies_light_curves = bodies_lc(
-        -xos.magnitude, -yos.magnitude, -zos.magnitude, theta
-    )
+    bodies_light_curves = bodies_lc(-xos, -yos, -zos)
     return np.vstack([central_light_curve, bodies_light_curves])
 
 
