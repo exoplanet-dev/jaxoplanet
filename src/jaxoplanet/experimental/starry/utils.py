@@ -7,12 +7,13 @@ from scipy.spatial.transform import Rotation
 
 from jaxoplanet.experimental.starry.basis import A1, poly_basis
 from jaxoplanet.experimental.starry.rotation import left_project
+from jaxoplanet.orbits import keplerian
 
 
-@partial(jax.jit, static_argnums=0)
+@partial(jax.jit, static_argnums=(0))
 def ortho_grid(res: int):
     x, y = jnp.meshgrid(jnp.linspace(-1, 1, res), jnp.linspace(-1, 1, res))
-    z = jnp.sqrt(1 - x**2 - y**2)
+    z = jnp.sqrt(1.0 - x**2 - y**2)
     y = y + 0.0 * z  # propagate nans
     x = jnp.ravel(x)[None, :]
     y = jnp.ravel(y)[None, :]
@@ -30,18 +31,22 @@ def render(deg, res, theta, inc, obl, y):
     return jnp.reshape(pT @ A1Ry, (res, res))
 
 
-def lon_lat_lines(n=6, pts=100):
+def lon_lat_lines(n: int = 6, pts: int = 100, radius: float = 1.0):
+    assert isinstance(n, int) or len(n) == 2
+
     if isinstance(n, int):
         n = (n, 2 * n)
 
     n_lat, n_lon = n
+
+    sqrt_radius = radius
 
     _theta = np.linspace(0, 2 * np.pi, pts)
     _phi = np.linspace(0, np.pi, n_lat + 1)
     lat = np.array(
         [
             (r * np.cos(_theta), r * np.sin(_theta), np.ones_like(_theta) * h)
-            for (h, r) in zip(np.cos(_phi), np.sin(_phi))
+            for (h, r) in zip(sqrt_radius * np.cos(_phi), sqrt_radius * np.sin(_phi))
         ]
     )
 
@@ -49,7 +54,14 @@ def lon_lat_lines(n=6, pts=100):
     _phi = np.linspace(0, 2 * np.pi, n_lon + 1)[0:-1]
     radii = np.sin(_theta)
     lon = np.array(
-        [(radii * np.cos(p), radii * np.sin(p), np.cos(_theta)) for p in _phi]
+        [
+            (
+                sqrt_radius * radii * np.cos(p),
+                sqrt_radius * radii * np.sin(p),
+                sqrt_radius * np.cos(_theta),
+            )
+            for p in _phi
+        ]
     )
 
     return lat, lon
@@ -95,7 +107,15 @@ def plot_lines(lines, axis=(0, 1), ax=None, **kwargs):
         ax.plot(i, j, **kwargs)
 
 
-def show_map(m, theta=0, res=400, n=6, ax=None, **kwargs):
+def show_map(
+    map_or_body,
+    theta=0,
+    res=400,
+    n=6,
+    ax=None,
+    white_contour=True,
+    **kwargs,
+):
     import matplotlib.pyplot as plt
 
     if ax is None:
@@ -103,27 +123,60 @@ def show_map(m, theta=0, res=400, n=6, ax=None, **kwargs):
         if ax is None:
             ax = plt.subplot(111)
 
-    ax.imshow(m.render(theta, res), origin="lower", **kwargs, extent=(-1, 1, -1, 1))
+    if isinstance(map_or_body, (keplerian.Body, keplerian.Central)):
+        map = map_or_body.map
+        radius = map_or_body.radius.magnitude
+        n = int(np.ceil(n * np.cbrt(radius)))
+    else:
+        map = map_or_body
+
+    ax.imshow(
+        map.render(
+            theta,
+            res,
+        ),
+        origin="lower",
+        **kwargs,
+        extent=(-radius, radius, -radius, radius),
+    )
     if n is not None:
-        graticule(m.inc, m.obl, theta)
+        graticule(
+            map.inc,
+            map.obl,
+            theta,
+            radius=radius,
+            n=n,
+            white_contour=white_contour,
+        )
     ax.axis(False)
 
 
-def graticule(inc, obl, theta=0, pts=100, white_contour=True, **kwargs):
+def graticule(
+    inc: float,
+    obl: float,
+    theta: float = 0.0,
+    pts: int = 100,
+    white_contour=True,
+    radius: float = 1.0,
+    n=6,
+    **kwargs,
+):
     import matplotlib.pyplot as plt
 
     kwargs.setdefault("c", kwargs.pop("color", "k"))
     kwargs.setdefault("lw", kwargs.pop("linewidth", 1))
-    kwargs.setdefault("alpha", 0.5)
+    kwargs.setdefault("alpha", 0.3)
 
     # plot lines
-    lat, lon = lon_lat_lines(pts=pts)
+    lat, lon = lon_lat_lines(pts=pts, radius=radius, n=n)
     lat = rotate_lines(lat, inc, obl, theta)
     plot_lines(lat, **kwargs)
     lon = rotate_lines(lon, inc, obl, theta)
     plot_lines(lon, **kwargs)
     theta = np.linspace(0, 2 * np.pi, 2 * pts)
-    plt.plot(np.cos(theta), np.sin(theta), **kwargs)
 
+    # contour
+    sqrt_radius = radius
+    plt.plot(sqrt_radius * np.cos(theta), sqrt_radius * np.sin(theta), **kwargs)
     if white_contour:
-        plt.plot(np.cos(theta), np.sin(theta), c="w", lw=3)
+        plt.plot(sqrt_radius * np.cos(theta), sqrt_radius * np.sin(theta), c="w", lw=3)

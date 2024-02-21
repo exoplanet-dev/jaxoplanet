@@ -1,12 +1,12 @@
 from functools import partial
-from typing import Optional
+from typing import Optional, Union
 
 import equinox as eqx
 import jax
 import jax.numpy as jnp
 
 from jaxoplanet.experimental.starry.basis import A1, U0, poly_basis
-from jaxoplanet.experimental.starry.light_curves import light_curve
+from jaxoplanet.experimental.starry.light_curves import map_light_curve
 from jaxoplanet.experimental.starry.pijk import Pijk
 from jaxoplanet.experimental.starry.rotation import left_project
 from jaxoplanet.experimental.starry.utils import ortho_grid
@@ -47,7 +47,7 @@ class Map(eqx.Module):
     def __init__(
         self,
         *,
-        y: Optional[Ylm] = None,
+        y: Optional[Union[Ylm, float]] = None,
         inc: Optional[float] = None,
         obl: Optional[float] = None,
         u: Optional[tuple] = None,
@@ -55,7 +55,11 @@ class Map(eqx.Module):
     ):
 
         if y is None:
-            y = Ylm({(0, 0): 1, (1, 0): 0.0})
+            y = 1.0
+
+        if isinstance(y, float):
+            y = Ylm({(0, 0): y, (1, 0): 0.0})
+
         if inc is None:
             inc = jnp.pi / 2
         if obl is None:
@@ -101,17 +105,4 @@ class Map(eqx.Module):
 
     def flux(self, time):
         theta = time * 2 * jnp.pi / self.period
-        return jnp.vectorize(
-            partial(
-                light_curve,
-                self.ydeg,
-                self.y.todense(),
-                self.u,
-                self.inc,
-                self.obl,
-                0.0,
-                2.0,
-                2.0,
-                2.0,
-            )
-        )(theta)
+        return jnp.vectorize(partial(map_light_curve, self, 0.0, 2.0, 2.0, 2.0))(theta)
