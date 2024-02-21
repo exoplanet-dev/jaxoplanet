@@ -6,11 +6,19 @@ import jax
 import jax.numpy as jnp
 import jpu.numpy as jnpu
 
+from jaxoplanet import units
 from jaxoplanet.types import Array, Quantity
+from jaxoplanet.units import unit_registry as ureg
+
+try:
+    from jax.extend import linear_util as lu
+except ImportError:
+    from jax import linear_util as lu  # type: ignore
 
 T = TypeVar("T", Array, Quantity)
 
 
+@units.quantity_input(exposure_time=ureg.d)
 def integrate_exposure_time(
     func: Callable[[Quantity], T],
     exposure_time: Optional[Quantity] = None,
@@ -53,6 +61,7 @@ def integrate_exposure_time(
     stencil /= jnp.sum(stencil)
 
     @wraps(func)
+    @units.quantity_input(time=ureg.d)
     def wrapped(time: Quantity) -> T:
         if jnpu.ndim(time) != 0:  # type: ignore
             raise ValueError(
@@ -62,6 +71,14 @@ def integrate_exposure_time(
                 "manually 'vmap' or 'vectorize' the function"
             )
 
-        return jnpu.dot(stencil, jax.vmap(func)(time + dt))  # type: ignore
+        f = lu.wrap_init(jax.vmap(func))
+        f = apply_exposure_time_integration(f, stencil, dt)
+        return f.call_wrapped(time)  # type: ignore
 
     return wrapped
+
+
+@lu.transformation  # type: ignore
+def apply_exposure_time_integration(stencil, dt, time):
+    result = yield (time + dt,), {}
+    yield jnpu.dot(stencil, result)  # type: ignore
