@@ -1,6 +1,5 @@
-from collections.abc import Callable
 from functools import wraps
-from typing import Optional, TypeVar
+from typing import Any, Optional, Protocol, TypeVar
 
 import jax
 import jax.numpy as jnp
@@ -15,16 +14,20 @@ try:
 except ImportError:
     from jax import linear_util as lu  # type: ignore
 
-T = TypeVar("T", Array, Quantity)
+T = TypeVar("T", Array, Quantity, covariant=True)
+
+
+class _LightCurveFunc(Protocol[T]):
+    def __call__(self, time: Quantity, *args: Any, **kwargs: Any) -> T: ...
 
 
 @units.quantity_input(exposure_time=ureg.d)
 def integrate_exposure_time(
-    func: Callable[[Quantity], T],
+    func: _LightCurveFunc[T],
     exposure_time: Optional[Quantity] = None,
     order: int = 0,
     num_samples: int = 7,
-) -> Callable[[Quantity], T]:
+) -> _LightCurveFunc[T]:
     if exposure_time is None:
         return func
 
@@ -62,7 +65,7 @@ def integrate_exposure_time(
 
     @wraps(func)
     @units.quantity_input(time=ureg.d)
-    def wrapped(time: Quantity) -> T:
+    def wrapped(time: Quantity, *args: Any, **kwargs: Any) -> T:
         if jnpu.ndim(time) != 0:  # type: ignore
             raise ValueError(
                 "The time passed to 'integrate_exposure_time' has shape "
@@ -72,13 +75,13 @@ def integrate_exposure_time(
             )
 
         f = lu.wrap_init(jax.vmap(func))
-        f = apply_exposure_time_integration(f, stencil, dt)
-        return f.call_wrapped(time)  # type: ignore
+        f = apply_exposure_time_integration(f, stencil, dt)  # type: ignore
+        return f.call_wrapped(time, args, kwargs)  # type: ignore
 
     return wrapped
 
 
 @lu.transformation  # type: ignore
-def apply_exposure_time_integration(stencil, dt, time):
-    result = yield (time + dt,), {}
+def apply_exposure_time_integration(stencil, dt, time, args, kwargs):
+    result = yield (time + dt,) + args, kwargs
     yield jnpu.dot(stencil, result)  # type: ignore
