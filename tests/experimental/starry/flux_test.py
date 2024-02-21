@@ -3,9 +3,9 @@ import numpy as np
 import pytest
 
 from jaxoplanet.experimental.starry import Map, Ylm
-from jaxoplanet.experimental.starry.light_curves import map_light_curve, light_curve
-from jaxoplanet.test_utils import assert_allclose
+from jaxoplanet.experimental.starry.light_curves import light_curve, map_light_curve
 from jaxoplanet.orbits import keplerian
+from jaxoplanet.test_utils import assert_allclose
 
 
 @pytest.mark.parametrize("deg", [2, 5, 10])
