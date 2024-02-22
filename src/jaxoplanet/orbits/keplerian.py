@@ -249,21 +249,14 @@ class Body(eqx.Module):
                 intensity 0. is used.
         """
 
-        # Handle the special case when passing both `period` and `semimajor`.
-        # This occurs sometimes when doing transit fits, and we want to fit for
-        # the "photoeccentric effect". In this case, the central ends up with an
-        # implied density.
         if central is None:
-            if period is not None and semimajor is not None:
-                central = Central.from_orbital_properties(
-                    period=period,
-                    semimajor=semimajor,
-                    radius=central_radius,
-                    body_mass=mass,
-                )
-                semimajor = None
-            else:
-                central = Central()
+            raise ValueError(
+                "A 'Body' should typically never be instantiated on its own, and "
+                "if it is, an explicit reference to a 'Central' is required. "
+                "It's generally best practice to use the 'add_body' method on a "
+                "'System' to create a body with consistent parameters."
+            )
+
         self.central = central
 
         # Check that all the input arguments have the right shape
@@ -745,7 +738,7 @@ class System(eqx.Module):
         self, central: Optional[Central] = None, *, bodies: tuple[Body, ...] = ()
     ):
         self.central = Central() if central is None else central
-        self.bodies = bodies
+        self.bodies = tuple(bodies)
 
         # If all the bodies have matching Pytree structure then we save a
         # stacked version that we can use for vmaps below. This allows for more

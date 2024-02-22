@@ -52,10 +52,10 @@ def test_keplerian_central_density():
 
 
 def test_keplerian_body_keplers_law():
-    orbit = keplerian.Body(semimajor=1.0 * ureg.au)
+    orbit = keplerian.Body(keplerian.Central(), semimajor=1.0 * ureg.au)
     assert_quantity_allclose(orbit.period, 1.0 * ureg.year, atol=0.01, convert=True)
 
-    orbit = keplerian.Body(period=1.0 * ureg.year)
+    orbit = keplerian.Body(keplerian.Central(), period=1.0 * ureg.year)
     assert_quantity_allclose(orbit.semimajor, 1.0 * ureg.au, atol=0.01, convert=True)
 
 
@@ -260,19 +260,19 @@ def body_vmap_func4(body, x):
 )
 def test_body_vmap(func, in_axes, out_axes, args):
     central = keplerian.Central()
-    vmap_sys = keplerian.System(
-        central,
-        bodies=(
-            keplerian.Body(radius=0.5, period=1.0),
-            keplerian.Body(radius=0.8, period=1.0),
-        ),
+    vmap_sys = (
+        keplerian.System(
+            central,
+        )
+        .add_body(radius=0.5, period=1.0)
+        .add_body(radius=0.8, period=1.0)
     )
-    no_vmap_sys = keplerian.System(
-        central,
-        bodies=(
-            keplerian.Body(radius=0.5, period=1.0, eccentricity=0.1, omega_peri=0.1),
-            keplerian.Body(radius=0.8, period=1.0),
-        ),
+    no_vmap_sys = (
+        keplerian.System(
+            central,
+        )
+        .add_body(radius=0.5, period=1.0, eccentricity=0.1, omega_peri=0.1)
+        .add_body(radius=0.8, period=1.0)
     )
 
     result1 = vmap_sys.body_vmap(func, in_axes=in_axes, out_axes=out_axes)(*args)
