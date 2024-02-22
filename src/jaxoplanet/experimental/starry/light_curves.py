@@ -13,6 +13,17 @@ from jaxoplanet.experimental.starry.solution import solution_vector
 
 
 def light_curve(system, time: ArrayLike):
+    """System light curve
+
+    Args:
+        system (orbits.keplerian.System): keplerian system containing bodies
+        (that must have defined radii)
+        time (ArrayLike): time array
+
+    Returns:
+        ArrayLike: light curves of each body in the system, starting with the
+        central body, followed by the rest of the bodies.
+    """
     xos, yos, zos = system.relative_position(time)
     theta = time * 2 * jnp.pi / system.central.map.period
     central_radius = system.central.radius
@@ -46,7 +57,20 @@ def light_curve(system, time: ArrayLike):
 
 # TODO: figure out the sparse matrices (and Pijk) to avoid todense()
 # TODO this is failing for ydeg=0
-def map_light_curve(map, r, xo, yo, zo, theta):
+def map_light_curve(map, r: float, xo: float, yo: float, zo: float, theta: float):
+    """Light curve of a map
+
+    Args:
+        map (Map): map object
+        r (float): radius of the occulting body, relative to the current map body
+        xo (float): x position of the occulting body, relative to the current map body
+        yo (float): y position of the occulting body, relative to the current map body
+        zo (float): z position of the occulting body, relative to the current map body
+        theta (float): rotation angle of the map
+
+    Returns:
+        ArrayLike: light curve
+    """
     U = jnp.array([1, *map.u])
     b = jnp.sqrt(jnp.square(xo) + jnp.square(yo))
     b_rot = jnp.logical_or(jnp.greater_equal(b, 1.0 + r), jnp.less_equal(zo, 0.0))

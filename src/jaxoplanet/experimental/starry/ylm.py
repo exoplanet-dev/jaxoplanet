@@ -16,8 +16,12 @@ from jaxoplanet.types import Array
 
 class Ylm(eqx.Module):
     data: dict[tuple[int, int], Array]
+    """coefficients of the spherical harmonic expansion of the map in the form
+    {(l, m): coefficient}"""
     ell_max: int = eqx.field(static=True)
+    """maximum degree of the spherical harmonic expansion"""
     diagonal: bool = eqx.field(static=True)
+    """whether the spherical harmonic expansion is diagonal (all m=0)"""
 
     def __init__(self, data: Mapping[tuple[int, int], Array]):
         # TODO(dfm): Think about how we want to handle the case of (0, 0). In
@@ -30,6 +34,8 @@ class Ylm(eqx.Module):
 
     @property
     def shape(self):
+        """The number of coefficients in the expansion. This sets the shape of
+        the output of `todense`."""
         return self.ell_max**2 + 2 * self.ell_max + 1
 
     @property
@@ -37,6 +43,8 @@ class Ylm(eqx.Module):
         return self.data.keys()
 
     def index(self, ell: Array, m: Array) -> Array:
+        """Convert the degree and order of the spherical harmonic to the
+        corresponding index in the coefficient array."""
         if np.any(np.abs(m) > ell):
             raise ValueError(
                 "All spherical harmonic orders 'm' must be in the range [-ell, ell]"
@@ -192,8 +200,8 @@ def spot_y(l_max, pts=1000, eps=1e-9, fac=300, smoothing=None):
         b = 1.0 / (1.0 + jnp.exp(-z)) - 1.0
         y = jnp.zeros(n_max)
         y = y.at[idxs].set(Bp @ b)
-        y = y.at[0].set(1.0)
-        return y * contrast
+        # y = y.at[0].set(1.0)
+        return y
 
     return _y
 

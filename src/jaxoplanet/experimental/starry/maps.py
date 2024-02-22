@@ -32,6 +32,9 @@ class Map(eqx.Module):
     to change)"""
 
     """
+    An object containing the spherical harmonic expansion of the map, and its
+    orientation in space.
+
     Example:
 
         import numpy as np
@@ -107,12 +110,31 @@ class Map(eqx.Module):
 
     @partial(jax.jit, static_argnames=("res",))
     def render(self, theta: float = 0.0, res: int = 400):
+        """Returns the intensity map projected onto the x-y plane (sky).
+
+        Args:
+            theta (float, optional): rotation angle of the map. Defaults to 0.0.
+            res (int, optional): resolution of the render. Defaults to 400.
+
+        Returns:
+            ArrayLike: square 2D array representing the intensity map
+            (with nans outside the map disk).
+        """
         _, xyz = ortho_grid(res)
         intensity = self._intensity(*xyz, theta=theta)
         return jnp.reshape(intensity, (res, res))
 
     @partial(jax.jit)
-    def intensity(self, lat, lon):
+    def intensity(self, lat: float, lon: float):
+        """Returns the intensity of the map at a given latitude and longitude.
+
+        Args:
+            lat (float): latitude in the rest frame of the map
+            lon (float): longitude in the rest frame of the map
+
+        Returns:
+            float: intensity of the map at the given latitude and longitude
+        """
         x = jnp.sin(lat) * jnp.cos(lon)
         y = jnp.sin(lat) * jnp.sin(lon)
         z = jnp.cos(lat) * jnp.ones_like(x)
