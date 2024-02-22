@@ -109,13 +109,26 @@ def plot_lines(lines, axis=(0, 1), ax=None, **kwargs):
 
 def show_map(
     map_or_body,
-    theta=0,
-    res=400,
-    n=6,
+    theta: float = 0.0,
+    res: int = 400,
+    n: int = 6,
     ax=None,
-    white_contour=True,
+    white_contour: bool = True,
     **kwargs,
 ):
+    """Show map of a
+
+    Args:
+        map_or_body (Map, Central or Body): Map or Body with a map
+        theta (float, optional): Rotation angle of the map wrt its rotation axis.
+        Defaults to 0.0.
+        res (int, optional): Resolution of the map render. Defaults to 400.
+        n (int, optional): number of latitude and longitude lines to show.
+        Defaults to 6.
+        ax (matplotlib.pyplot.Axes, optional): plot axes. Defaults to None.
+        white_contour (bool, optional): Whether to surround the map by a white border
+        (to hide border pixel aliasing). Defaults to True.
+    """
     import matplotlib.pyplot as plt
 
     if ax is None:
