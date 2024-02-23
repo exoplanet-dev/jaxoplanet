@@ -1,8 +1,9 @@
-from jaxoplanet.experimental.starry import Map, Ylm, show_map
-from jaxoplanet.experimental.starry.ylm import ylm_spot
-import pytest
-import numpy as np
 import jax
+import numpy as np
+import pytest
+
+from jaxoplanet.experimental.starry import Map
+from jaxoplanet.experimental.starry.ylm import ylm_spot
 from jaxoplanet.test_utils import assert_allclose
 
 

@@ -12,7 +12,6 @@ from jax.tree_util import tree_flatten
 from jaxoplanet import units
 from jaxoplanet.core.kepler import kepler
 from jaxoplanet.experimental.starry.maps import Map
-from jaxoplanet.experimental.starry.ylm import Ylm
 from jaxoplanet.types import Quantity
 from jaxoplanet.units import unit_registry as ureg
 

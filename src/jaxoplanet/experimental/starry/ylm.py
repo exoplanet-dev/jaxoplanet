@@ -10,9 +10,9 @@ import numpy as np
 from jax.experimental.sparse import BCOO
 from scipy.special import legendre as LegendreP
 
+from jaxoplanet.experimental.starry.rotation import dot_rotation_matrix
 from jaxoplanet.experimental.starry.wigner3j import Wigner3jCalculator
 from jaxoplanet.types import Array
-from jaxoplanet.experimental.starry.rotation import dot_rotation_matrix
 
 
 class Ylm(eqx.Module):
