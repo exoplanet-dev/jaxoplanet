@@ -84,6 +84,8 @@ def map_light_curve(map, r: float, xo: float, yo: float, zo: float, theta: float
     # Occultation
     theta_z = jnp.arctan2(xo, yo)
     sT = solution_vector(map.deg)(b, r)
+    # the reason for this if is that scipy.sparse.linalg.inv of a sparse matrix[[1]]
+    # is a non-sparse [[1]], hence from_scipy_sparse raises an error (case deg=0) ...
     if map.deg > 0:
         A2 = scipy.sparse.linalg.inv(A2_inv(map.deg))
         A2 = jax.experimental.sparse.BCOO.from_scipy_sparse(A2)
