@@ -77,7 +77,6 @@ def test_compare_starry(deg, u):
                 "radius": 0.5,
                 "mass": 0.1,
                 "period": 1.5,
-                "map": Map(y=0.0),
             },
         },
         {
@@ -90,7 +89,6 @@ def test_compare_starry(deg, u):
                 "radius": 1.5,
                 "mass": 1.1,
                 "period": 1.5,
-                "map": Map(y=0.0),
             },
         },
     ]
