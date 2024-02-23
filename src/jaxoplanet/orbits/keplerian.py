@@ -147,9 +147,6 @@ class Central(eqx.Module):
         """
         return self.mass.shape
 
-    def flux(self, theta: float) -> float:
-        return self.map.flux(theta)
-
 
 class Body(eqx.Module):
     central: Central
@@ -734,9 +731,6 @@ class Body(eqx.Module):
             vz = vz.magnitude
 
         return (x, y, z), (vx, vy, vz)
-
-    def flux(self, theta: float) -> float:
-        return self.map.flux(theta)
 
 
 class BodyStack(eqx.Module):
