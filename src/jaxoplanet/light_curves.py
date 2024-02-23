@@ -11,11 +11,11 @@ from jaxoplanet.types import Array, Quantity
 from jaxoplanet.units import unit_registry as ureg
 
 
-def light_curve(
+def limb_dark_light_curve(
     orbit: LightCurveOrbit, *u: Array, order: int = 10
 ) -> Callable[[Quantity], Array]:
     if u:
-        ld_u = jnp.concatenate(u, axis=0)
+        ld_u = jnp.concatenate([jnp.atleast_1d(jnp.asarray(u_)) for u_ in u], axis=0)
     else:
         ld_u = jnp.array([])
 
