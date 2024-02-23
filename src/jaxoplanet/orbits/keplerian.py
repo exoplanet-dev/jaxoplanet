@@ -400,7 +400,7 @@ class Body(eqx.Module):
             self.time_transit = jnpu.zeros_like(self.period)
 
         if map is None:
-            self.map = Map(y=Ylm({(0, 0): 0, (1, 0): 0.0}))
+            self.map = Map(amplitude=0.)
         else:
             self.map = map
 
