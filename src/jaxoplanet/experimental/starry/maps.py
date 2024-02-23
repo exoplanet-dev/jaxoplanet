@@ -56,20 +56,32 @@ class Map(eqx.Module):
     def __init__(
         self,
         *,
-        y: Optional[Union[Ylm, float]] = None,
+        y: Optional[Ylm] = None,
         inc: Optional[float] = None,
         obl: Optional[float] = None,
         u: Optional[tuple] = None,
         period: Optional[float] = None,
         amplitude: Optional[float] = None,
     ):
+        """Surface map object.
+
+        Args:
+            y (Optional[Union[Ylm, float]], optional): Ylm object containing the
+            spherical harmonic expansion of the map. Defaults to None (a uniform map)
+            with amplitude 1.0.
+            inc (Optional[float], optional): inclination of the map. Defaults to 0.
+            obl (Optional[float], optional): obliquity iof the map. Defaults to 0.
+            u (Optional[tuple], optional): polynomial limb-darkening coefficients of
+            the map. Defaults to ().
+            period (Optional[float], optional): rotation period of the map. Defaults to
+            1e15.
+            amplitude (Optional[float], optional): amplitude of the map, this quantity is
+            proportional to the luminosity of the map and multiplies all flux-related
+            observables. Defaults to 1..
+        """
 
         if y is None:
-            y = 1.0
-
-        if isinstance(y, float):
-            y = Ylm({(0, 0): y, (1, 0): 0.0})
-
+            y = Ylm()
         if inc is None:
             inc = jnp.pi / 2
         if obl is None:
@@ -130,7 +142,6 @@ class Map(eqx.Module):
         intensity = self._intensity(*xyz, theta=theta)
         return jnp.reshape(intensity, (res, res))
 
-    @partial(jax.jit)
     def intensity(self, lat: float, lon: float):
         """Returns the intensity of the map at a given latitude and longitude.
 

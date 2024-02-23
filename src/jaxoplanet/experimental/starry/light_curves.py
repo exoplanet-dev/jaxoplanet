@@ -62,7 +62,6 @@ def light_curve(system, time: ArrayLike):
 
 
 # TODO: figure out the sparse matrices (and Pijk) to avoid todense()
-# TODO this is failing for ydeg=0
 def map_light_curve(map, r: float, xo: float, yo: float, zo: float, theta: float):
     """Light curve of a map
 
@@ -85,8 +84,12 @@ def map_light_curve(map, r: float, xo: float, yo: float, zo: float, theta: float
     # Occultation
     theta_z = jnp.arctan2(xo, yo)
     sT = solution_vector(map.deg)(b, r)
-    A2 = scipy.sparse.linalg.inv(A2_inv(map.deg))
-    A2 = jax.experimental.sparse.BCOO.from_scipy_sparse(A2)
+    if map.deg > 0:
+        A2 = scipy.sparse.linalg.inv(A2_inv(map.deg))
+        A2 = jax.experimental.sparse.BCOO.from_scipy_sparse(A2)
+    else:
+        A2 = jnp.array([1])
+
     sTA2 = sT @ A2
 
     # full rotation

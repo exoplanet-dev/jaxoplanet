@@ -1,7 +1,7 @@
 import math
 from collections import defaultdict
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, Optional
 
 import equinox as eqx
 import jax
@@ -16,7 +16,7 @@ from jaxoplanet.experimental.starry.rotation import dot_rotation_matrix
 
 
 class Ylm(eqx.Module):
-    data: dict[tuple[int, int], Array]
+    data: Optional[dict[tuple[int, int], Array]] = None
     """coefficients of the spherical harmonic expansion of the map in the form
     {(l, m): coefficient}"""
     ell_max: int = eqx.field(static=True)
@@ -24,22 +24,25 @@ class Ylm(eqx.Module):
     diagonal: bool = eqx.field(static=True)
     """whether the spherical harmonic expansion is diagonal (all m=0)"""
 
-    def __init__(self, data: Mapping[tuple[int, int], Array], relative: bool = True):
-        """Create a Ylm object from a dictionary of spherical harmonic coefficients.
+    def __init__(
+        self,
+        data: Optional[Mapping[tuple[int, int], Array]] = None,
+        relative: bool = True,
+    ):
+        """Ylm object containing the spherical harmonic coefficients.
 
         Args:
-            data (Mapping[tuple[int, int], Array]): dictionary of spherical harmonic
-            coefficients
+            data (Mapping[tuple[int, int], Array], optional): dictionary of
+            spherical harmonic coefficients. Defaults to {(0, 0): 1.0}.
             relative (bool, optional): Whether to normalize the coefficients by the
             value of the (0, 0) coefficient. Defaults to True.
 
         Raises:
             ValueError: if relative is True and the (0, 0) coefficient is zero.
         """
-        # TODO(dfm): Think about how we want to handle the case of (0, 0). In
-        # starry, that is always forced to be 1, and all the entries will be
-        # normalized if an explicit value is provided. Do we want to enforce
-        # that here too?
+        if data is None:
+            data = {(0, 0): 1.0}
+
         if relative:
             assert data[(0, 0)] != 0.0, ValueError(
                 "The (0, 0) coefficient must be non-zero if relative=True"
