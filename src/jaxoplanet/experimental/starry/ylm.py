@@ -12,6 +12,7 @@ from scipy.special import legendre as LegendreP
 
 from jaxoplanet.experimental.starry.wigner3j import Wigner3jCalculator
 from jaxoplanet.types import Array
+from jaxoplanet.experimental.starry.rotation import dot_rotation_matrix
 
 
 class Ylm(eqx.Module):
@@ -23,11 +24,13 @@ class Ylm(eqx.Module):
     diagonal: bool = eqx.field(static=True)
     """whether the spherical harmonic expansion is diagonal (all m=0)"""
 
-    def __init__(self, data: Mapping[tuple[int, int], Array]):
+    def __init__(self, data: Mapping[tuple[int, int], Array], relative: bool = True):
         # TODO(dfm): Think about how we want to handle the case of (0, 0). In
         # starry, that is always forced to be 1, and all the entries will be
         # normalized if an explicit value is provided. Do we want to enforce
         # that here too?
+        if relative:
+            data = {k: v / data[(0, 0)] for k, v in data.items()}
         self.data = dict(data)
         self.ell_max = max(ell for ell, _ in data.keys())
         self.diagonal = all(m == 0 for _, m in data.keys())
@@ -165,18 +168,20 @@ def spot_profile(theta, radius, spot_fac=300):
     return 1 / (1 + jnp.exp(-z)) - 1
 
 
-def spot_ylm(ydeg):
+def ylm_spot(ydeg):
     """
     spot expansion in the spherical harmonics basis.
 
     """
     B, theta, indices = Bp(ydeg)
 
-    def func(contrast, r):
+    def func(contrast, r, lat=0.0, lon=0.0):
         b = spot_profile(theta, r)
         y = jnp.zeros((ydeg + 1) * (ydeg + 1))
         y = y.at[indices].set(B @ b * contrast)
         y = y.at[0].set(y[0] + 1.0)
+        y = dot_rotation_matrix(ydeg, 1.0, 0.0, 0.0, lat)(y)
+        y = dot_rotation_matrix(ydeg, 0.0, 1.0, 0.0, -lon)(y)
 
         return Ylm.from_dense(y)
 

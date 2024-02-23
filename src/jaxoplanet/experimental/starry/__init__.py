@@ -4,4 +4,4 @@ from jaxoplanet.experimental.starry.solution import (
 )
 from jaxoplanet.experimental.starry.ylm import Ylm as Ylm
 
-from jaxoplanet.experimental.starry.vizualisation import show_map as show_map
+from jaxoplanet.experimental.starry.visualization import show_map as show_map
