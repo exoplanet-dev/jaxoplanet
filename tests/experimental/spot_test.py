@@ -1,4 +1,20 @@
-import math
+from jaxoplanet.experimental.starry import Map, Ylm, show_map
+import pytest
+import numpy as np
+
+
+@pytest.mark.parametrize("ydeg", [5, 10])
+def test_spot_intensity(ydeg, radius=0.5, contrast=0.1):
+    starry = pytest.importorskip("starry")
+    starry.config.lazy = False
+
+    map = starry.Map(ydeg=ydeg)
+    map.spot(contrast=contrast, radius=np.rad2deg(radius), lat=0, lon=0)
+    intensity = map.flux(theta=np.linspace(0, 360, 1000))
+
+    import math
+
+
 from collections import defaultdict
 from collections.abc import Mapping
 from typing import Any
@@ -126,124 +142,3 @@ def _mul(f: Ylm, g: Ylm) -> Ylm:
                             * sum2
                         )
     return Ylm(fg)
-
-
-def Bp(ydeg, npts: int = 1000, eps: float = 1e-9, smoothing=None):
-    """
-    Return the matrix B+. This expands the
-    spot profile `b` in Legendre polynomials. From https://github.com/rodluger/
-    mapping_stellar_surfaces/blob/paper2-arxiv/paper2/figures/spot_profile.py and
-    _spot_setup in starry/_core/core.py.
-    """
-    if smoothing is None:
-        if ydeg < 4:
-            smoothing = 0.5
-        else:
-            smoothing = 2.0 / ydeg
-
-    theta = jnp.linspace(0, jnp.pi, npts)
-    cost = jnp.cos(theta)
-    B = jnp.hstack(
-        [
-            jnp.sqrt(2 * l + 1) * LegendreP(l)(cost).reshape(-1, 1)
-            for l in range(ydeg + 1)
-        ]
-    )
-    _Bp = jnp.linalg.solve(B.T @ B + eps * jnp.eye(ydeg + 1), B.T)
-    l = jnp.arange(ydeg + 1)
-    indices = l * (l + 1)
-    S = jnp.exp(-0.5 * indices * smoothing**2)
-    return (S[:, None] * _Bp, theta, indices)
-
-
-def spot_profile(theta, radius, spot_fac=300):
-    """
-    The sigmoid spot profile.
-
-    """
-    z = spot_fac * (theta - radius)
-    return 1 / (1 + jnp.exp(-z)) - 1
-
-
-def spot_ylm(ydeg):
-    """
-    spot expansion in the spherical harmonics basis.
-
-    """
-    B, theta, indices = Bp(ydeg)
-
-    def func(contrast, r):
-        b = spot_profile(theta, r)
-        y = jnp.zeros((ydeg + 1) * (ydeg + 1))
-        y = y.at[indices].set(B @ b * contrast)
-        y = y.at[0].set(y[0] + 1.0)
-
-        return Ylm.from_dense(y)
-
-    return func
-
-
-def ring_y(l_max, pts=1000, eps=1e-9, smoothing=None):
-    """Ring expansion
-
-    Parameters
-    ----------
-    l_max : int
-        degree of the spherical harmonics
-    pts : int, optional
-        _description_, by default 1000
-    eps : float, optional
-        _description_, by default 1e-9
-    fac : int, optional
-        _description_, by default 300
-    smoothing : float, optional
-        _description_, by default None
-
-    Returns
-    -------
-    Callable
-        spherical harmonics coefficients of the ring expansion
-    """
-    Bp, theta, idxs = _Bp_expansion(l_max, pts=pts, eps=eps, smoothing=smoothing)
-    n_max = l_max**2 + 2 * l_max + 1
-
-    def _y(contrast: float, width: float, latitude: float):
-        b = 1 - jnp.array((theta > latitude - width) & (theta < latitude + width))
-        y = jnp.zeros(n_max)
-        y = y.at[idxs].set(Bp @ b)
-        return y * contrast
-
-    return _y
-
-
-def ring_y(l_max, pts=1000, eps=1e-9, smoothing=None):
-    """Ring expansion
-
-    Parameters
-    ----------
-    l_max : int
-        degree of the spherical harmonics
-    pts : int, optional
-        _description_, by default 1000
-    eps : float, optional
-        _description_, by default 1e-9
-    fac : int, optional
-        _description_, by default 300
-    smoothing : float, optional
-        _description_, by default None
-
-    Returns
-    -------
-    Callable
-        spherical harmonics coefficients of the ring expansion
-    """
-    Bp, theta, idxs = _Bp_expansion(l_max, pts=pts, eps=eps, smoothing=smoothing)
-    n_max = l_max**2 + 2 * l_max + 1
-
-    def _y(contrast: float, width: float, latitude: float):
-        b = 1 - jnp.array((theta > latitude - width) & (theta < latitude + width))
-        y = jnp.zeros(n_max)
-        y = y.at[idxs].set(Bp @ b)
-        return y * contrast
-
-    return _y
