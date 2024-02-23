@@ -80,13 +80,13 @@ class Ylm(eqx.Module):
         return self.tosparse().todense()
 
     @classmethod
-    def from_dense(cls, y: Array) -> "Ylm":
+    def from_dense(cls, y: Array, normalize: bool = True) -> "Ylm":
         data = {}
         for i, ylm in enumerate(y):
             ell = int(np.floor(np.sqrt(i)))
             m = i - ell * (ell + 1)
             data[(ell, m)] = ylm
-        return cls(data)
+        return cls(data, normalize=normalize)
 
     def __mul__(self, other: Any) -> "Ylm":
         if isinstance(other, Ylm):
@@ -221,7 +221,7 @@ def ylm_spot(ydeg: int) -> callable:
         y = dot_rotation_matrix(ydeg, 1.0, 0.0, 0.0, lat)(y)
         y = dot_rotation_matrix(ydeg, 0.0, 1.0, 0.0, -lon)(y)
 
-        return Ylm.from_dense(y)
+        return Ylm.from_dense(y, normalize=False)
 
     return func
 

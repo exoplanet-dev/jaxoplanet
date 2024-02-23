@@ -32,6 +32,8 @@ class Map(eqx.Module):
     to change)"""
     amplitude: Optional[float] = None
     """Amplitude of the map, a quantity proportional to map luminosity."""
+    normalize: Optional[bool] = None
+    """Whether to normalize the coefficients of the spherical harmonic."""
 
     """
     An object containing the spherical harmonic expansion of the map, and its
@@ -62,6 +64,7 @@ class Map(eqx.Module):
         u: Optional[tuple] = None,
         period: Optional[float] = None,
         amplitude: Optional[float] = None,
+        normalize: Optional[bool] = None,
     ):
         """Surface map object.
 
@@ -78,6 +81,9 @@ class Map(eqx.Module):
             amplitude (Optional[float], optional): amplitude of the map, this quantity is
             proportional to the luminosity of the map and multiplies all flux-related
             observables. Defaults to 1..
+            normalize (Optional[bool], optional): whether to normalize the coefficients
+            of the spherical harmonics. If None or True, Ylm is normalized and the
+            amplitude of the map is set to y[(0, 0)]. Defaults to None.
         """
 
         if y is None:
@@ -92,6 +98,12 @@ class Map(eqx.Module):
             period = 1e15
         if amplitude is None:
             amplitude = 1.0
+        if normalize is None:
+            normalize = True
+
+        if normalize:
+            amplitude = y[(0, 0)]
+            y = Ylm(data=y.data, normalize=True)
 
         self.y = y
         self.inc = inc
