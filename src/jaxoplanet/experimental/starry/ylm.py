@@ -30,6 +30,7 @@ class Ylm(eqx.Module):
         # normalized if an explicit value is provided. Do we want to enforce
         # that here too?
         if relative:
+            assert data[(0, 0)] != 0.0
             data = {k: v / data[(0, 0)] for k, v in data.items()}
         self.data = dict(data)
         self.ell_max = max(ell for ell, _ in data.keys())
