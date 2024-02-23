@@ -27,7 +27,7 @@ class Ylm(eqx.Module):
     def __init__(
         self,
         data: Optional[Mapping[tuple[int, int], Array]] = None,
-        relative: bool = True,
+        normalize: bool = True,
     ):
         """Ylm object containing the spherical harmonic coefficients.
 
@@ -43,7 +43,7 @@ class Ylm(eqx.Module):
         if data is None:
             data = {(0, 0): 1.0}
 
-        if relative:
+        if normalize:
             assert data[(0, 0)] != 0.0, ValueError(
                 "The (0, 0) coefficient must be non-zero if relative=True"
             )
