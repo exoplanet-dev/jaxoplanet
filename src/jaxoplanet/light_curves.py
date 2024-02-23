@@ -78,10 +78,10 @@ class LimbDarkLightCurve(eqx.Module):
     def light_curve(
         self, orbit: LightCurveOrbit, time: Quantity, *, ld_order: int = 10
     ) -> Array:
-        def _lc_func(time: time) -> _LightCurveFunc[T]:
+        def _lc_func(time: Quantity) -> _LightCurveFunc[T]:
             return self._light_curve(orbit=orbit, time=time, ld_order=ld_order)
 
-        return jax.vmap(_lc_func, in_axes=(0))(time)
+        return jax.vmap(_lc_func, in_axes=(0))(time).T
 
     def _integrated_light_curve(
         self,
@@ -93,11 +93,11 @@ class LimbDarkLightCurve(eqx.Module):
         order: int = 0,
         num_samples: int = 7,
     ) -> _LightCurveFunc[T]:
-        def _partial_lc_func(time):
+        def _lc_func(time: Quantity) -> _LightCurveFunc[T]:
             return self._light_curve(orbit=orbit, time=time, ld_order=ld_order)
 
         _integrated_lc_func = integrate_exposure_time(
-            _partial_lc_func, exposure_time=exposure_time, num_samples=num_samples
+            _lc_func, exposure_time=exposure_time, num_samples=num_samples
         )
         return _integrated_lc_func
 
@@ -119,4 +119,4 @@ class LimbDarkLightCurve(eqx.Module):
             order=order,
             num_samples=num_samples,
         )
-        return jax.vmap(_integrated_lc_func, in_axes=(0))(time)
+        return jax.vmap(_integrated_lc_func, in_axes=(0))(time).T
