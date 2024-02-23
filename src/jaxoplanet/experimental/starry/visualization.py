@@ -1,9 +1,9 @@
 import numpy as np
 
 from jaxoplanet.experimental.starry.maps import Map
+from jaxoplanet.experimental.starry.utils import graticule
 from jaxoplanet.experimental.starry.ylm import Ylm
 from jaxoplanet.orbits import keplerian
-from jaxoplanet.experimental.starry.utils import graticule
 
 
 def show_map(
