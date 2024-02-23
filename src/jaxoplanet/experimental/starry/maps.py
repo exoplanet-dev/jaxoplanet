@@ -30,6 +30,7 @@ class Map(eqx.Module):
     period: Optional[float] = None
     """Rotation period of the map in days (attribute subject
     to change)"""
+    amplitude: Optional[float] = None
 
     """
     An object containing the spherical harmonic expansion of the map, and its
@@ -59,6 +60,7 @@ class Map(eqx.Module):
         obl: Optional[float] = None,
         u: Optional[tuple] = None,
         period: Optional[float] = None,
+        amplitude: Optional[float] = None,
     ):
 
         if y is None:
@@ -75,12 +77,15 @@ class Map(eqx.Module):
             u = ()
         if period is None:
             period = 1e15
+        if amplitude is None:
+            amplitude = 1.0
 
         self.y = y
         self.inc = inc
         self.obl = obl
         self.u = u
         self.period = period
+        self.amplitude = amplitude
 
     @property
     def poly_basis(self):
@@ -106,7 +111,7 @@ class Map(eqx.Module):
         U = jnp.array([1, *self.u])
         p_u = Pijk.from_dense(U @ U0(self.udeg), degree=self.udeg)
         p = (p_y * p_u).todense()
-        return pT @ p
+        return pT @ p * self.amplitude
 
     @partial(jax.jit, static_argnames=("res",))
     def render(self, theta: float = 0.0, res: int = 400):
@@ -135,6 +140,8 @@ class Map(eqx.Module):
         Returns:
             float: intensity of the map at the given latitude and longitude
         """
+        lon = lon + jnp.pi / 2  # convention, 0 lon faces the observer
+        lat = jnp.pi / 2 - lat  # convention, latitude 0 is equator
         x = jnp.sin(lat) * jnp.cos(lon)
         y = jnp.sin(lat) * jnp.sin(lon)
         z = jnp.cos(lat) * jnp.ones_like(x)
@@ -148,4 +155,7 @@ class Map(eqx.Module):
 
     def flux(self, time):
         theta = time * 2 * jnp.pi / self.period
-        return jnp.vectorize(partial(map_light_curve, self, 0.0, 2.0, 2.0, 2.0))(theta)
+        return (
+            jnp.vectorize(partial(map_light_curve, self, 0.0, 2.0, 2.0, 2.0))(theta)
+            * self.amplitude
+        )
