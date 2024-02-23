@@ -55,6 +55,8 @@ class Central(eqx.Module):
             mass (Optional[Quantity]): Mass of central body [mass unit].
             radius (Optional[Quantity]): Radius of central body [length unit].
             density (Optional[Quantity]): Density of central body [mass/length**3 unit].
+            map (Optional[Map]): Map of the central body. If None a uniform map with
+            intensity 1 is used.
         """
 
         if radius is None and mass is None:
@@ -247,6 +249,8 @@ class Body(eqx.Module):
                 semi-amplitude [length/time unit].
             parallax (Optional[Quantity]): Parallax (to convert position/velocity into
                 arcsec). [length unit].
+            map (Optional[Map]): Map of the orbiting body. If None a uniform map with
+                intensity 0. is used.
         """
 
         # Handle the special case when passing both `period` and `semimajor`.
@@ -400,7 +404,7 @@ class Body(eqx.Module):
             self.time_transit = jnpu.zeros_like(self.period)
 
         if map is None:
-            self.map = Map(amplitude=0.)
+            self.map = Map(amplitude=0.0)
         else:
             self.map = map
 

@@ -31,6 +31,7 @@ class Map(eqx.Module):
     """Rotation period of the map in days (attribute subject
     to change)"""
     amplitude: Optional[float] = None
+    """Amplitude of the map, a quantity proportional to map luminosity."""
 
     """
     An object containing the spherical harmonic expansion of the map, and its
