@@ -22,7 +22,7 @@ class _LightCurveFunc(Protocol[T]):
 
 
 @units.quantity_input(exposure_time=ureg.d)
-def integrate_exposure_time(
+def integrate(
     func: _LightCurveFunc[T],
     exposure_time: Optional[Quantity] = None,
     order: int = 0,
@@ -31,7 +31,7 @@ def integrate_exposure_time(
     if exposure_time is None:
         return func
 
-    if jnpu.ndim(exposure_time) != 0:  # type: ignore
+    if jnpu.ndim(exposure_time) != 0:
         raise ValueError(
             "The exposure time passed to 'integrate_exposure_time' has shape "
             f"{jnpu.shape(exposure_time)}, but a scalar was expected; "  # type: ignore
@@ -66,7 +66,7 @@ def integrate_exposure_time(
     @wraps(func)
     @units.quantity_input(time=ureg.d)
     def wrapped(time: Quantity, *args: Any, **kwargs: Any) -> T:
-        if jnpu.ndim(time) != 0:  # type: ignore
+        if jnpu.ndim(time) != 0:
             raise ValueError(
                 "The time passed to 'integrate_exposure_time' has shape "
                 f"{jnpu.shape(time)}, but a scalar was expected; "  # type: ignore
@@ -74,7 +74,7 @@ def integrate_exposure_time(
                 "manually 'vmap' or 'vectorize' the function"
             )
 
-        f = lu.wrap_init(jax.vmap(func))
+        f = lu.wrap_init(jax.vmap(func, in_axes=(0,) + (None,) * len(args)))
         f = apply_exposure_time_integration(f, stencil, dt)  # type: ignore
         return f.call_wrapped(time, args, kwargs)  # type: ignore
 
@@ -84,4 +84,4 @@ def integrate_exposure_time(
 @lu.transformation  # type: ignore
 def apply_exposure_time_integration(stencil, dt, time, args, kwargs):
     result = yield (time + dt,) + args, kwargs
-    yield jnpu.dot(stencil, result)  # type: ignore
+    yield jnpu.dot(stencil, result)
