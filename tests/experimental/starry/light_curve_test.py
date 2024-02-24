@@ -48,7 +48,9 @@ def test_compare_starry(deg, u):
                 mass=1.3,
                 radius=1.1,
                 map=Map(
-                    y=Ylm.from_dense(np.hstack([1.0, np.random.rand(10) * 0.1])),
+                    y=Ylm.from_dense(
+                        [1, 0.005, 0.05, 0.09, 0.0, 0.1, 0.03, 0.04, 0.4, 0.2, 0.1]
+                    ),
                     inc=0.9,
                     obl=0.3,
                     period=1.2,
@@ -60,7 +62,7 @@ def test_compare_starry(deg, u):
                 "mass": 0.1,
                 "period": 1.5,
                 "map": Map(
-                    y=Ylm.from_dense(np.hstack([1.0, np.random.rand(5) * 0.1])),
+                    y=Ylm.from_dense([1, 0.005, 0.05, 0.09, 0.0, 0.1, 0.03]),
                     inc=-0.3,
                     period=0.8,
                     u=[0.2, 0.3],
@@ -71,26 +73,32 @@ def test_compare_starry(deg, u):
             "central": keplerian.Central(
                 mass=1.3,
                 radius=1.1,
-                map=Map(y=1.0),
+                map=Map(
+                    y=Ylm.from_dense(np.hstack([1, 0.005, 0.05, 0.09, 0.0, 0.1, 0.03])),
+                    period=1.2,
+                    u=[0.1, 0.1],
+                ),
             ),
             "body": {
                 "radius": 0.5,
                 "mass": 0.1,
                 "period": 1.5,
-                "map": Map(y=0.0),
             },
         },
         {
             "central": keplerian.Central(
                 mass=0.3,
                 radius=0.1,
-                map=Map(y=1.0),
             ),
             "body": {
                 "radius": 1.5,
                 "mass": 1.1,
                 "period": 1.5,
-                "map": Map(y=0.0),
+                "map": Map(
+                    y=Ylm.from_dense([1, 0.005, 0.05, 0.09, 0.0, 0.1, 0.03]),
+                    period=1.2,
+                    u=[0.1, 0.1],
+                ),
             },
         },
     ]
@@ -119,7 +127,7 @@ def test_compare_starry_system(keplerian_system):
             udeg=central.map.udeg,
             inc=np.rad2deg(central.map.inc),
             obl=np.rad2deg(central.map.obl),
-            amp=central.map.y[(0, 0)],
+            amp=central.map.amplitude,
         ),
         r=central.radius.magnitude,
         m=central.mass.magnitude,
@@ -127,8 +135,8 @@ def test_compare_starry_system(keplerian_system):
     )
     if central.map.u:
         pri.map[1:] = central.map.u
-
-    pri.map[1:, :] = central.map.y.todense().__array__()[1:]
+    if central.map.deg > 0:
+        pri.map[1:, :] = np.asarray(central.map.y.todense())[1:]
 
     sec = starry.Secondary(
         starry.Map(
@@ -136,7 +144,7 @@ def test_compare_starry_system(keplerian_system):
             udeg=body.map.udeg,
             inc=np.rad2deg(body.map.inc),
             obl=np.rad2deg(body.map.obl),
-            amp=body.map.y[(0, 0)],
+            amp=body.map.amplitude,
         ),
         r=body.radius.magnitude,
         m=body.mass.magnitude,
@@ -146,7 +154,8 @@ def test_compare_starry_system(keplerian_system):
     if body.map.u:
         sec.map[1:] = body.map.u
 
-    sec.map[1:, :] = body.map.y.todense().__array__()[1:]
+    if body.map.deg > 0:
+        sec.map[1:, :] = np.asarray(body.map.y.todense())[1:]
 
     starry_system = starry.System(pri, sec)
     starry_flux = starry_system.flux(time, total=False)
