@@ -17,7 +17,7 @@ def light_curve(system, time: ArrayLike):
 
     Args:
         system (orbits.keplerian.System): keplerian system containing bodies
-        (that must have defined radii)
+           (that must have defined radii)
         time (ArrayLike): time array
 
     Returns:
@@ -81,7 +81,6 @@ def map_light_curve(
     Returns:
         ArrayLike: flux
     """
-    U = jnp.array([1, *map.u])
     rT_deg = rT(map.deg)
 
     # no occulting body
@@ -98,8 +97,8 @@ def map_light_curve(
         theta_z = jnp.arctan2(xo, yo)
         sT = solution_vector(map.deg)(b, r)
 
-        # the reason for this if is that scipy.sparse.linalg.inv of a sparse matrix[[1]]
-        # is a non-sparse [[1]], hence `from_scipy_sparse`` raises an error (case deg=0)
+        # scipy.sparse.linalg.inv of a sparse matrix[[1]] is a non-sparse [[1]], hence
+        # `from_scipy_sparse`` raises an error (case deg=0)
         if map.deg > 0:
             A2 = scipy.sparse.linalg.inv(A2_inv(map.deg))
             A2 = jax.experimental.sparse.BCOO.from_scipy_sparse(A2)
@@ -113,7 +112,8 @@ def map_light_curve(
         map.ydeg, map.inc, map.obl, theta, theta_z, map.y.todense()
     )
 
-    # limb darkening product
+    # limb darkening
+    U = jnp.array([1, *map.u])
     A1_val = jax.experimental.sparse.BCOO.from_scipy_sparse(A1(map.ydeg))
     p_y = Pijk.from_dense(A1_val @ rotated_y, degree=map.ydeg)
     p_u = Pijk.from_dense(U @ U0(map.udeg), degree=map.udeg)
