@@ -33,7 +33,7 @@ Then install _jaxoplanet_ with:
 python -m pip install jaxoplanet
 ```
 
-If you run into issues with installing *jaxoplanet*, take a look at [Troubleshooting on *jaxoplanet* installation](tutorials/installation.md).
+If you run into issues with installing *jaxoplanet*, take a look at [Troubleshooting on *jaxoplanet* installation](docs/installation.md).
 
 ## Quick start
 
@@ -72,4 +72,4 @@ this code useful in your research. The BibTeX entry for the repo is:
 ## License
 Copyright (c) 2021-2024 Simons Foundation, Inc.
 
-*jaxoplanet* is free software made available under the MIT License. For details see the [LICENSE](./LICENSE) file.
+*jaxoplanet* is free software made available under the MIT License. For details see the LICENSE file.
