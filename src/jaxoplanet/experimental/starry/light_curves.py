@@ -56,32 +56,57 @@ def light_curve(system, time: ArrayLike):
 
 
 # TODO: figure out the sparse matrices (and Pijk) to avoid todense()
-# TODO this is failing for ydeg=0
-def map_light_curve(map, r: float, xo: float, yo: float, zo: float, theta: float):
-    """Light curve of a map
+def map_light_curve(
+    map,
+    r: float = None,
+    xo: float = None,
+    yo: float = None,
+    zo: float = None,
+    theta: float = 0.0,
+):
+    """Light curve of an occulted map.
 
     Args:
         map (Map): map object
-        r (float): radius of the occulting body, relative to the current map body
-        xo (float): x position of the occulting body, relative to the current map body
-        yo (float): y position of the occulting body, relative to the current map body
-        zo (float): z position of the occulting body, relative to the current map body
+        r (float or None): radius of the occulting body, relative to the current map
+           body
+        xo (float or None): x position of the occulting body, relative to the current
+           map body
+        yo (float or None): y position of the occulting body, relative to the current
+           map body
+        zo (float or None): z position of the occulting body, relative to the current
+           map body
         theta (float): rotation angle of the map
 
     Returns:
-        ArrayLike: light curve
+        ArrayLike: flux
     """
     U = jnp.array([1, *map.u])
-    b = jnp.sqrt(jnp.square(xo) + jnp.square(yo))
-    b_rot = jnp.logical_or(jnp.greater_equal(b, 1.0 + r), jnp.less_equal(zo, 0.0))
-    b_occ = jnp.logical_not(b_rot)
+    rT_deg = rT(map.deg)
 
-    # Occultation
-    theta_z = jnp.arctan2(xo, yo)
-    sT = solution_vector(map.deg)(b, r)
-    A2 = scipy.sparse.linalg.inv(A2_inv(map.deg))
-    A2 = jax.experimental.sparse.BCOO.from_scipy_sparse(A2)
-    sTA2 = sT @ A2
+    # no occulting body
+    if r is None:
+        b_rot = True
+        theta_z = 0.0
+        x = rT_deg
+
+    # occulting body
+    else:
+        b = jnp.sqrt(jnp.square(xo) + jnp.square(yo))
+        b_rot = jnp.logical_or(jnp.greater_equal(b, 1.0 + r), jnp.less_equal(zo, 0.0))
+        b_occ = jnp.logical_not(b_rot)
+        theta_z = jnp.arctan2(xo, yo)
+        sT = solution_vector(map.deg)(b, r)
+
+        # the reason for this if is that scipy.sparse.linalg.inv of a sparse matrix[[1]]
+        # is a non-sparse [[1]], hence `from_scipy_sparse`` raises an error (case deg=0)
+        if map.deg > 0:
+            A2 = scipy.sparse.linalg.inv(A2_inv(map.deg))
+            A2 = jax.experimental.sparse.BCOO.from_scipy_sparse(A2)
+        else:
+            A2 = jnp.array([1])
+
+        x = jnp.where(b_occ, sT @ A2, rT_deg)
 
     # full rotation
     rotated_y = left_project(
@@ -94,7 +119,6 @@ def map_light_curve(map, r: float, xo: float, yo: float, zo: float, theta: float
     p_u = Pijk.from_dense(U @ U0(map.udeg), degree=map.udeg)
     p_y = p_y * p_u
 
-    x = jnp.where(b_occ, sTA2, rT(map.deg))
     norm = np.pi / (p_u.tosparse() @ rT(map.udeg))
 
     return (p_y.tosparse() @ x) * norm
