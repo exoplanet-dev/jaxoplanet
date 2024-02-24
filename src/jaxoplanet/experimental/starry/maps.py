@@ -146,6 +146,7 @@ class Map(eqx.Module):
 
         return self._intensity(x, y, z)
 
-    def flux(self, time):
-        theta = time * 2 * jnp.pi / self.period
-        return jnp.vectorize(partial(map_light_curve, self, 0.0, 2.0, 2.0, 2.0))(theta)
+    def flux(self, theta):
+        return jnp.vectorize(partial(map_light_curve, self, None, None, None, None))(
+            theta
+        )

@@ -151,3 +151,26 @@ def test_compare_starry_system(keplerian_system):
     starry_system = starry.System(pri, sec)
     starry_flux = starry_system.flux(time, total=False)
     assert_allclose(jaxoplanet_flux, starry_flux)
+
+
+@pytest.mark.parametrize("deg", [2, 5, 10])
+def test_compare_starry_rot(deg):
+    starry = pytest.importorskip("starry")
+    starry.config.lazy = False
+
+    # map
+    inc = np.pi / 2
+    np.random.seed(deg)
+    y = Ylm.from_dense(np.random.randn((deg + 1) ** 2))
+    map = Map(y=y, inc=inc)
+
+    # phase
+    theta = np.linspace(0, 2 * np.pi, 200)
+
+    # starry
+    ms = starry.Map(ydeg=deg, inc=np.rad2deg(inc))
+    ms[:, :] = y.todense()
+    expected = ms.flux(theta=np.rad2deg(theta))
+    calc = map.flux(theta=theta)
+
+    assert_allclose(calc, expected)
