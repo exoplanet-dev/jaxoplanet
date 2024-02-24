@@ -1,11 +1,6 @@
 {
   "creators": [
     {
-      "orcid": "0000-0002-9328-5652",
-      "affiliation": "Center for Computational Astrophysics, Flatiron Institute, New York, NY, USA",
-      "name": "Foreman-Mackey, Daniel"
-    },
-    {
       "orcid": "0000-0002-0842-863X",
       "affiliation": "Department of Astronomy, Columbia University, New York, NY, USA",
       "name": "Soichiro Hattori"
@@ -16,14 +11,19 @@
       "name": "Lionel Garcia"
     },
     {
+      "orcid": "0000-0001-8504-5862",
+      "affiliation": "Department of Astrophysical and Planetary Sciences, University of Colorado Boulder, Boulder, CO, USA",
+      "name": "Catriona Murray"
+    },
+    {
       "orcid": "0000-0002-3610-6953"
       "affiliation": "Center for Computational Astrophysics, Flatiron Institute, New York, NY, USA",
       "name": "Jiayin Dong"
     },
     {
-      "orcid": "0000-0001-8504-5862",
-      "affiliation": "Department of Astrophysical and Planetary Sciences, University of Colorado Boulder, Boulder, CO, USA",
-      "name": "Catriona Murray"
+      "orcid": "0000-0002-9328-5652",
+      "affiliation": "Center for Computational Astrophysics, Flatiron Institute, New York, NY, USA",
+      "name": "Foreman-Mackey, Daniel"
     }
   ],
   "license": "MIT",
