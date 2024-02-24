@@ -44,7 +44,7 @@ If you run into issues with installing *jaxoplanet*, take a look at Troubleshoot
 maxdepth: 1
 ---
 
-docs/installation.md
+installation.md
 start
 tutorials/autodiff.ipynb
 tutorials/orbits.ipynb
