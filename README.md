@@ -33,7 +33,7 @@ Then install _jaxoplanet_ with:
 python -m pip install jaxoplanet
 ```
 
-If you run into issues with installing *jaxoplanet*, take a look at [Troubleshooting on *jaxoplanet* installation](./docs/installation.md).
+If you run into issues with installing *jaxoplanet*, take a look at Troubleshooting on *jaxoplanet* installation.
 
 ## Quick start
 
