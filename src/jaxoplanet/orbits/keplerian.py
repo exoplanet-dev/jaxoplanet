@@ -12,7 +12,6 @@ from jax.tree_util import tree_flatten
 from jaxoplanet import units
 from jaxoplanet.core.kepler import kepler
 from jaxoplanet.experimental.starry.maps import Map
-from jaxoplanet.experimental.starry.ylm import Ylm
 from jaxoplanet.types import Quantity
 from jaxoplanet.units import unit_registry as ureg
 
@@ -55,6 +54,8 @@ class Central(eqx.Module):
             mass (Optional[Quantity]): Mass of central body [mass unit].
             radius (Optional[Quantity]): Radius of central body [length unit].
             density (Optional[Quantity]): Density of central body [mass/length**3 unit].
+            map (Optional[Map]): Map of the central body. If None a uniform map with
+            intensity 1 is used.
         """
 
         if radius is None and mass is None:
@@ -144,9 +145,6 @@ class Central(eqx.Module):
             The shape of the Central object
         """
         return self.mass.shape
-
-    def flux(self, theta: float) -> float:
-        return self.map.flux(theta)
 
 
 class Body(eqx.Module):
@@ -247,6 +245,8 @@ class Body(eqx.Module):
                 semi-amplitude [length/time unit].
             parallax (Optional[Quantity]): Parallax (to convert position/velocity into
                 arcsec). [length unit].
+            map (Optional[Map]): Map of the orbiting body. If None a uniform map with
+                intensity 0. is used.
         """
 
         # Handle the special case when passing both `period` and `semimajor`.
@@ -400,7 +400,7 @@ class Body(eqx.Module):
             self.time_transit = jnpu.zeros_like(self.period)
 
         if map is None:
-            self.map = Map(y=Ylm({(0, 0): 0, (1, 0): 0.0}))
+            self.map = Map(amplitude=0.0)
         else:
             self.map = map
 
@@ -730,9 +730,6 @@ class Body(eqx.Module):
             vz = vz.magnitude
 
         return (x, y, z), (vx, vy, vz)
-
-    def flux(self, theta: float) -> float:
-        return self.map.flux(theta)
 
 
 class BodyStack(eqx.Module):

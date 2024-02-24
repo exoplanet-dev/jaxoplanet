@@ -30,25 +30,31 @@ def light_curve(system, time: ArrayLike):
 
     central_body_lc = jax.vmap(map_light_curve, in_axes=(None, None, 0, 0, 0, 0))
     central_bodies_lc = jax.vmap(central_body_lc, in_axes=(None, 0, 0, 0, 0, None))
-    central_light_curve = central_bodies_lc(
-        system.central.map,
-        (system.radius / central_radius).magnitude,
-        (xos / central_radius).magnitude,
-        (yos / central_radius).magnitude,
-        (zos / central_radius).magnitude,
-        theta,
+    central_light_curve = (
+        central_bodies_lc(
+            system.central.map,
+            (system.radius / central_radius).magnitude,
+            (xos / central_radius).magnitude,
+            (yos / central_radius).magnitude,
+            (zos / central_radius).magnitude,
+            theta,
+        )
+        * system.central.map.amplitude
     )
 
     @partial(system.body_vmap, in_axes=(0, 0, 0))
     def bodies_lc(body, x, y, z):
         theta = time * 2 * jnp.pi / body.map.period
-        return jax.vmap(map_light_curve, in_axes=(None, None, 0, 0, 0, 0))(
-            body.map,
-            (central_radius / body.radius).magnitude,
-            (x / body.radius).magnitude,
-            (y / body.radius).magnitude,
-            (z / body.radius).magnitude,
-            theta,
+        return (
+            jax.vmap(map_light_curve, in_axes=(None, None, 0, 0, 0, 0))(
+                body.map,
+                (central_radius / body.radius).magnitude,
+                (x / body.radius).magnitude,
+                (y / body.radius).magnitude,
+                (z / body.radius).magnitude,
+                theta,
+            )
+            * body.map.amplitude
         )
 
     bodies_light_curves = bodies_lc(-xos, -yos, -zos)
@@ -56,7 +62,6 @@ def light_curve(system, time: ArrayLike):
 
 
 # TODO: figure out the sparse matrices (and Pijk) to avoid todense()
-# TODO this is failing for ydeg=0
 def map_light_curve(map, r: float, xo: float, yo: float, zo: float, theta: float):
     """Light curve of a map
 
@@ -79,8 +84,14 @@ def map_light_curve(map, r: float, xo: float, yo: float, zo: float, theta: float
     # Occultation
     theta_z = jnp.arctan2(xo, yo)
     sT = solution_vector(map.deg)(b, r)
-    A2 = scipy.sparse.linalg.inv(A2_inv(map.deg))
-    A2 = jax.experimental.sparse.BCOO.from_scipy_sparse(A2)
+    # the reason for this if is that scipy.sparse.linalg.inv of a sparse matrix[[1]]
+    # is a non-sparse [[1]], hence from_scipy_sparse raises an error (case deg=0) ...
+    if map.deg > 0:
+        A2 = scipy.sparse.linalg.inv(A2_inv(map.deg))
+        A2 = jax.experimental.sparse.BCOO.from_scipy_sparse(A2)
+    else:
+        A2 = jnp.array([1])
+
     sTA2 = sT @ A2
 
     # full rotation
