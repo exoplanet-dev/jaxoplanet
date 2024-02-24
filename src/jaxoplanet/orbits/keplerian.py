@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from functools import wraps
 from typing import Any, Callable, Optional, Union
 
@@ -736,7 +736,7 @@ class System(eqx.Module):
         self,
         central: Optional[Central] = None,
         *,
-        bodies: tuple[Union[Body, OrbitalBody], ...] = (),
+        bodies: Iterable[Union[Body, OrbitalBody]] = (),
     ):
         self.central = Central() if central is None else central
         self.bodies = tuple(
@@ -748,12 +748,12 @@ class System(eqx.Module):
         # stacked version that we can use for vmaps below. This allows for more
         # efficient evaluations in the case of multiple bodies.
         self._body_stack = None
-        if len(bodies):
-            spec = list(map(jax.tree_util.tree_structure, bodies))
+        if len(self.bodies):
+            spec = list(map(jax.tree_util.tree_structure, self.bodies))
             if spec.count(spec[0]) == len(spec):
                 self._body_stack = BodyStack(
                     stack=jax.tree_util.tree_map(
-                        lambda *x: jnp.stack(x, axis=0), *bodies
+                        lambda *x: jnp.stack(x, axis=0), *self.bodies
                     )
                 )
 
