@@ -388,7 +388,7 @@ class OrbitalBody(eqx.Module):
         else:
             self.time_transit = jnpu.zeros_like(self.time_ref)
 
-        if map is None:
+        if body.map is None:
             self.map = Map(amplitude=0.0)
         else:
             self.map = body.map
