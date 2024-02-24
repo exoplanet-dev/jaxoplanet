@@ -736,7 +736,7 @@ class System(eqx.Module):
         self,
         central: Optional[Central] = None,
         *,
-        bodies: tuple[Body | OrbitalBody, ...] = (),
+        bodies: tuple[Union[Body, OrbitalBody], ...] = (),
     ):
         self.central = Central() if central is None else central
         self.bodies = tuple(
