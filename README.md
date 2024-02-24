@@ -44,7 +44,7 @@ If you run into issues with installing *jaxoplanet*, take a look at [Troubleshoo
 maxdepth: 1
 ---
 
-installation.md
+docs/installation.md
 start
 tutorials/autodiff.ipynb
 tutorials/orbits.ipynb
@@ -72,4 +72,4 @@ this code useful in your research. The BibTeX entry for the repo is:
 ## License
 Copyright (c) 2021-2024 Simons Foundation, Inc.
 
-*jaxoplanet* is free software made available under the MIT License. For details see the [LICENSE](LICENSE) file.
+*jaxoplanet* is free software made available under the MIT License. For details see the [LICENSE](./LICENSE) file.
