@@ -59,7 +59,7 @@ def test_compare_starry(u, r):
         b_ = theano.tensor.dscalar()
         func = theano.function([b_], m.flux(xo=b_, yo=0.0, zo=1.0, ro=r) - 1)
         for b in [0.0, 0.5, 1.0, r, np.abs(1 - r), 1 + r]:
-            expect = func(b)
+            expect = func(b)[0]
             if not np.isfinite(expect):
                 continue  # hack because starry doesn't handle all edge cases properly
             calc = light_curve(u, b, r)
