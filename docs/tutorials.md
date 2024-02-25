@@ -22,5 +22,6 @@ tutorials/autodiff.ipynb
 tutorials/orbits.ipynb
 tutorials/transit.ipynb
 tutorials/rv.ipynb
+tutorials/starry.ipynb
 tutorials/core-from-scratch.ipynb
 ```

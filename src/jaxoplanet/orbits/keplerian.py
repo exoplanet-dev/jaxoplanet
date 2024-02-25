@@ -24,11 +24,13 @@ except ImportError:
 class Central(eqx.Module):
     """A central body in an orbital system
 
-    If the input parameters are not defined the default values and units are:
-        mass: 1 M_sun
-        radius: 1 R_sun
-        density: 3 * mass / (4 * jnp.pi * radius**3) = 0.238732415 M_sun / R_sun ** 3
 
+    Args:
+        mass (Optional[Quantity]): Mass of central body [mass unit].
+        radius (Optional[Quantity]): Radius of central body [length unit].
+        density (Optional[Quantity]): Density of central body [mass/length**3 unit].
+        map (Optional[Map]): Map of the central body. If None a uniform map with
+        intensity 1 is used.
     """
 
     mass: Quantity = units.field(units=ureg.M_sun)
@@ -47,17 +49,6 @@ class Central(eqx.Module):
         density: Optional[Quantity] = None,
         map: Optional[Map] = None,
     ):
-        """Initialize the central body (e.g. a star) of an orbital system using two of
-        radius, mass and/or density.
-
-        Args:
-            mass (Optional[Quantity]): Mass of central body [mass unit].
-            radius (Optional[Quantity]): Radius of central body [length unit].
-            density (Optional[Quantity]): Density of central body [mass/length**3 unit].
-            map (Optional[Map]): Map of the central body. If None a uniform map with
-            intensity 1 is used.
-        """
-
         if radius is None and mass is None:
             radius = 1.0 * ureg.R_sun
             if density is None:
@@ -140,10 +131,6 @@ class Central(eqx.Module):
 
     @property
     def shape(self) -> tuple[int, ...]:
-        """
-        Returns:
-            The shape of the Central object
-        """
         return self.mass.shape
 
 
@@ -397,30 +384,18 @@ class OrbitalBody(eqx.Module):
 
     @property
     def shape(self) -> tuple[int, ...]:
-        """
-        Returns: The shape of Body object.
-        """
         return self.period.shape
 
     @property
     def central_radius(self) -> Quantity:
-        """
-        Returns: The radius of central object.
-        """
         return self.central.radius
 
     @property
     def time_peri(self) -> Quantity:
-        """
-        Returns: The epoch of a reference periastron passage.
-        """
         return self.time_transit + self.time_ref  # type: ignore
 
     @property
     def inclination(self) -> Quantity:
-        """
-        Returns: Inclination of orbital system
-        """
         return jnpu.arctan2(self.sin_inclination, self.cos_inclination)
 
     @property
@@ -433,9 +408,6 @@ class OrbitalBody(eqx.Module):
 
     @property
     def total_mass(self) -> Quantity:
-        """
-        Returns: Total mass of orbital system (central object + orbiting bodies).
-        """
         return self.central.mass if self.mass is None else self.mass + self.central.mass
 
     def position(

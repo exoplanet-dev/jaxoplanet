@@ -4,7 +4,6 @@ language = "en"
 master_doc = "index"
 
 extensions = [
-    "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "sphinx.ext.mathjax",
     "sphinx.ext.napoleon",
@@ -12,7 +11,11 @@ extensions = [
     "sphinx_design",
     "myst_nb",
     "IPython.sphinxext.ipython_console_highlighting",
+    "autodoc2",
 ]
+
+autodoc2_packages = ["../src/jaxoplanet"]
+autodoc2_output_dir = "api"
 
 myst_enable_extensions = ["dollarmath", "colon_fence"]
 source_suffix = {
