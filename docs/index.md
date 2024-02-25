@@ -7,7 +7,6 @@
 ---
 maxdepth: 1
 ---
-start
 installation.md
 tutorials/orbits.ipynb
 tutorials/transit.ipynb
