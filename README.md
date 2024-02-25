@@ -33,27 +33,10 @@ Then install _jaxoplanet_ with:
 python -m pip install jaxoplanet
 ```
 
-If you run into issues with installing *jaxoplanet*, take a look at Troubleshooting on *jaxoplanet* installation.
+If you run into issues with installing *jaxoplanet*, take a look at the **Troubleshooting on *jaxoplanet* installation** page.
 
 ## Quick start
 
-## Table of contents
-
-```{toctree}
----
-maxdepth: 1
----
-
-installation.md
-start
-tutorials/autodiff.ipynb
-tutorials/orbits.ipynb
-tutorials/transit.ipynb
-tutorials/core-from-scratch.ipynb
-tutorials/rv.ipynb
-tutorials/starry.ipynb
-api
-```
 
 ## Attribution
 While we don't yet have a citation for *jaxoplanet*, please reference the GitHub repository if you find
@@ -61,7 +44,8 @@ this code useful in your research. The BibTeX entry for the repo is:
 
 ```
 @software{jaxoplanet,
-  author = {{Foreman-Mackey}, D. and {Garcia}, L.~J. and {Hattori}, S. and {Dong}, J. and {Murray}, C.},
+  author = {{Foreman-Mackey}, D. and {Garcia}, L.~J. and {Hattori}, S.
+            and {Dong}, J. and {Murray}, C.},
   title = {{jaxoplanet}: Astronomical time series analysis with {JAX}},
   url = {http://github.com/exoplanet-dev/jaxoplanet},
   version = {0.0.1},
