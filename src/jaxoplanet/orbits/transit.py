@@ -5,13 +5,13 @@ import jax.numpy as jnp
 import jpu.numpy as jnpu
 
 from jaxoplanet import units
-
-# from jaxoplanet.types import Array
 from jaxoplanet.types import Quantity
 from jaxoplanet.units import unit_registry as ureg
 
 
 class TransitOrbit(eqx.Module):
+    """An orbit parameterized to be useful for fitting transiting planets"""
+
     period: Quantity = units.field(units=ureg.d)
     speed: Quantity = units.field(units=1 / ureg.d)
     duration: Quantity = units.field(units=ureg.d)

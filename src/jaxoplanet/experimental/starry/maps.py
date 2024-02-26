@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Optional, Union
+from typing import Optional
 
 import equinox as eqx
 import jax
@@ -18,55 +18,77 @@ from jaxoplanet.experimental.starry.ylm import Ylm
 
 
 class Map(eqx.Module):
-    y: Optional[Ylm] = None
-    """Ylm object representing the spherical harmonic expansion
-    of the map."""
-    inc: Optional[float] = None
-    """Inclination of the map in radians."""
-    obl: Optional[float] = None
-    """Obliquity of the map in radians."""
-    u: Optional[tuple] = None
-    """Tuple of limb darkening coefficients."""
-    period: Optional[float] = None
-    """Rotation period of the map in days (attribute subject
-    to change)"""
+    """Surface map object.
 
-    """
-    An object containing the spherical harmonic expansion of the map, and its
-    orientation in space.
+    Args:
+        y (Optional[Union[Ylm, float]], optional): Ylm object containing the
+        spherical harmonic expansion of the map. Defaults to None (a uniform map)
+        with amplitude 1.0.
+        inc (Optional[float], optional): inclination of the map. Defaults to 0.
+        obl (Optional[float], optional): obliquity iof the map. Defaults to 0.
+        u (Optional[tuple], optional): polynomial limb-darkening coefficients of
+        the map. Defaults to ().
+        period (Optional[float], optional): rotation period of the map. Defaults to
+        1e15.
+        amplitude (Optional[float], optional): amplitude of the map, this quantity is
+        proportional to the luminosity of the map and multiplies all flux-related
+        observables. Defaults to 1..
+        normalize (Optional[bool], optional): whether to normalize the coefficients
+        of the spherical harmonics. If None or True, Ylm is normalized and the
+        amplitude of the map is set to y[(0, 0)]. Defaults to None.
 
     Example:
 
-        import numpy as np
-        import jax
-        from jaxoplanet.experimental.starry.utils import show_map
-        from jaxoplanet.experimental.starry.maps import Map
-        from jaxoplanet.experimental.starry.ylm import Ylm
+        .. code-block:: python
 
-        jax.config.update("jax_enable_x64", True)
+            import numpy as np
+            import jax
+            from jaxoplanet.experimental.starry.utils import show_map
+            from jaxoplanet.experimental.starry.maps import Map
+            from jaxoplanet.experimental.starry.ylm import Ylm
 
-        np.random.seed(30)
-        y = Ylm.from_dense(np.random.rand(20))
-        m = Map(y=y, u=[0.5, 0.1], inc=0.9, obl=-0.3)
-        show_map(m)
+            jax.config.update("jax_enable_x64", True)
+
+            np.random.seed(30)
+            y = Ylm.from_dense(np.random.rand(20))
+            m = Map(y=y, u=[0.5, 0.1], inc=0.9, obl=-0.3)
+            show_map(m)
     """
+
+    # Ylm object representing the spherical harmonic expansion of the map.
+    y: Optional[Ylm] = None
+
+    # Inclination of the map in radians.
+    inc: Optional[float] = None
+
+    # Obliquity of the map in radians.
+    obl: Optional[float] = None
+
+    # Tuple of limb darkening coefficients.
+    u: Optional[tuple] = None
+
+    # Rotation period of the map in days (attribute subject to change)
+    period: Optional[float] = None
+
+    # Amplitude of the map, a quantity proportional to map luminosity.
+    amplitude: Optional[float] = None
+
+    # Whether to normalize the coefficients of the spherical harmonic.
+    normalize: Optional[bool] = None
 
     def __init__(
         self,
         *,
-        y: Optional[Union[Ylm, float]] = None,
+        y: Optional[Ylm] = None,
         inc: Optional[float] = None,
         obl: Optional[float] = None,
         u: Optional[tuple] = None,
         period: Optional[float] = None,
+        amplitude: Optional[float] = None,
+        normalize: Optional[bool] = None,
     ):
-
         if y is None:
-            y = 1.0
-
-        if isinstance(y, float):
-            y = Ylm({(0, 0): y, (1, 0): 0.0})
-
+            y = Ylm()
         if inc is None:
             inc = jnp.pi / 2
         if obl is None:
@@ -75,12 +97,21 @@ class Map(eqx.Module):
             u = ()
         if period is None:
             period = 1e15
+        if amplitude is None:
+            amplitude = 1.0
+        if normalize is None:
+            normalize = True
+
+        if normalize:
+            amplitude = y[(0, 0)]
+            y = Ylm(data=y.data, normalize=True)
 
         self.y = y
         self.inc = inc
         self.obl = obl
         self.u = u
         self.period = period
+        self.amplitude = amplitude
 
     @property
     def poly_basis(self):
@@ -106,7 +137,7 @@ class Map(eqx.Module):
         U = jnp.array([1, *self.u])
         p_u = Pijk.from_dense(U @ U0(self.udeg), degree=self.udeg)
         p = (p_y * p_u).todense()
-        return pT @ p
+        return pT @ p * self.amplitude
 
     @partial(jax.jit, static_argnames=("res",))
     def render(self, theta: float = 0.0, res: int = 400):
@@ -124,7 +155,6 @@ class Map(eqx.Module):
         intensity = self._intensity(*xyz, theta=theta)
         return jnp.reshape(intensity, (res, res))
 
-    @partial(jax.jit)
     def intensity(self, lat: float, lon: float):
         """Returns the intensity of the map at a given latitude and longitude.
 
@@ -135,6 +165,8 @@ class Map(eqx.Module):
         Returns:
             float: intensity of the map at the given latitude and longitude
         """
+        lon = lon + jnp.pi / 2  # convention, 0 lon faces the observer
+        lat = jnp.pi / 2 - lat  # convention, latitude 0 is equator
         x = jnp.sin(lat) * jnp.cos(lon)
         y = jnp.sin(lat) * jnp.sin(lon)
         z = jnp.cos(lat) * jnp.ones_like(x)
@@ -146,7 +178,9 @@ class Map(eqx.Module):
 
         return self._intensity(x, y, z)
 
-    def flux(self, theta):
-        return jnp.vectorize(partial(map_light_curve, self, None, None, None, None))(
-            theta
+    def flux(self, time):
+        theta = time * 2 * jnp.pi / self.period
+        return (
+            jnp.vectorize(partial(map_light_curve, self, 0.0, 2.0, 2.0, 2.0))(theta)
+            * self.amplitude
         )

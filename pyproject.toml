@@ -37,6 +37,7 @@ docs = [
     "myst-nb",
     "sphinx-book-theme",
     "sphinx-design",
+    "sphinx-autoapi",
     "ipywidgets"
 ]
 

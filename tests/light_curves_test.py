@@ -1,7 +1,7 @@
 import jax.numpy as jnp
 
-from jaxoplanet import orbits
 from jaxoplanet.light_curves import LimbDarkLightCurve
+from jaxoplanet.orbits.keplerian import Central, System
 
 
 def test_light_curve():
@@ -13,22 +13,22 @@ def test_light_curve():
         "bo": 0.8,
     }
     # The light curve calculation requires an orbit
-    orbit = orbits.keplerian.Body(
-        period=params["period"], radius=params["radius"], impact_param=params["bo"]
+    orbit = System().add_body(
+        period=params["period"],
+        radius=params["radius"],
+        impact_param=params["bo"],
     )
 
     # Compute a limb-darkened light curve using jaxoplanet
     t = jnp.linspace(-0.3, 0.3, 1000)
 
     lc = LimbDarkLightCurve(params["u"]).light_curve(orbit, t=t)
-    assert lc.shape == t.shape
+    assert lc.shape == (1,) + t.shape
 
 
 def test_multiplanetary():
-    star = orbits.keplerian.Central(mass=5, radius=2)
-    planet_a = orbits.keplerian.Body(radius=0.05, period=1)
-    planet_b = orbits.keplerian.Body(radius=0.2, period=2)
-    system = orbits.keplerian.System(central=star, bodies=[planet_a, planet_b])
+    star = Central(mass=5, radius=2)
+    system = System(star).add_body(radius=0.05, period=1).add_body(radius=0.2, period=2)
 
     t = jnp.linspace(-5, 5, 500)
     lc = LimbDarkLightCurve().light_curve(system, t)

@@ -19,14 +19,8 @@ except ImportError:
 def basis(lmax):
     """Full change of basis matrix from spherical harmonics to Green's basis
 
-    Parameters
-    ----------
-    lmax : int
-        maximum degree of the spherical harmonic basis
-
-    Returns
-    -------
-    TODO
+    Args:
+        lmax (int): maximum degree of the spherical harmonic basis
     """
     matrix = scipy.sparse.linalg.spsolve(A2_inv(lmax), A1(lmax))
     if lmax > 0:

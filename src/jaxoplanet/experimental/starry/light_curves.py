@@ -30,25 +30,31 @@ def light_curve(system, time: ArrayLike):
 
     central_body_lc = jax.vmap(map_light_curve, in_axes=(None, None, 0, 0, 0, 0))
     central_bodies_lc = jax.vmap(central_body_lc, in_axes=(None, 0, 0, 0, 0, None))
-    central_light_curve = central_bodies_lc(
-        system.central.map,
-        (system.radius / central_radius).magnitude,
-        (xos / central_radius).magnitude,
-        (yos / central_radius).magnitude,
-        (zos / central_radius).magnitude,
-        theta,
+    central_light_curve = (
+        central_bodies_lc(
+            system.central.map,
+            (system.radius / central_radius).magnitude,
+            (xos / central_radius).magnitude,
+            (yos / central_radius).magnitude,
+            (zos / central_radius).magnitude,
+            theta,
+        )
+        * system.central.map.amplitude
     )
 
     @partial(system.body_vmap, in_axes=(0, 0, 0))
     def bodies_lc(body, x, y, z):
         theta = time * 2 * jnp.pi / body.map.period
-        return jax.vmap(map_light_curve, in_axes=(None, None, 0, 0, 0, 0))(
-            body.map,
-            (central_radius / body.radius).magnitude,
-            (x / body.radius).magnitude,
-            (y / body.radius).magnitude,
-            (z / body.radius).magnitude,
-            theta,
+        return (
+            jax.vmap(map_light_curve, in_axes=(None, None, 0, 0, 0, 0))(
+                body.map,
+                (central_radius / body.radius).magnitude,
+                (x / body.radius).magnitude,
+                (y / body.radius).magnitude,
+                (z / body.radius).magnitude,
+                theta,
+            )
+            * body.map.amplitude
         )
 
     bodies_light_curves = bodies_lc(-xos, -yos, -zos)

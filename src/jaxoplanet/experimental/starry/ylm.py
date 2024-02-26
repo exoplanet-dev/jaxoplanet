@@ -1,7 +1,7 @@
 import math
 from collections import defaultdict
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, Optional
 
 import equinox as eqx
 import jax
@@ -10,24 +10,47 @@ import numpy as np
 from jax.experimental.sparse import BCOO
 from scipy.special import legendre as LegendreP
 
+from jaxoplanet.experimental.starry.rotation import dot_rotation_matrix
 from jaxoplanet.experimental.starry.wigner3j import Wigner3jCalculator
 from jaxoplanet.types import Array
 
 
 class Ylm(eqx.Module):
-    data: dict[tuple[int, int], Array]
-    """coefficients of the spherical harmonic expansion of the map in the form
-    {(l, m): coefficient}"""
-    ell_max: int = eqx.field(static=True)
-    """maximum degree of the spherical harmonic expansion"""
-    diagonal: bool = eqx.field(static=True)
-    """whether the spherical harmonic expansion is diagonal (all m=0)"""
+    """Ylm object containing the spherical harmonic coefficients.
 
-    def __init__(self, data: Mapping[tuple[int, int], Array]):
-        # TODO(dfm): Think about how we want to handle the case of (0, 0). In
-        # starry, that is always forced to be 1, and all the entries will be
-        # normalized if an explicit value is provided. Do we want to enforce
-        # that here too?
+    Args:
+        data (Mapping[tuple[int, int], Array], optional): dictionary of
+            spherical harmonic coefficients. Defaults to {(0, 0): 1.0}.
+        relative (bool, optional): Whether to normalize the coefficients by the
+            value of the (0, 0) coefficient. Defaults to True.
+
+    Raises:
+        ValueError: if relative is True and the (0, 0) coefficient is zero.
+    """
+
+    # maximum degree of the spherical harmonic expansion
+    ell_max: int = eqx.field(static=True)
+
+    # whether the spherical harmonic expansion is diagonal (all m=0)
+    diagonal: bool = eqx.field(static=True)
+
+    # coefficients of the spherical harmonic expansion of the map in the form
+    # {(l, m): coefficient}
+    data: Optional[dict[tuple[int, int], Array]] = None
+
+    def __init__(
+        self,
+        data: Optional[Mapping[tuple[int, int], Array]] = None,
+        normalize: bool = True,
+    ):
+        if data is None:
+            data = {(0, 0): 1.0}
+
+        if normalize:
+            assert data[(0, 0)] != 0.0, ValueError(
+                "The (0, 0) coefficient must be non-zero if relative=True"
+            )
+            data = {k: v / data[(0, 0)] for k, v in data.items()}
         self.data = dict(data)
         self.ell_max = max(ell for ell, _ in data.keys())
         self.diagonal = all(m == 0 for _, m in data.keys())
@@ -60,13 +83,13 @@ class Ylm(eqx.Module):
         return self.tosparse().todense()
 
     @classmethod
-    def from_dense(cls, y: Array) -> "Ylm":
+    def from_dense(cls, y: Array, normalize: bool = True) -> "Ylm":
         data = {}
         for i, ylm in enumerate(y):
             ell = int(np.floor(np.sqrt(i)))
             m = i - ell * (ell + 1)
             data[(ell, m)] = ylm
-        return cls(data)
+        return cls(data, normalize=normalize)
 
     def __mul__(self, other: Any) -> "Ylm":
         if isinstance(other, Ylm):
@@ -128,106 +151,87 @@ def _mul(f: Ylm, g: Ylm) -> Ylm:
     return Ylm(fg)
 
 
-def _Bp_expansion(l_max, pts=1000, eps=1e-9, smoothing=None):
-    # From the starry_process paper (Luger 2022) Bplus equation C36
-    # The default smoothing depends on `l_max`
+def Bp(ydeg, npts: int = 1000, eps: float = 1e-9, smoothing=None):
+    """
+    Return the matrix B+. This expands the
+    spot profile `b` in Legendre polynomials. From https://github.com/rodluger/
+    mapping_stellar_surfaces/blob/paper2-arxiv/paper2/figures/spot_profile.py and
+    _spot_setup in starry/_core/core.py.
+    """
     if smoothing is None:
-        if l_max < 4:
+        if ydeg < 4:
             smoothing = 0.5
         else:
-            smoothing = 2.0 / l_max
+            smoothing = 2.0 / ydeg
 
-    # Pre-compute the linalg stuff
-    theta = jnp.linspace(0, np.pi, pts)
+    theta = jnp.linspace(0, jnp.pi, npts)
     cost = jnp.cos(theta)
     B = jnp.hstack(
         [
             jnp.sqrt(2 * l + 1) * LegendreP(l)(cost).reshape(-1, 1)
-            for l in range(l_max + 1)
+            for l in range(ydeg + 1)
         ]
     )
-    A = jnp.linalg.solve(B.T @ B + eps * jnp.eye(l_max + 1), B.T)
-    l = jnp.arange(l_max + 1)
-    idxs = l * (l + 1)
-    S = jnp.exp(-0.5 * idxs * smoothing**2)
-    Bp = S[:, None] * A
-
-    return Bp, theta, idxs
+    _Bp = jnp.linalg.solve(B.T @ B + eps * jnp.eye(ydeg + 1), B.T)
+    l = jnp.arange(ydeg + 1)
+    indices = l * (l + 1)
+    S = jnp.exp(-0.5 * indices * smoothing**2)
+    return (S[:, None] * _Bp, theta, indices)
 
 
-def spot_y(l_max, pts=1000, eps=1e-9, fac=300, smoothing=None):
-    """Spot expansion
-
-    Parameters
-    ----------
-    l_max : int
-        degree of the spherical harmonics
-    pts : int, optional
-        _description_, by default 1000
-    eps : float, optional
-        _description_, by default 1e-9
-    fac : int, optional
-        _description_, by default 300
-    smoothing : float, optional
-        _description_, by default None
-
-    Returns
-    -------
-    Callable
-        spherical harmonics coefficients of the spot expansion
+def spot_profile(theta, radius, spot_fac=300):
     """
-    Bp, theta, idxs = _Bp_expansion(l_max, pts=pts, eps=eps, smoothing=smoothing)
-    n_max = l_max**2 + 2 * l_max + 1
+    The sigmoid spot profile.
 
-    def _y(contrast: float, radius: float):
-        """Return the spherical harmonics coefficients of the spot expansion
+    """
+    z = spot_fac * (theta - radius)
+    return 1 / (1 + jnp.exp(-z)) - 1
 
-        Parameters
-        ----------
-        contrast : float
-            spot contrast
-        radius : float
-            spot radius
 
-        Returns
-        -------
-        Array
-            spherical harmonics coefficients of the spot expansion
+def ylm_spot(ydeg: int) -> callable:
+    """spot expansion in the spherical harmonics basis.
+
+    Args:
+        ydeg (int): max degree of the spherical harmonics
+
+    Returns:
+        callable: function that returns the spherical harmonics coefficients of the spot
+    """
+    B, theta, indices = Bp(ydeg)
+
+    def func(contrast: float, r: float, lat: float = 0.0, lon: float = 0.0):
+        """spot expansion in the spherical harmonics basis.
+
+        Args:
+            contrast (float): spot contrast, defined as (1-c) where c is the intensity of
+            the center of the spot relative to the unspotted surface. A contrast of 1.
+            means that the spot intensity drops to zero at the center, 0. means that
+            the intensity at the center of the spot is the same as the intensity of the
+            unspotted surface.
+            r (float): radius of the spot.
+            lat (float, optional): latitude of the spot, assuming that the center of a
+            star with an inclination of pi/2 has a latitude of 0. Defaults to 0.0.
+            lon (float, optional): longitude of the spot, assuming that the center of a
+            star with an inclination of pi/2 has a longitude of 0. Defaults to 0.0.
+
+        Returns:
+            Ylm: Ylm object containing the spherical harmonics coefficients of the spot
         """
+        b = spot_profile(theta, r)
+        y = jnp.zeros((ydeg + 1) * (ydeg + 1))
+        y = y.at[indices].set(B @ b * contrast)
+        y = y.at[0].set(y[0] + 1.0)
+        y = dot_rotation_matrix(ydeg, 1.0, 0.0, 0.0, lat)(y)
+        y = dot_rotation_matrix(ydeg, 0.0, 1.0, 0.0, -lon)(y)
 
-        # Compute unit-intensity spot at (0, 0)
-        z = fac * (theta - radius)
-        b = 1.0 / (1.0 + jnp.exp(-z)) - 1.0
-        y = jnp.zeros(n_max)
-        y = y.at[idxs].set(Bp @ b)
-        # y = y.at[0].set(1.0)
-        return y
+        return Ylm.from_dense(y, normalize=False)
 
-    return _y
+    return func
 
 
+# TODO
 def ring_y(l_max, pts=1000, eps=1e-9, smoothing=None):
-    """Ring expansion
-
-    Parameters
-    ----------
-    l_max : int
-        degree of the spherical harmonics
-    pts : int, optional
-        _description_, by default 1000
-    eps : float, optional
-        _description_, by default 1e-9
-    fac : int, optional
-        _description_, by default 300
-    smoothing : float, optional
-        _description_, by default None
-
-    Returns
-    -------
-    Callable
-        spherical harmonics coefficients of the ring expansion
-    """
-    Bp, theta, idxs = _Bp_expansion(l_max, pts=pts, eps=eps, smoothing=smoothing)
+    Bp, theta, idxs = None, None, None
     n_max = l_max**2 + 2 * l_max + 1
 
     def _y(contrast: float, width: float, latitude: float):
