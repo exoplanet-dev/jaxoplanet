@@ -3,7 +3,6 @@ import numpy as np
 from jaxoplanet.experimental.starry.maps import Map
 from jaxoplanet.experimental.starry.utils import graticule
 from jaxoplanet.experimental.starry.ylm import Ylm
-from jaxoplanet.orbits import keplerian
 
 
 def show_map(
@@ -35,7 +34,7 @@ def show_map(
         if ax is None:
             ax = plt.subplot(111)
 
-    if isinstance(ylm_map_or_body, (keplerian.Body, keplerian.Central)):
+    if hasattr(ylm_map_or_body, "map"):
         map = ylm_map_or_body.map
         radius = ylm_map_or_body.radius.magnitude
         n = int(np.ceil(n * np.cbrt(radius)))
