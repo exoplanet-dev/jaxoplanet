@@ -79,5 +79,4 @@ maxdepth: 2
 start
 installation
 tutorials
-api/index
 ```
