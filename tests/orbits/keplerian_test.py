@@ -46,6 +46,7 @@ def test_keplerian_central_density():
         star.density, 1.4 * ureg.g / ureg.cm**3, atol=0.01, convert=True
     )
 
+
 def test_keplerian_central_from_orbit():
     sun = keplerian.Central.from_orbital_properties(
         period=1.0 * ureg.yr,
@@ -55,6 +56,7 @@ def test_keplerian_central_from_orbit():
     )
     # add large tolerance to account for lack of precision in ureg.yr
     assert_quantity_allclose(sun.mass, 1.0 * ureg.M_sun, atol=1e-5)
+
 
 def test_keplerian_body_keplers_law():
     orbit = keplerian.Body(semimajor=1.0 * ureg.au)
