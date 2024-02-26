@@ -18,6 +18,17 @@ Obj = TypeVar("Obj")
 
 
 class ObjectStack(eqx.Module, Generic[Obj]):
+    """A stack of objects supporting vmapping even with different Pytree structure
+
+    By default, functions can only be vmapped over a set of JAX objects when their Pytree
+    structure matches, but this object generalizes that behavior to support a consistent
+    interface that uses ``vmap`` whenever possible, falling back on a Python loop for
+    variable Pytree structure.
+
+    Args:
+        objecst: A set of Pytree objects
+    """
+
     objects: tuple[Obj, ...]
     stack: Optional[Obj]
 
@@ -44,37 +55,22 @@ class ObjectStack(eqx.Module, Generic[Obj]):
         in_axes: Union[int, None, Sequence[Any]] = 0,
         out_axes: Any = 0,
     ) -> Callable:
-        """Map a function over the bodies of this system
+        """Map a function over the objects in this stac
 
         If possible, this method will apply the appropriate ``jax.vmap`` to the input
-        function, but if the Pytree structure of the bodies don't match, this requires
-        a loop over bodies, applying the function separately to each body, and stacking
-        the results.
+        function, but if the Pytree structure of the objects don't match, this requires
+        a loop over objects, applying the function separately to each object, and
+        stacking the results.
 
         Args:
-            func: The function to map. It's first positional argument must accept a
-                Keplerian :class:`Body` object.
+            func: The function to map. It's first positional argument must accept an
+                object of the type ``Obj``.
             in_axes: The input axis specifications for all arguments after the first.
                 The semantics should match ``jax.vmap``.
             out_axes: The output axis specifications, matching ``jax.vmap``.
 
         Returns:
-            The vectorized version of ``func`` mapped over bodies in this system.
-
-        For example, if (for some reason) we wanted to compute the $x$ positions of all
-        the bodies in a system at a particular time, in units of the body radius, we
-        could use the following:
-
-        >>> from jaxoplanet.orbits.keplerian import Central, System
-        >>> sys = System(Central())
-        >>> sys = sys.add_body(period=1.0, radius=0.1)
-        >>> sys = sys.add_body(period=2.0, radius=0.2)
-        >>> pos = sys.body_vmap(
-        ...     lambda body, t: body.position(t)[0] / body.radius,
-        ...     in_axes=None,
-        ... )
-        >>> pos(0.2)
-        <Quantity([40.0231   19.632687], 'dimensionless')>
+            The vectorized version of ``func`` mapped over obejcts in this stack.
         """
 
         @wraps(func)
