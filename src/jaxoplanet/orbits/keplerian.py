@@ -377,7 +377,9 @@ class OrbitalBody(eqx.Module):
             z = jnp.zeros_like(self.period.magnitude) * ureg.dimensionless
             self.impact_param = z
             self.cos_inclination = z
-            self.sin_inclination = z
+            self.sin_inclination = (
+                jnp.ones_like(self.period.magnitude) * ureg.dimensionless
+            )
 
         # Work out all the relevant reference times
         self.time_ref = -M0 * self.period / (2 * jnp.pi)
