@@ -274,6 +274,7 @@ class Body(eqx.Module):
 
 class OrbitalBody(eqx.Module):
     """A computational tool"""
+
     central: Central
     time_ref: Quantity = units.field(units=ureg.d)
     time_transit: Quantity = units.field(units=ureg.d)
@@ -699,6 +700,7 @@ class OrbitalBody(eqx.Module):
 
 class BodyStack(eqx.Module):
     """A computational tool"""
+
     stack: OrbitalBody
 
 
