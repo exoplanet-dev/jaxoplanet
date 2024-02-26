@@ -13,6 +13,8 @@ from jaxoplanet.units import unit_registry as ureg
 
 
 class LimbDarkLightCurve(eqx.Module):
+    """A light curve"""
+
     u: Array
 
     def __init__(self, *u: Array):

@@ -18,42 +18,63 @@ from jaxoplanet.experimental.starry.ylm import Ylm
 
 
 class Map(eqx.Module):
-    y: Optional[Ylm] = None
-    """Ylm object representing the spherical harmonic expansion
-    of the map."""
-    inc: Optional[float] = None
-    """Inclination of the map in radians."""
-    obl: Optional[float] = None
-    """Obliquity of the map in radians."""
-    u: Optional[tuple] = None
-    """Tuple of limb darkening coefficients."""
-    period: Optional[float] = None
-    """Rotation period of the map in days (attribute subject
-    to change)"""
-    amplitude: Optional[float] = None
-    """Amplitude of the map, a quantity proportional to map luminosity."""
-    normalize: Optional[bool] = None
-    """Whether to normalize the coefficients of the spherical harmonic."""
+    """Surface map object.
 
-    """
-    An object containing the spherical harmonic expansion of the map, and its
-    orientation in space.
+    Args:
+        y (Optional[Union[Ylm, float]], optional): Ylm object containing the
+        spherical harmonic expansion of the map. Defaults to None (a uniform map)
+        with amplitude 1.0.
+        inc (Optional[float], optional): inclination of the map. Defaults to 0.
+        obl (Optional[float], optional): obliquity iof the map. Defaults to 0.
+        u (Optional[tuple], optional): polynomial limb-darkening coefficients of
+        the map. Defaults to ().
+        period (Optional[float], optional): rotation period of the map. Defaults to
+        1e15.
+        amplitude (Optional[float], optional): amplitude of the map, this quantity is
+        proportional to the luminosity of the map and multiplies all flux-related
+        observables. Defaults to 1..
+        normalize (Optional[bool], optional): whether to normalize the coefficients
+        of the spherical harmonics. If None or True, Ylm is normalized and the
+        amplitude of the map is set to y[(0, 0)]. Defaults to None.
 
     Example:
 
-        import numpy as np
-        import jax
-        from jaxoplanet.experimental.starry.utils import show_map
-        from jaxoplanet.experimental.starry.maps import Map
-        from jaxoplanet.experimental.starry.ylm import Ylm
+        .. code-block:: python
 
-        jax.config.update("jax_enable_x64", True)
+            import numpy as np
+            import jax
+            from jaxoplanet.experimental.starry.utils import show_map
+            from jaxoplanet.experimental.starry.maps import Map
+            from jaxoplanet.experimental.starry.ylm import Ylm
 
-        np.random.seed(30)
-        y = Ylm.from_dense(np.random.rand(20))
-        m = Map(y=y, u=[0.5, 0.1], inc=0.9, obl=-0.3)
-        show_map(m)
+            jax.config.update("jax_enable_x64", True)
+
+            np.random.seed(30)
+            y = Ylm.from_dense(np.random.rand(20))
+            m = Map(y=y, u=[0.5, 0.1], inc=0.9, obl=-0.3)
+            show_map(m)
     """
+
+    # Ylm object representing the spherical harmonic expansion of the map.
+    y: Optional[Ylm] = None
+
+    # Inclination of the map in radians.
+    inc: Optional[float] = None
+
+    # Obliquity of the map in radians.
+    obl: Optional[float] = None
+
+    # Tuple of limb darkening coefficients.
+    u: Optional[tuple] = None
+
+    # Rotation period of the map in days (attribute subject to change)
+    period: Optional[float] = None
+
+    # Amplitude of the map, a quantity proportional to map luminosity.
+    amplitude: Optional[float] = None
+
+    # Whether to normalize the coefficients of the spherical harmonic.
+    normalize: Optional[bool] = None
 
     def __init__(
         self,
@@ -66,26 +87,6 @@ class Map(eqx.Module):
         amplitude: Optional[float] = None,
         normalize: Optional[bool] = None,
     ):
-        """Surface map object.
-
-        Args:
-            y (Optional[Union[Ylm, float]], optional): Ylm object containing the
-            spherical harmonic expansion of the map. Defaults to None (a uniform map)
-            with amplitude 1.0.
-            inc (Optional[float], optional): inclination of the map. Defaults to 0.
-            obl (Optional[float], optional): obliquity iof the map. Defaults to 0.
-            u (Optional[tuple], optional): polynomial limb-darkening coefficients of
-            the map. Defaults to ().
-            period (Optional[float], optional): rotation period of the map. Defaults to
-            1e15.
-            amplitude (Optional[float], optional): amplitude of the map, this quantity is
-            proportional to the luminosity of the map and multiplies all flux-related
-            observables. Defaults to 1..
-            normalize (Optional[bool], optional): whether to normalize the coefficients
-            of the spherical harmonics. If None or True, Ylm is normalized and the
-            amplitude of the map is set to y[(0, 0)]. Defaults to None.
-        """
-
         if y is None:
             y = Ylm()
         if inc is None:

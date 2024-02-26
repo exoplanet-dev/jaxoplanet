@@ -31,8 +31,7 @@ def quantity_input(
     is instead set to ``True``, inputting a non-``Quantity`` will raise a
     ``ValueError``.
 
-    Examples
-    --------
+    **Examples**
 
     The following function expects a length in meters and a time in seconds, and
     it returns a speed in meters per second:
@@ -69,8 +68,7 @@ def quantity_input(
             else:
                 return 0.0 * x
 
-    JAX Pytree support
-    ------------------
+    **JAX Pytree support**
 
     This decorator also supports JAX Pytrees, so you can use it to wrap
     functions with structured inputs. For example, we could rewrite the

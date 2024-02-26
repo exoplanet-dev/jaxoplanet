@@ -73,45 +73,48 @@ class Wigner3jCalculator:
         return self._size
 
     def calculate(self, j2, j3, m2, m3):
-        """Compute Wigner 3-j symbols
+        # Compute Wigner 3-j symbols
+        #
+        # For given values of j₂, j₃, m₂, m₃, this computes all valid values of
+        #
+        #     ⎛j₁  j₂  j₃⎞   _   ⎛j₂  j₃  j₁⎞   _   ⎛j₃  j₁  j₂⎞
+        #     ⎝m₁  m₂  m₃⎠   -   ⎝m₂  m₃  m₁⎠   -   ⎝m₃  m₁  m₂⎠
+        #
+        # The valid values have m₁=-m₂-m₃ and j₁ ranging from max(|j₂-j₃|, |m₁|) to
+        # j₂+j₃.
+        # The calculation uses the approach described by Luscombe and Luban (1998)
+        # <https://doi.org/10.1103/PhysRevE.57.7274>, which is a recurrence method,
+        # leading to significant gains in speed and accuracy.
+        #
+        # The returned array is a slice of this object's `workspace` array, and so will
+        # not
+        # remain the same between calls to this function.  If you want to keep a copy of
+        # the results, explicitly call the `numpy.copy` method.
+        #
+        # The returned array is indexed by j₁.  In particular, note that some invalid
+        # j₁ indices are accessible, but have value 0.0.
+        #
+        # This implementation uses several tricks gleaned from the Fortran code in
+        # <https://github.com/SHTOOLS/SHTOOLS>, which also implements the Luscombe-Luban
+        # algorithm.  In particular, that code (and now this code) treats several special
+        # cases that were not clearly specified by Luscombe-Luban.
+        #
+        # To use this object, do something like this:
+        #
+        # ..code-block:: python
+        #
+        #     # Try to do this just once because it allocates memory, which is slow
+        #     calculator = Wigner3jCalculator(j2_max, j3_max)
+        #
+        #     # Presumably, the following is inside some loop over j2, j3, m2, m3
+        #     w3j = calculator.calculate(j2, j3, m2, m3)
+        #     m1 = - m2 - m3
+        #     for j1 in range(max(abs(j2-j3), abs(m1)), j2+j3+1):
+        #         w3j[j1]  # This is the value of the 3-j symbol written above
+        #
+        # Again, the array w3j contains accessible memory outside of the bounds of j1
+        # given in the above loop, but those values will all be 0.0.
 
-        For given values of j₂, j₃, m₂, m₃, this computes all valid values of
-
-            ⎛j₁  j₂  j₃⎞   _   ⎛j₂  j₃  j₁⎞   _   ⎛j₃  j₁  j₂⎞
-            ⎝m₁  m₂  m₃⎠   -   ⎝m₂  m₃  m₁⎠   -   ⎝m₃  m₁  m₂⎠
-
-        The valid values have m₁=-m₂-m₃ and j₁ ranging from max(|j₂-j₃|, |m₁|) to j₂+j₃.
-        The calculation uses the approach described by Luscombe and Luban (1998)
-        <https://doi.org/10.1103/PhysRevE.57.7274>, which is a recurrence method, leading
-        to significant gains in speed and accuracy.
-
-        The returned array is a slice of this object's `workspace` array, and so will not
-        remain the same between calls to this function.  If you want to keep a copy of
-        the results, explicitly call the `numpy.copy` method.
-
-        The returned array is indexed by j₁.  In particular, note that some invalid
-        j₁ indices are accessible, but have value 0.0.
-
-        This implementation uses several tricks gleaned from the Fortran code in
-        <https://github.com/SHTOOLS/SHTOOLS>, which also implements the Luscombe-Luban
-        algorithm.  In particular, that code (and now this code) treats several special
-        cases that were not clearly specified by Luscombe-Luban.
-
-        To use this object, do something like this:
-
-            # Try to do this just once because it allocates memory, which is slow
-            calculator = Wigner3jCalculator(j2_max, j3_max)
-
-            # Presumably, the following is inside some loop over j2, j3, m2, m3
-            w3j = calculator.calculate(j2, j3, m2, m3)
-            m1 = - m2 - m3
-            for j1 in range(max(abs(j2-j3), abs(m1)), j2+j3+1):
-                w3j[j1]  # This is the value of the 3-j symbol written above
-
-        Again, the array w3j contains accessible memory outside of the bounds of j1 given
-        in the above loop, but those values will all be 0.0.
-
-        """
         m1 = -(m2 + m3)
 
         undefined_min = False
@@ -333,32 +336,6 @@ class Wigner3jCalculator:
 
 
 def Wigner3j(j_1, j_2, j_3, m_1, m_2, m_3):
-    """Calculate the Wigner 3-j symbol
-
-    NOTE: If you are calculating more than one value, you probably want to use the
-    Wigner3jCalculator object.  This function uses that object inefficiently because, in
-    computing one particular value, that object uses recurrence relations to compute
-    numerous nearby values that you will probably need to compute anyway.
-
-    The result is what is normally represented as
-
-        ⎛j₁  j₂  j₃⎞
-        ⎝m₁  m₂  m₃⎠
-
-    The inputs must be integers.  (Half integer arguments are sacrificed so that we can
-    use numba.)  Nonzero return quantities only occur when the `j`s obey the triangle
-    inequality (any two must add up to be as big as or bigger than the third).
-
-    Examples
-    ========
-
-    >>> from spherical import Wigner3j
-    >>> Wigner3j(2, 6, 4, 0, 0, 0)
-    0.186989398002
-    >>> Wigner3j(2, 6, 4, 0, 0, 1)
-    0
-
-    """
     if m_1 + m_2 + m_3 != 0:
         return 0.0
     if abs(m_1) > j_1 or abs(m_2) > j_2 or abs(m_3) > j_3:
@@ -380,14 +357,6 @@ def Wigner3j(j_1, j_2, j_3, m_1, m_2, m_3):
 
 
 def clebsch_gordan(j_1, m_1, j_2, m_2, j_3, m_3):
-    """Calculate the Clebsch-Gordan coefficient <j1 m1 j2 m2 | j3 m3>
-
-    NOTE: If you are calculating more than one value, you probably want to use the
-    Wigner3jCalculator object.  This function uses that object inefficiently because, in
-    computing one particular value, that object uses recurrence relations to compute
-    numerous nearby values that you will probably need to compute anyway.
-
-    """
     return (
         (-1.0) ** (j_1 - j_2 + m_3)
         * math.sqrt(2 * j_3 + 1)

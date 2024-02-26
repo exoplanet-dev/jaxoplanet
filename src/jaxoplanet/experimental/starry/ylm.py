@@ -16,30 +16,33 @@ from jaxoplanet.types import Array
 
 
 class Ylm(eqx.Module):
-    data: Optional[dict[tuple[int, int], Array]] = None
-    """coefficients of the spherical harmonic expansion of the map in the form
-    {(l, m): coefficient}"""
+    """Ylm object containing the spherical harmonic coefficients.
+
+    Args:
+        data (Mapping[tuple[int, int], Array], optional): dictionary of
+            spherical harmonic coefficients. Defaults to {(0, 0): 1.0}.
+        relative (bool, optional): Whether to normalize the coefficients by the
+            value of the (0, 0) coefficient. Defaults to True.
+
+    Raises:
+        ValueError: if relative is True and the (0, 0) coefficient is zero.
+    """
+
+    # maximum degree of the spherical harmonic expansion
     ell_max: int = eqx.field(static=True)
-    """maximum degree of the spherical harmonic expansion"""
+
+    # whether the spherical harmonic expansion is diagonal (all m=0)
     diagonal: bool = eqx.field(static=True)
-    """whether the spherical harmonic expansion is diagonal (all m=0)"""
+
+    # coefficients of the spherical harmonic expansion of the map in the form
+    # {(l, m): coefficient}
+    data: Optional[dict[tuple[int, int], Array]] = None
 
     def __init__(
         self,
         data: Optional[Mapping[tuple[int, int], Array]] = None,
         normalize: bool = True,
     ):
-        """Ylm object containing the spherical harmonic coefficients.
-
-        Args:
-            data (Mapping[tuple[int, int], Array], optional): dictionary of
-            spherical harmonic coefficients. Defaults to {(0, 0): 1.0}.
-            relative (bool, optional): Whether to normalize the coefficients by the
-            value of the (0, 0) coefficient. Defaults to True.
-
-        Raises:
-            ValueError: if relative is True and the (0, 0) coefficient is zero.
-        """
         if data is None:
             data = {(0, 0): 1.0}
 
