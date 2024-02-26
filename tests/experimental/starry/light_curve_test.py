@@ -115,10 +115,8 @@ def test_compare_starry_system(keplerian_system):
     central = keplerian_system.central
     body = keplerian_system.bodies[0]
 
-    system = keplerian.System(central, bodies=[body])
-
     time = np.linspace(-1.5, 1.0, 300)
-    jaxoplanet_flux = light_curve(system, time)
+    jaxoplanet_flux = light_curve(keplerian_system, time)
 
     # starry system
     pri = starry.Primary(
