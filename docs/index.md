@@ -8,7 +8,6 @@
 maxdepth: 1
 ---
 
-start
 installation
 tutorials
 ```
