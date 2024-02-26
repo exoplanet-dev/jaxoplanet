@@ -1,8 +1,8 @@
 import jax
 import jax.numpy as jnp
 
-from jaxoplanet.orbits.keplerian import System
 from jaxoplanet.light_curves import limb_dark_light_curve
+from jaxoplanet.orbits.keplerian import System
 
 
 def test_light_curve():
