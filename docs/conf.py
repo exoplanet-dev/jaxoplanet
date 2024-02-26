@@ -4,18 +4,25 @@ language = "en"
 master_doc = "index"
 
 extensions = [
-    "sphinx.ext.autosummary",
     "sphinx.ext.mathjax",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
     "sphinx_design",
     "myst_nb",
     "IPython.sphinxext.ipython_console_highlighting",
-    "autodoc2",
+    "autoapi.extension",
 ]
 
-autodoc2_packages = ["../src/jaxoplanet"]
-autodoc2_output_dir = "api"
+autoapi_dirs = ["../src"]
+autoapi_options = [
+    "members",
+    "undoc-members",
+    # "private-members",
+    "show-inheritance",
+    "show-module-summary",
+    "special-members",
+    # "imported-members",
+]
 
 myst_enable_extensions = ["dollarmath", "colon_fence"]
 source_suffix = {
@@ -26,7 +33,7 @@ templates_path = ["_templates"]
 
 # General information about the project.
 project = "jaxoplanet"
-copyright = "2021-2023 Simons Foundation, Inc."
+copyright = "2021-2024 Simons Foundation, Inc."
 version = jaxoplanet.__version__
 release = jaxoplanet.__version__
 

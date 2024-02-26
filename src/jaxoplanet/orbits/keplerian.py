@@ -24,13 +24,12 @@ except ImportError:
 class Central(eqx.Module):
     """A central body in an orbital system
 
-
     Args:
         mass (Optional[Quantity]): Mass of central body [mass unit].
         radius (Optional[Quantity]): Radius of central body [length unit].
         density (Optional[Quantity]): Density of central body [mass/length**3 unit].
         map (Optional[Map]): Map of the central body. If None a uniform map with
-        intensity 1 is used.
+            intensity 1 is used.
     """
 
     mass: Quantity = units.field(units=ureg.M_sun)
@@ -274,6 +273,7 @@ class Body(eqx.Module):
 
 
 class OrbitalBody(eqx.Module):
+    """A computational tool"""
     central: Central
     time_ref: Quantity = units.field(units=ureg.d)
     time_transit: Quantity = units.field(units=ureg.d)
@@ -698,10 +698,13 @@ class OrbitalBody(eqx.Module):
 
 
 class BodyStack(eqx.Module):
+    """A computational tool"""
     stack: OrbitalBody
 
 
 class System(eqx.Module):
+    """A Keplerian orbital system"""
+
     central: Central
     bodies: tuple[OrbitalBody, ...]
     _body_stack: Optional[BodyStack]
