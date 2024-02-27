@@ -8,8 +8,7 @@ from jax.scipy.spatial.transform import Rotation
 
 @partial(jit, static_argnums=(1, 2, 3))
 def compute_full(dl: jnp.ndarray, beta: float, L: int, el: int) -> jnp.ndarray:
-    r"""
-    Copied from s2fft for now!
+    r"""Copied from s2fft for now!
 
     Compute Wigner-d at argument :math:`\beta` for full plane using
     Risbo recursion (JAX implementation)
@@ -123,7 +122,9 @@ def compute_full(dl: jnp.ndarray, beta: float, L: int, el: int) -> jnp.ndarray:
 
 @partial(jit, static_argnums=(0))
 def generate_rotate_dls(L: int, beta: float) -> jnp.ndarray:
-    """Function which recursively generates the complete plane of reduced
+    """Copied from s2fft for now!
+
+    Function which recursively generates the complete plane of reduced
         Wigner d-function coefficients at a given rotation beta.
 
     Args:
@@ -146,11 +147,12 @@ def generate_rotate_dls(L: int, beta: float) -> jnp.ndarray:
 def compute_rotation_matrices(deg, x, y, z, theta):
 
     def kron(m, n):
+        """Kronecker delta. Can we do better?"""
         return m == n
 
     def Umn(m, n):
         """Compute the (m, n) term of the transformation
-        matrix from complex to real Ylms."""
+        matrix from complex to real Ylms. This part is from starry"""
         if n < 0:
             term1 = 1j
         elif n == 0:
@@ -168,7 +170,7 @@ def compute_rotation_matrices(deg, x, y, z, theta):
         )
 
     def U(l):
-        """Compute the U transformation matrix."""
+        """Compute the complete U transformation matrix.. This part is from starry"""
         res = jnp.zeros((2 * l + 1, 2 * l + 1)).astype(jnp.complex128)
         for m in range(-l, l + 1):
             for n in range(-l, l + 1):
@@ -176,6 +178,7 @@ def compute_rotation_matrices(deg, x, y, z, theta):
         return res
 
     def euler(x, y, z, theta):
+        """axis-angle to euler angles"""
         axis = jnp.array([x, y, z])
         axis = axis / jnp.linalg.norm(axis)
         r = Rotation.from_rotvec(axis * theta)
@@ -190,11 +193,11 @@ def compute_rotation_matrices(deg, x, y, z, theta):
     u = U(deg)
     u_inv = jnp.conj(u.T)
 
-    # note (lgrcia)
-    # Dlm = jnp.real(jnp.linalg.solve(u, _Dlm[-1]) @ u)
-
+    # The output of generate_rotate_dls has shape (L, 2L+1, 2L+1)
     Rs_full = jnp.real(u_inv[None, :] @ Dlm @ u[None, :])
 
+    # so we reformat to a list of matrices with different shape
+    # (to match current implementation of rotation.dot_rotation_matrix)
     Rs = []
 
     for i in range(deg + 1):
