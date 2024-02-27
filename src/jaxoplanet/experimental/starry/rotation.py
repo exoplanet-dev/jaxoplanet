@@ -6,6 +6,10 @@ import jax.numpy as jnp
 
 from jaxoplanet.utils import get_dtype_eps
 
+from jaxoplanet.experimental.starry.s2fft_rotation import (
+    compute_rotation_matrices as compute_rotation_matrices_s2fft,
+)
+
 
 def dot_rotation_matrix(ydeg, x, y, z, theta):
     """Construct a callable to apply a spherical harmonic rotation
@@ -41,7 +45,7 @@ def dot_rotation_matrix(ydeg, x, y, z, theta):
     if jnp.shape(theta) != ():
         raise ValueError(f"theta must be a scalar; got {jnp.shape(theta)}")
 
-    rotation_matrices = compute_rotation_matrices(ydeg, x, y, z, theta)
+    rotation_matrices = compute_rotation_matrices_s2fft(ydeg, x, y, z, theta)
     n_max = ydeg**2 + 2 * ydeg + 1
 
     @jax.jit
