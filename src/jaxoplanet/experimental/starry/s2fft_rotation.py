@@ -1,10 +1,9 @@
 from functools import partial
 
+import jax
 import jax.numpy as jnp
 from jax import jit
 from jax.scipy.spatial.transform import Rotation
-
-from jaxoplanet.experimental.starry.rotation import *
 
 
 @partial(jit, static_argnums=(1, 2, 3))
