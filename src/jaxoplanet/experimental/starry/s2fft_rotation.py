@@ -1,8 +1,10 @@
-from jaxoplanet.experimental.starry.rotation import *
+from functools import partial
+
 import jax.numpy as jnp
 from jax import jit
-from functools import partial
 from jax.scipy.spatial.transform import Rotation
+
+from jaxoplanet.experimental.starry.rotation import *
 
 
 @partial(jit, static_argnums=(1, 2, 3))
@@ -163,7 +165,7 @@ def compute_rotation_matrices(deg, x, y, z, theta):
         else:
             term2 = 1
         return (
-            term1 * term2 * 1 / jnp.sqrt(2) * jnp.complex128((kron(m, n) + kron(m, -n)))
+            term1 * term2 * 1 / jnp.sqrt(2) * jnp.complex128(kron(m, n) + kron(m, -n))
         )
 
     def U(l):
