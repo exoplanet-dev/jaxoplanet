@@ -25,7 +25,7 @@ def limb_dark_light_curve(
             raise ValueError(
                 "The time passed to 'light_curve' has shape "
                 f"{jnpu.shape(time)}, but a scalar was expected; "
-                "To use exposure time integration for an array of times, "
+                "To compute a light curve for an array of times, "
                 "manually 'vmap' or 'vectorize' the function"
             )
 

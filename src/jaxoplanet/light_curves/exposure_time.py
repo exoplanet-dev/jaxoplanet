@@ -1,12 +1,13 @@
 from functools import wraps
-from typing import Any, Optional, Protocol, TypeVar
+from typing import Any, Optional
 
 import jax
 import jax.numpy as jnp
 import jpu.numpy as jnpu
 
 from jaxoplanet import units
-from jaxoplanet.types import Array, Quantity
+from jaxoplanet.light_curves.types import LightCurveFunc, Value
+from jaxoplanet.types import Quantity
 from jaxoplanet.units import unit_registry as ureg
 
 try:
@@ -14,20 +15,14 @@ try:
 except ImportError:
     from jax import linear_util as lu  # type: ignore
 
-T = TypeVar("T", Array, Quantity, covariant=True)
-
-
-class _LightCurveFunc(Protocol[T]):
-    def __call__(self, time: Quantity, *args: Any, **kwargs: Any) -> T: ...
-
 
 @units.quantity_input(exposure_time=ureg.d)
 def integrate(
-    func: _LightCurveFunc[T],
+    func: LightCurveFunc[Value],
     exposure_time: Optional[Quantity] = None,
     order: int = 0,
     num_samples: int = 7,
-) -> _LightCurveFunc[T]:
+) -> LightCurveFunc[Value]:
     if exposure_time is None:
         return func
 
@@ -65,7 +60,7 @@ def integrate(
 
     @wraps(func)
     @units.quantity_input(time=ureg.d)
-    def wrapped(time: Quantity, *args: Any, **kwargs: Any) -> T:
+    def wrapped(time: Quantity, *args: Any, **kwargs: Any) -> Value:
         if jnpu.ndim(time) != 0:
             raise ValueError(
                 "The time passed to 'integrate_exposure_time' has shape "
