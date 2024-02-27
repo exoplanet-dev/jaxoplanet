@@ -30,7 +30,7 @@ def integrate(
     if jnpu.ndim(exposure_time) != 0:
         raise ValueError(
             "The exposure time passed to 'integrate_exposure_time' has shape "
-            f"{jnpu.shape(exposure_time)}, but a scalar was expected; "  # type: ignore
+            f"{jnpu.shape(exposure_time)}, but a scalar was expected; "
             "To use exposure time integration with different exposures at different "
             "times, manually 'vmap' or 'vectorize' the function"
         )
@@ -66,9 +66,9 @@ def integrate(
         if jnpu.ndim(time) != 0:
             raise ValueError(
                 "The time passed to 'integrate_exposure_time' has shape "
-                f"{jnpu.shape(time)}, but a scalar was expected; "  # type: ignore
-                "To use exposure time integration for an array of times, "
-                "manually 'vmap' or 'vectorize' the function"
+                f"{jnpu.shape(time)}, but a scalar was expected; "
+                "this shouldn't typically happen so please open an issue "
+                "on GitHub demonstrating the problem"
             )
 
         f = lu.wrap_init(jax.vmap(func, in_axes=(0,) + (None,) * len(args)))
