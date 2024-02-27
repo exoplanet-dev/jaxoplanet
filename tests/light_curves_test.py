@@ -1,7 +1,8 @@
+import jax
 import jax.numpy as jnp
 
-from jaxoplanet import orbits
-from jaxoplanet.light_curves import LimbDarkLightCurve
+from jaxoplanet.light_curves import limb_dark_light_curve
+from jaxoplanet.orbits.keplerian import System
 
 
 def test_light_curve():
@@ -13,11 +14,13 @@ def test_light_curve():
         "bo": 0.8,
     }
     # The light curve calculation requires an orbit
-    orbit = orbits.keplerian.Body(
-        period=params["period"], radius=params["radius"], impact_param=params["bo"]
+    orbit = System().add_body(
+        period=params["period"],
+        radius=params["radius"],
+        impact_param=params["bo"],
     )
 
     # Compute a limb-darkened light curve using jaxoplanet
     t = jnp.linspace(-0.3, 0.3, 1000)
-
-    LimbDarkLightCurve(params["u"]).light_curve(orbit, t=t)
+    lc = jax.vmap(limb_dark_light_curve(orbit, params["u"]))(t)
+    assert lc.shape == t.shape + (1,)
