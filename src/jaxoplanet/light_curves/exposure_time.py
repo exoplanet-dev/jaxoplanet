@@ -1,11 +1,13 @@
 from functools import wraps
-from typing import Any, Optional, Protocol, TypeVar
+from typing import Any, Optional, Union
 
 import jax
 import jax.numpy as jnp
 import jpu.numpy as jnpu
 
 from jaxoplanet import units
+from jaxoplanet.light_curves.types import LightCurveFunc
+from jaxoplanet.light_curves.utils import vectorize
 from jaxoplanet.types import Array, Quantity
 from jaxoplanet.units import unit_registry as ureg
 
@@ -14,27 +16,21 @@ try:
 except ImportError:
     from jax import linear_util as lu  # type: ignore
 
-T = TypeVar("T", Array, Quantity, covariant=True)
-
-
-class _LightCurveFunc(Protocol[T]):
-    def __call__(self, time: Quantity, *args: Any, **kwargs: Any) -> T: ...
-
 
 @units.quantity_input(exposure_time=ureg.d)
 def integrate(
-    func: _LightCurveFunc[T],
+    func: LightCurveFunc,
     exposure_time: Optional[Quantity] = None,
     order: int = 0,
     num_samples: int = 7,
-) -> _LightCurveFunc[T]:
+) -> LightCurveFunc:
     if exposure_time is None:
         return func
 
     if jnpu.ndim(exposure_time) != 0:
         raise ValueError(
             "The exposure time passed to 'integrate_exposure_time' has shape "
-            f"{jnpu.shape(exposure_time)}, but a scalar was expected; "  # type: ignore
+            f"{jnpu.shape(exposure_time)}, but a scalar was expected; "
             "To use exposure time integration with different exposures at different "
             "times, manually 'vmap' or 'vectorize' the function"
         )
@@ -65,13 +61,14 @@ def integrate(
 
     @wraps(func)
     @units.quantity_input(time=ureg.d)
-    def wrapped(time: Quantity, *args: Any, **kwargs: Any) -> T:
+    @vectorize
+    def wrapped(time: Quantity, *args: Any, **kwargs: Any) -> Union[Array, Quantity]:
         if jnpu.ndim(time) != 0:
             raise ValueError(
                 "The time passed to 'integrate_exposure_time' has shape "
-                f"{jnpu.shape(time)}, but a scalar was expected; "  # type: ignore
-                "To use exposure time integration for an array of times, "
-                "manually 'vmap' or 'vectorize' the function"
+                f"{jnpu.shape(time)}, but a scalar was expected; "
+                "this shouldn't typically happen so please open an issue "
+                "on GitHub demonstrating the problem"
             )
 
         f = lu.wrap_init(jax.vmap(func, in_axes=(0,) + (None,) * len(args)))
