@@ -44,7 +44,9 @@ def dot_rotation_matrix(ydeg, x, y, z, theta):
     if jnp.shape(theta) != ():
         raise ValueError(f"theta must be a scalar; got {jnp.shape(theta)}")
 
-    rotation_matrices = compute_rotation_matrices_s2fft(ydeg, x, y, z, theta)
+    rotation_matrices = compute_rotation_matrices_s2fft(
+        ydeg, x, y, z, theta, homogeneous=False
+    )
     n_max = ydeg**2 + 2 * ydeg + 1
 
     @jax.jit

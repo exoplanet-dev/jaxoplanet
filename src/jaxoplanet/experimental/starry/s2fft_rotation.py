@@ -143,8 +143,8 @@ def generate_rotate_dls(L: int, beta: float) -> jnp.ndarray:
     return dl
 
 
-@partial(jax.jit, static_argnums=(0,))
-def compute_rotation_matrices(deg, x, y, z, theta):
+@partial(jax.jit, static_argnums=(0, 5))
+def compute_rotation_matrices(deg, x, y, z, theta, homogeneous=False):
 
     def kron(m, n):
         """Kronecker delta. Can we do better?"""
@@ -196,11 +196,14 @@ def compute_rotation_matrices(deg, x, y, z, theta):
     # The output of generate_rotate_dls has shape (L, 2L+1, 2L+1)
     Rs_full = jnp.real(u_inv[None, :] @ Dlm @ u[None, :])
 
-    # so we reformat to a list of matrices with different shape
-    # (to match current implementation of rotation.dot_rotation_matrix)
-    Rs = []
+    if homogeneous:
+        Rs = Rs_full
+    else:
+        # reformat to a list of matrices with different shape
+        # (to match current implementation of rotation.dot_rotation_matrix)
+        Rs = []
 
-    for i in range(deg + 1):
-        Rs.append(Rs_full[i, deg - i : deg + i + 1, deg - i : deg + i + 1])
+        for i in range(deg + 1):
+            Rs.append(Rs_full[i, deg - i : deg + i + 1, deg - i : deg + i + 1])
 
     return Rs

@@ -83,7 +83,7 @@ class Ylm(eqx.Module):
     def todense(self) -> Array:
         return self.tosparse().todense()
 
-    def dense_pad(self) -> Array:
+    def to_dense_pad(self) -> Array:
         new_y = jnp.zeros((self.ell_max + 1, 2 * self.ell_max + 1))
         for l in range(self.ell_max + 1):
             for m in range(-l, l + 1):
