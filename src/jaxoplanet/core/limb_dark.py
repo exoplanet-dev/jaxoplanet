@@ -1,3 +1,9 @@
+"""This module provides the functions needed to compute a limb darkened light curve as
+described by `Agol et al. (2020) <https://arxiv.org/abs/1908.03222>`_.
+"""
+
+__all__ = ["light_curve"]
+
 from functools import partial
 from typing import Callable
 
@@ -12,6 +18,24 @@ from jaxoplanet.utils import zero_safe_sqrt
 
 @partial(jax.jit, static_argnames=("order",))
 def light_curve(u: Array, b: Array, r: Array, *, order: int = 10):
+    """Compute the light curve for arbitrary polynomial limb darkening
+
+    See `Agol et al. (2020) <https://arxiv.org/abs/1908.03222>`_ for more technical
+    details. Unlike in that paper, here we don't evaluate all the solution vector
+    integrals in closed form. Instead, for all but the lowest order terms, we numerically
+    integrate the relevant 1D line integral using Gauss-Legendre quadrature at fixed
+    order ``order``.
+
+
+    Args:
+        u (Array): The coefficients of the polynomial limb darkening model
+        b (Array): The center-to-center distance between the occultor and the occulted
+            body
+        r (Array): The radius ratio between the occultor and the occulted body
+        order (int): The quadrature order to use when numerically computing the the 1D
+            line integral
+    """
+
     u = jnp.asarray(u)
     assert u.ndim == 1
     if u.shape[0] == 0:
