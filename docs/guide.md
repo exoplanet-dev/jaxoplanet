@@ -12,5 +12,4 @@ experience.
 
 install
 troubleshooting
-autoapi/index
 ```
