@@ -1,6 +1,4 @@
-"""This module contains models for computing and transforming light curve models"""
+__all__ = ["transforms", "limb_dark_light_curve"]
 
 from jaxoplanet.light_curves import transforms as transforms
-from jaxoplanet.light_curves.limb_dark import (
-    limb_dark_light_curve as limb_dark_light_curve,
-)
+from jaxoplanet.light_curves.limb_dark import light_curve as limb_dark_light_curve
