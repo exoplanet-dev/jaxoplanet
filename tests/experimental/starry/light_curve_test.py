@@ -4,6 +4,7 @@ import pytest
 
 from jaxoplanet.experimental.starry import Map, Ylm
 from jaxoplanet.experimental.starry.light_curves import light_curve, map_light_curve
+from jaxoplanet.experimental.starry.orbit import SurfaceMapSystem
 from jaxoplanet.orbits import keplerian
 from jaxoplanet.test_utils import assert_allclose
 
@@ -47,25 +48,25 @@ def test_compare_starry(deg, u):
             "central": keplerian.Central(
                 mass=1.3,
                 radius=1.1,
-                map=Map(
-                    y=Ylm.from_dense(
-                        [1, 0.005, 0.05, 0.09, 0.0, 0.1, 0.03, 0.04, 0.4, 0.2, 0.1]
-                    ),
-                    inc=0.9,
-                    obl=0.3,
-                    period=1.2,
-                    u=[0.1, 0.1],
+            ),
+            "surface_map": Map(
+                y=Ylm.from_dense(
+                    [1, 0.005, 0.05, 0.09, 0.0, 0.1, 0.03, 0.04, 0.4, 0.2, 0.1]
                 ),
+                inc=0.9,
+                obl=0.3,
+                period=1.2,
+                u=(0.1, 0.1),
             ),
             "body": {
                 "radius": 0.5,
                 "mass": 0.1,
                 "period": 1.5,
-                "map": Map(
+                "surface_map": Map(
                     y=Ylm.from_dense([1, 0.005, 0.05, 0.09, 0.0, 0.1, 0.03]),
                     inc=-0.3,
                     period=0.8,
-                    u=[0.2, 0.3],
+                    u=(0.2, 0.3),
                 ),
             },
         },
@@ -73,11 +74,11 @@ def test_compare_starry(deg, u):
             "central": keplerian.Central(
                 mass=1.3,
                 radius=1.1,
-                map=Map(
-                    y=Ylm.from_dense(np.hstack([1, 0.005, 0.05, 0.09, 0.0, 0.1, 0.03])),
-                    period=1.2,
-                    u=[0.1, 0.1],
-                ),
+            ),
+            "surface_map": Map(
+                y=Ylm.from_dense(np.hstack([1, 0.005, 0.05, 0.09, 0.0, 0.1, 0.03])),
+                period=1.2,
+                u=(0.1, 0.1),
             ),
             "body": {
                 "radius": 0.5,
@@ -94,17 +95,19 @@ def test_compare_starry(deg, u):
                 "radius": 1.5,
                 "mass": 1.1,
                 "period": 1.5,
-                "map": Map(
+                "surface_map": Map(
                     y=Ylm.from_dense([1, 0.005, 0.05, 0.09, 0.0, 0.1, 0.03]),
                     period=1.2,
-                    u=[0.1, 0.1],
+                    u=(0.1, 0.1),
                 ),
             },
         },
     ]
 )
 def keplerian_system(request):
-    return keplerian.System(request.param["central"]).add_body(**request.param["body"])
+    return SurfaceMapSystem(
+        request.param["central"], request.param.get("surface_map", None)
+    ).add_body(**request.param["body"])
 
 
 def test_compare_starry_system(keplerian_system):
@@ -116,7 +119,7 @@ def test_compare_starry_system(keplerian_system):
     body = keplerian_system.bodies[0]
 
     time = np.linspace(-1.5, 1.0, 300)
-    jaxoplanet_flux = light_curve(keplerian_system, time)
+    jaxoplanet_flux = light_curve(keplerian_system)(time)
 
     # starry system
     pri = starry.Primary(
