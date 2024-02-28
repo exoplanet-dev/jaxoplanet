@@ -24,6 +24,7 @@ autoapi_options = [
     "special-members",
     # "imported-members",
 ]
+autoapi_add_toctree_entry = False
 suppress_warnings = ["autoapi.python_import_resolution"]
 
 myst_enable_extensions = ["dollarmath", "colon_fence"]
