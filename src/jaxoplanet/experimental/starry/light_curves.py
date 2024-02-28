@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from functools import partial
+from typing import Optional
 
 import jax
 import jax.numpy as jnp
@@ -17,7 +18,9 @@ from jaxoplanet.types import Array, Quantity
 from jaxoplanet.units import quantity_input, unit_registry as ureg
 
 
-def light_curve(system: SurfaceMapSystem) -> Callable[[Quantity], tuple[Array, Array]]:
+def light_curve(
+    system: SurfaceMapSystem,
+) -> Callable[[Quantity], tuple[Optional[Array], Optional[Array]]]:
     central_bodies_lc = jax.vmap(map_light_curve, in_axes=(None, 0, 0, 0, 0, None))
 
     @partial(system.surface_map_vmap, in_axes=(0, 0, 0, 0, None))
@@ -37,26 +40,32 @@ def light_curve(system: SurfaceMapSystem) -> Callable[[Quantity], tuple[Array, A
 
     @quantity_input(time=ureg.day)
     @vectorize
-    def light_curve_impl(time: Quantity) -> tuple[Array, Array]:
+    def light_curve_impl(time: Quantity) -> tuple[Optional[Array], Optional[Array]]:
         xos, yos, zos = system.relative_position(time)
-        theta = time.magnitude * 2 * jnp.pi / system.surface_map.period
-        central_radius = system.central.radius
 
-        central_light_curves = (
-            central_bodies_lc(
-                system.surface_map,
-                (system.radius / central_radius).magnitude,
-                (xos / central_radius).magnitude,
-                (yos / central_radius).magnitude,
-                (zos / central_radius).magnitude,
-                theta,
+        if system.surface_map is None:
+            central_light_curves = None
+        else:
+            theta = time.magnitude * 2 * jnp.pi / system.surface_map.period
+            central_radius = system.central.radius
+            central_light_curves = (
+                central_bodies_lc(
+                    system.surface_map,
+                    (system.radius / central_radius).magnitude,
+                    (xos / central_radius).magnitude,
+                    (yos / central_radius).magnitude,
+                    (zos / central_radius).magnitude,
+                    theta,
+                )
+                * system.surface_map.amplitude
             )
-            * system.surface_map.amplitude
-        )
 
-        body_light_curves = compute_body_light_curve(  # type: ignore
-            system.radius, -xos, -yos, -zos, time
-        )
+        if all(surface_map is None for surface_map in system.surface_maps):
+            body_light_curves = None
+        else:
+            body_light_curves = compute_body_light_curve(  # type: ignore
+                system.radius, -xos, -yos, -zos, time
+            )
 
         return central_light_curves, body_light_curves
 
