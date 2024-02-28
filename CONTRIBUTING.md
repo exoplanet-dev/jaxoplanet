@@ -1,19 +1,43 @@
-## Contributing to exoplanet-jax
+# Contributor Guide
 
-### Reporting issues
+Thank you for your interest in improving this project. This project is
+open-source and welcomes contributions in the form of bug reports, feature
+requests, and pull requests.
 
-If you find a bug or other unexpected behavior while using `exoplanet-jax`,
-open an issue on the [GitHub repository](https://github.com/exoplanet-dev/exoplanet-jax/issues)
-and we will try to respond and (hopefully) solve the problem in a timely manner.
-Similarly, if you have a feature request or question about the library, the best
-place to post those is currently on GitHub as an issue, but that is likely
-change if the user community grows. If you report an issue, please give the
-details needed to reproduce the problem (version of exoplanet, its dependencies,
-and your platform) and a small standalone piece of code that demonstrates the
-problem clearly.
+Here is a list of important resources for contributors:
 
-### Contributing code
+- [Source Code](https://github.com/exoplanet-dev/jaxoplanet)
+- [Documentation](https://jax.exoplanet.codes)
+- [Issue Tracker](https://github.com/exoplanet-dev/jaxoplanet/issues)
 
-We welcome contributions to the codebase of all scales from typo fixes to new features,
-but if you would like to add a substantial feature, it would be a good idea to first
-open an issue that describes your plan so that we can discuss in advance.
+## How to report a bug
+
+Report bugs on the [Issue Tracker](https://github.com/exoplanet-dev/jaxoplanet/issues).
+
+When filing an issue, make sure to answer these questions:
+
+- Which operating system and Python version are you using?
+- Which version of this project are you using?
+- What did you do?
+- What did you expect to see?
+- What did you see instead?
+
+The best way to get your bug fixed is to provide a test case, and/or steps to
+reproduce the issue. In particular, please include a [Minimal, Reproducible
+Example](https://stackoverflow.com/help/minimal-reproducible-example).
+
+## How to request a feature
+
+Feel free to request features on the [Issue
+Tracker](https://github.com/exoplanet-dev/jaxoplanet/issues).
+
+## How to test the project
+
+```bash
+python -m pip install nox
+python -m nox -s test
+```
+
+## How to submit changes
+
+Open a [Pull Request](https://github.com/exoplanet-dev/jaxoplanet/pulls).
