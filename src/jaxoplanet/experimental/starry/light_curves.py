@@ -9,6 +9,7 @@ import scipy
 from jax.experimental import sparse
 
 from jaxoplanet.experimental.starry.basis import A1, U0, A2_inv
+from jaxoplanet.experimental.starry.maps import Map
 from jaxoplanet.experimental.starry.orbit import SurfaceMapSystem
 from jaxoplanet.experimental.starry.pijk import Pijk
 from jaxoplanet.experimental.starry.rotation import left_project
@@ -73,7 +74,9 @@ def light_curve(
 
 
 # TODO: figure out the sparse matrices (and Pijk) to avoid todense()
-def map_light_curve(map, r: float, xo: float, yo: float, zo: float, theta: float):
+def map_light_curve(
+    map: Optional[Map], r: Array, xo: Array, yo: Array, zo: Array, theta: Array
+) -> Array:
     """Light curve of a map
 
     Args:
@@ -90,7 +93,8 @@ def map_light_curve(map, r: float, xo: float, yo: float, zo: float, theta: float
     if map is None:
         return jnp.zeros_like(theta)
 
-    U = jnp.array([1, *map.u])
+    # TODO(lgrcia): Is this the right behavior when map.u is None?
+    U = jnp.array([1, *(() if map.u is None else map.u)])
     b = jnp.sqrt(jnp.square(xo) + jnp.square(yo))
     b_rot = jnp.logical_or(jnp.greater_equal(b, 1.0 + r), jnp.less_equal(zo, 0.0))
     b_occ = jnp.logical_not(b_rot)
@@ -108,13 +112,16 @@ def map_light_curve(map, r: float, xo: float, yo: float, zo: float, theta: float
 
     sTA2 = sT @ A2
 
-    # full rotation
-    rotated_y = left_project(
-        map.ydeg, map.inc, map.obl, theta, theta_z, map.y.todense()
-    )
+    # TODO(lgrcia): Is this the right behavior when map.y is None?
+    if map.y is None:
+        rotated_y = jnp.zeros(map.ydeg)
+    else:
+        rotated_y = left_project(
+            map.ydeg, map.inc, map.obl, theta, theta_z, map.y.todense()
+        )
 
     # limb darkening product
-    A1_val = jax.experimental.sparse.BCOO.from_scipy_sparse(A1(map.ydeg))
+    A1_val = sparse.BCOO.from_scipy_sparse(A1(map.ydeg))
     p_y = Pijk.from_dense(A1_val @ rotated_y, degree=map.ydeg)
     p_u = Pijk.from_dense(U @ U0(map.udeg), degree=map.udeg)
     p_y = p_y * p_u
@@ -125,7 +132,7 @@ def map_light_curve(map, r: float, xo: float, yo: float, zo: float, theta: float
     return (p_y.tosparse() @ x) * norm
 
 
-def rT(lmax):
+def rT(lmax: int) -> Array:
     rt = [0.0 for _ in range((lmax + 1) * (lmax + 1))]
     amp0 = jnp.pi
     lfac1 = 1.0
@@ -165,5 +172,5 @@ def rT(lmax):
     return np.array(rt)
 
 
-def rTA1(lmax):
+def rTA1(lmax: int) -> Array:
     return rT(lmax) @ A1(lmax)
