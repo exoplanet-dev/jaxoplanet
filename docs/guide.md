@@ -12,5 +12,5 @@ experience.
 
 install
 troubleshooting
-autoapi/jaxoplanet/index
+autoapi/index
 ```
