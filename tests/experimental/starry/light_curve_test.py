@@ -116,7 +116,9 @@ def test_compare_starry_system(keplerian_system):
 
     # jaxoplanet system
     central = keplerian_system.central
+    central_map = keplerian_system.surface_map
     body = keplerian_system.bodies[0]
+    body_map = keplerian_system.surface_maps[0]
 
     time = np.linspace(-1.5, 1.0, 300)
     jaxoplanet_flux = light_curve(keplerian_system)(time)
@@ -124,39 +126,39 @@ def test_compare_starry_system(keplerian_system):
     # starry system
     pri = starry.Primary(
         starry.Map(
-            ydeg=central.map.ydeg,
-            udeg=central.map.udeg,
-            inc=np.rad2deg(central.map.inc),
-            obl=np.rad2deg(central.map.obl),
-            amp=central.map.amplitude,
+            ydeg=central_map.ydeg,
+            udeg=central_map.udeg,
+            inc=np.rad2deg(central_map.inc),
+            obl=np.rad2deg(central_map.obl),
+            amp=central_map.amplitude,
         ),
         r=central.radius.magnitude,
         m=central.mass.magnitude,
-        prot=central.map.period,
+        prot=central_map.period,
     )
-    if central.map.u:
-        pri.map[1:] = central.map.u
-    if central.map.deg > 0:
-        pri.map[1:, :] = np.asarray(central.map.y.todense())[1:]
+    if central_map.u:
+        pri.map[1:] = central_map.u
+    if central_map.deg > 0:
+        pri.map[1:, :] = np.asarray(central_map.y.todense())[1:]
 
     sec = starry.Secondary(
         starry.Map(
-            ydeg=body.map.ydeg,
-            udeg=body.map.udeg,
-            inc=np.rad2deg(body.map.inc),
-            obl=np.rad2deg(body.map.obl),
-            amp=body.map.amplitude,
+            ydeg=body_map.ydeg,
+            udeg=body_map.udeg,
+            inc=np.rad2deg(body_map.inc),
+            obl=np.rad2deg(body_map.obl),
+            amp=body_map.amplitude,
         ),
         r=body.radius.magnitude,
         m=body.mass.magnitude,
         porb=body.period.magnitude,
-        prot=body.map.period,
+        prot=body_map.period,
     )
-    if body.map.u:
-        sec.map[1:] = body.map.u
+    if body_map.u:
+        sec.map[1:] = body_map.u
 
-    if body.map.deg > 0:
-        sec.map[1:, :] = np.asarray(body.map.y.todense())[1:]
+    if body_map.deg > 0:
+        sec.map[1:, :] = np.asarray(body_map.y.todense())[1:]
 
     starry_system = starry.System(pri, sec)
     starry_flux = starry_system.flux(time, total=False)
