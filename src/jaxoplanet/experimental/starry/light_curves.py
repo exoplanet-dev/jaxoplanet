@@ -41,7 +41,7 @@ def light_curve(
 
     @quantity_input(time=ureg.day)
     @vectorize
-    def light_curve_impl(time: Quantity) -> tuple[Optional[Array], Optional[Array]]:
+    def light_curve_impl(time: Quantity) -> Array:
         xos, yos, zos = system.relative_position(time)
 
         if system.surface_map is None:
@@ -68,7 +68,13 @@ def light_curve(
                 system.radius, -xos, -yos, -zos, time
             )
 
-        return central_light_curves, body_light_curves
+        result = jnp.zeros(system.shape, dtype=time.dtype)
+        if central_light_curves is not None:
+            result += central_light_curves
+        if body_light_curves is not None:
+            result += body_light_curves
+
+        return result
 
     return light_curve_impl
 
