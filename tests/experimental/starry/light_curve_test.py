@@ -178,3 +178,16 @@ def test_compare_starry_system(keplerian_system):
     # for jaxoplanet_flux_item, starry_flux_item in zip(jaxoplanet_flux, starry_flux):
     #     if jaxoplanet_flux_item is not None:
     #         assert_allclose(jax.numpy.squeeze(jaxoplanet_flux_item), starry_flux_item)
+
+
+def test_map_light_curves_none_occultor():
+    surface_map = Map(
+        y=Ylm.from_dense(np.hstack([1, 0.005, 0.05, 0.09, 0.0, 0.1, 0.03])),
+        period=1.2,
+        u=(0.1, 0.1),
+    )
+
+    expected = map_light_curve(surface_map, theta=0.5)
+    calc = map_light_curve(surface_map, 0.0, 2.0, 2.0, 2.0, theta=0.5)
+
+    assert_allclose(calc, expected)
