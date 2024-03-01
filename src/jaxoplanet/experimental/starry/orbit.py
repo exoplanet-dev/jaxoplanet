@@ -24,6 +24,10 @@ class SurfaceMapSystem(System):
         ] = (),
     ):
         self.central = Central() if central is None else central
+
+        if surface_map is None:
+            surface_map = Map()
+
         self.surface_map = surface_map
 
         orbital_bodies = []
