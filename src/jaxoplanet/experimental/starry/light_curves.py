@@ -1,68 +1,88 @@
+from collections.abc import Callable
 from functools import partial
+from typing import Optional
 
 import jax
 import jax.numpy as jnp
 import numpy as np
 import scipy
-from jax.typing import ArrayLike
+from jax.experimental import sparse
 
 from jaxoplanet.experimental.starry.basis import A1, U0, A2_inv
+from jaxoplanet.experimental.starry.maps import Map
+from jaxoplanet.experimental.starry.orbit import SurfaceMapSystem
 from jaxoplanet.experimental.starry.pijk import Pijk
 from jaxoplanet.experimental.starry.rotation import left_project
 from jaxoplanet.experimental.starry.solution import solution_vector
+from jaxoplanet.light_curves.utils import vectorize
+from jaxoplanet.types import Array, Quantity
+from jaxoplanet.units import quantity_input, unit_registry as ureg
 
 
-def light_curve(system, time: ArrayLike):
-    """System light curve
+def light_curve(
+    system: SurfaceMapSystem,
+) -> Callable[[Quantity], tuple[Optional[Array], Optional[Array]]]:
+    central_bodies_lc = jax.vmap(map_light_curve, in_axes=(None, 0, 0, 0, 0, None))
 
-    Args:
-        system (orbits.keplerian.System): keplerian system containing bodies
-        (that must have defined radii)
-        time (ArrayLike): time array
-
-    Returns:
-        ArrayLike: light curves of each body in the system, starting with the
-        central body, followed by the rest of the bodies.
-    """
-    xos, yos, zos = system.relative_position(time)
-    theta = time * 2 * jnp.pi / system.central.map.period
-    central_radius = system.central.radius
-
-    central_body_lc = jax.vmap(map_light_curve, in_axes=(None, None, 0, 0, 0, 0))
-    central_bodies_lc = jax.vmap(central_body_lc, in_axes=(None, 0, 0, 0, 0, None))
-    central_light_curve = (
-        central_bodies_lc(
-            system.central.map,
-            (system.radius / central_radius).magnitude,
-            (xos / central_radius).magnitude,
-            (yos / central_radius).magnitude,
-            (zos / central_radius).magnitude,
-            theta,
-        )
-        * system.central.map.amplitude
-    )
-
-    @partial(system.body_vmap, in_axes=(0, 0, 0))
-    def bodies_lc(body, x, y, z):
-        theta = time * 2 * jnp.pi / body.map.period
+    @partial(system.surface_map_vmap, in_axes=(0, 0, 0, 0, None))
+    def compute_body_light_curve(surface_map, radius, x, y, z, time):
+        theta = time.magnitude * 2 * jnp.pi / surface_map.period
         return (
-            jax.vmap(map_light_curve, in_axes=(None, None, 0, 0, 0, 0))(
-                body.map,
-                (central_radius / body.radius).magnitude,
-                (x / body.radius).magnitude,
-                (y / body.radius).magnitude,
-                (z / body.radius).magnitude,
+            map_light_curve(
+                surface_map,
+                (system.central.radius / radius).magnitude,
+                (x / radius).magnitude,
+                (y / radius).magnitude,
+                (z / radius).magnitude,
                 theta,
             )
-            * body.map.amplitude
+            * surface_map.amplitude
         )
 
-    bodies_light_curves = bodies_lc(-xos, -yos, -zos)
-    return jnp.vstack([central_light_curve, bodies_light_curves])
+    @quantity_input(time=ureg.day)
+    @vectorize
+    def light_curve_impl(time: Quantity) -> Array:
+        xos, yos, zos = system.relative_position(time)
+
+        if system.surface_map is None:
+            central_light_curves = None
+        else:
+            theta = time.magnitude * 2 * jnp.pi / system.surface_map.period
+            central_radius = system.central.radius
+            central_light_curves = (
+                central_bodies_lc(
+                    system.surface_map,
+                    (system.radius / central_radius).magnitude,
+                    (xos / central_radius).magnitude,
+                    (yos / central_radius).magnitude,
+                    (zos / central_radius).magnitude,
+                    theta,
+                )
+                * system.surface_map.amplitude
+            )
+
+        if all(surface_map is None for surface_map in system.surface_maps):
+            body_light_curves = None
+        else:
+            body_light_curves = compute_body_light_curve(  # type: ignore
+                system.radius, -xos, -yos, -zos, time
+            )
+
+        result = jnp.zeros(system.shape, dtype=time.dtype)
+        if central_light_curves is not None:
+            result += central_light_curves
+        if body_light_curves is not None:
+            result += body_light_curves
+
+        return result
+
+    return light_curve_impl
 
 
 # TODO: figure out the sparse matrices (and Pijk) to avoid todense()
-def map_light_curve(map, r: float, xo: float, yo: float, zo: float, theta: float):
+def map_light_curve(
+    map: Optional[Map], r: Array, xo: Array, yo: Array, zo: Array, theta: Array
+) -> Array:
     """Light curve of a map
 
     Args:
@@ -76,7 +96,11 @@ def map_light_curve(map, r: float, xo: float, yo: float, zo: float, theta: float
     Returns:
         ArrayLike: light curve
     """
-    U = jnp.array([1, *map.u])
+    if map is None:
+        return jnp.zeros_like(theta)
+
+    # TODO(lgrcia): Is this the right behavior when map.u is None?
+    U = jnp.array([1, *(() if map.u is None else map.u)])
     b = jnp.sqrt(jnp.square(xo) + jnp.square(yo))
     b_rot = jnp.logical_or(jnp.greater_equal(b, 1.0 + r), jnp.less_equal(zo, 0.0))
     b_occ = jnp.logical_not(b_rot)
@@ -88,19 +112,22 @@ def map_light_curve(map, r: float, xo: float, yo: float, zo: float, theta: float
     # is a non-sparse [[1]], hence from_scipy_sparse raises an error (case deg=0) ...
     if map.deg > 0:
         A2 = scipy.sparse.linalg.inv(A2_inv(map.deg))
-        A2 = jax.experimental.sparse.BCOO.from_scipy_sparse(A2)
+        A2 = sparse.BCOO.from_scipy_sparse(A2)
     else:
         A2 = jnp.array([1])
 
     sTA2 = sT @ A2
 
-    # full rotation
-    rotated_y = left_project(
-        map.ydeg, map.inc, map.obl, theta, theta_z, map.y.todense()
-    )
+    # TODO(lgrcia): Is this the right behavior when map.y is None?
+    if map.y is None:
+        rotated_y = jnp.zeros(map.ydeg)
+    else:
+        rotated_y = left_project(
+            map.ydeg, map.inc, map.obl, theta, theta_z, map.y.todense()
+        )
 
     # limb darkening product
-    A1_val = jax.experimental.sparse.BCOO.from_scipy_sparse(A1(map.ydeg))
+    A1_val = sparse.BCOO.from_scipy_sparse(A1(map.ydeg))
     p_y = Pijk.from_dense(A1_val @ rotated_y, degree=map.ydeg)
     p_u = Pijk.from_dense(U @ U0(map.udeg), degree=map.udeg)
     p_y = p_y * p_u
@@ -111,8 +138,8 @@ def map_light_curve(map, r: float, xo: float, yo: float, zo: float, theta: float
     return (p_y.tosparse() @ x) * norm
 
 
-def rT(lmax):
-    rt = [0 for _ in range((lmax + 1) * (lmax + 1))]
+def rT(lmax: int) -> Array:
+    rt = [0.0 for _ in range((lmax + 1) * (lmax + 1))]
     amp0 = jnp.pi
     lfac1 = 1.0
     lfac2 = 2.0 / 3.0
@@ -151,5 +178,5 @@ def rT(lmax):
     return np.array(rt)
 
 
-def rTA1(lmax):
+def rTA1(lmax: int) -> Array:
     return rT(lmax) @ A1(lmax)

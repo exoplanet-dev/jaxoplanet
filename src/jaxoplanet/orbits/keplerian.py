@@ -2,13 +2,11 @@ from collections.abc import Iterable, Sequence
 from typing import Any, Callable, Optional, Union
 
 import equinox as eqx
-import jax
 import jax.numpy as jnp
 import jpu.numpy as jnpu
 
 from jaxoplanet import units
 from jaxoplanet.core.kepler import kepler
-from jaxoplanet.experimental.starry.maps import Map
 from jaxoplanet.object_stack import ObjectStack
 from jaxoplanet.types import Quantity
 from jaxoplanet.units import unit_registry as ureg
@@ -28,7 +26,6 @@ class Central(eqx.Module):
     mass: Quantity = units.field(units=ureg.M_sun)
     radius: Quantity = units.field(units=ureg.R_sun)
     density: Quantity = units.field(units=ureg.M_sun / ureg.R_sun**3)
-    map: Optional[Map] = None
 
     @units.quantity_input(
         mass=ureg.M_sun, radius=ureg.R_sun, density=ureg.M_sun / ureg.R_sun**3
@@ -39,7 +36,6 @@ class Central(eqx.Module):
         mass: Optional[Quantity] = None,
         radius: Optional[Quantity] = None,
         density: Optional[Quantity] = None,
-        map: Optional[Map] = None,
     ):
         if radius is None and mass is None:
             radius = 1.0 * ureg.R_sun
@@ -75,11 +71,6 @@ class Central(eqx.Module):
             self.mass = 4 * jnp.pi * radius**3 * density / 3.0
             self.radius = radius
             self.density = density
-
-        if map is None:
-            self.map = Map()
-        else:
-            self.map = map
 
     @classmethod
     def from_orbital_properties(
@@ -192,7 +183,6 @@ class Body(eqx.Module):
         default=None, units=ureg.R_sun / ureg.d
     )
     parallax: Optional[Quantity] = units.field(default=None, units=ureg.arcsec)
-    map: Optional[Map] = None
 
     def __check_init__(self) -> None:
         if not ((self.period is None) ^ (self.semimajor is None)):
@@ -287,7 +277,6 @@ class OrbitalBody(eqx.Module):
         units=ureg.R_sun / ureg.d
     )
     parallax: Optional[Quantity] = units.field(units=ureg.arcsec)
-    map: Optional[Map] = None
 
     def __init__(self, central: Central, body: Body):
         self.central = central
@@ -370,11 +359,6 @@ class OrbitalBody(eqx.Module):
             self.time_transit = body.time_peri - self.time_ref
         else:
             self.time_transit = jnpu.zeros_like(self.time_ref)
-
-        if body.map is None:
-            self.map = Map(amplitude=0.0)
-        else:
-            self.map = body.map
 
     @property
     def shape(self) -> tuple[int, ...]:
@@ -731,13 +715,6 @@ class System(eqx.Module):
     @property
     def central_radius(self) -> Quantity:
         return self.body_vmap(lambda body: body.central_radius)()
-
-    @property
-    def map(self):
-        return jax.tree_util.tree_map(
-            lambda *x: jnp.stack(x, axis=0),
-            *[body.map for body in self._body_stack.objects],
-        )
 
     def add_body(self, body: Optional[Body] = None, **kwargs: Any) -> "System":
         if body is None:
