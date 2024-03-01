@@ -7,6 +7,7 @@ from jaxoplanet.experimental.starry.light_curves import light_curve, map_light_c
 from jaxoplanet.experimental.starry.orbit import SurfaceMapSystem
 from jaxoplanet.orbits import keplerian
 from jaxoplanet.test_utils import assert_allclose
+import jax.numpy as jnp
 
 
 @pytest.mark.parametrize("deg", [2, 5, 10])
@@ -189,5 +190,30 @@ def test_map_light_curves_none_occultor():
 
     expected = map_light_curve(surface_map, theta=0.5)
     calc = map_light_curve(surface_map, 0.0, 2.0, 2.0, 2.0, theta=0.5)
+
+    assert_allclose(calc, expected)
+
+
+@pytest.mark.parametrize("deg", [2, 5, 10])
+def test_compare_starry_rot(deg):
+    starry = pytest.importorskip("starry")
+    starry.config.lazy = False
+
+    # map
+    inc = np.pi / 2
+    np.random.seed(deg)
+    y = Ylm.from_dense(np.random.randn((deg + 1) ** 2))
+    map = Map(y=y, inc=inc)
+
+    # phase
+    theta = np.linspace(0, 2 * np.pi, 200)
+
+    # starry
+    ms = starry.Map(ydeg=deg, inc=np.rad2deg(inc))
+    ms[:, :] = y.todense()
+    expected = ms.flux(theta=np.rad2deg(theta))
+    calc = jax.vmap(map_light_curve, in_axes=(None, None, None, None, None, 0))(
+        map, None, None, None, None, theta
+    )
 
     assert_allclose(calc, expected)
