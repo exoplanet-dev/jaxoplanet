@@ -15,7 +15,3 @@ dist
 poetry.lock
 .*_cache
 .jupyter
-
-jupyter_execute
-dev
-docs/**/summary
