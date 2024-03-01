@@ -80,11 +80,11 @@ def light_curve(
 # TODO: figure out the sparse matrices (and Pijk) to avoid todense()
 def map_light_curve(
     map,
-    r: float = None,
-    xo: float = None,
-    yo: float = None,
-    zo: float = None,
-    theta: float = 0.0,
+    r: Optional[Array] = None,
+    xo: Optional[Array] = None,
+    yo: Optional[Array] = None,
+    zo: Optional[Array] = None,
+    theta: Optional[Array] = 0.0,
 ):
     """Light curve of an occulted map.
 
