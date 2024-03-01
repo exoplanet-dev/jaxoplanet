@@ -7,7 +7,6 @@ from jaxoplanet.experimental.starry.light_curves import light_curve, map_light_c
 from jaxoplanet.experimental.starry.orbit import SurfaceMapSystem
 from jaxoplanet.orbits import keplerian
 from jaxoplanet.test_utils import assert_allclose
-import jax.numpy as jnp
 
 
 @pytest.mark.parametrize("deg", [2, 5, 10])
