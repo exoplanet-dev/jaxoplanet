@@ -73,6 +73,9 @@ class Central(eqx.Module):
             self.density = density
 
     @classmethod
+    @units.quantity_input(
+        period=ureg.day, semimajor=ureg.R_sun, radius=ureg.R_sun, body_mass=ureg.M_sun
+    )
     def from_orbital_properties(
         cls,
         *,
@@ -716,10 +719,18 @@ class System(eqx.Module):
     def central_radius(self) -> Quantity:
         return self.body_vmap(lambda body: body.central_radius)()
 
-    def add_body(self, body: Optional[Body] = None, **kwargs: Any) -> "System":
-        if body is None:
-            body = Body(**kwargs)
-        return System(central=self.central, bodies=self.bodies + (body,))
+    def add_body(
+        self,
+        body: Optional[Body] = None,
+        central: Optional[Central] = None,
+        **kwargs: Any,
+    ) -> "System":
+        body_: Optional[Union[Body, OrbitalBody]] = body
+        if body_ is None:
+            body_ = Body(**kwargs)
+        if central is not None:
+            body_ = OrbitalBody(central, body_)
+        return System(central=self.central, bodies=self.bodies + (body_,))
 
     def body_vmap(
         self,
