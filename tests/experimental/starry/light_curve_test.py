@@ -111,6 +111,20 @@ def keplerian_system(request):
 
 
 def test_compare_starry_system(keplerian_system):
+    def extract_starry_map_kwargs(jaxoplanet_map):
+        if jaxoplanet_map is None:
+            # starry's simplest case: a limb darkened map
+            map_kwargs = dict(ydeg=0, rv=False, reflected=False)
+        else:
+            map_kwargs = dict(
+                ydeg=jaxoplanet_map.ydeg,
+                udeg=jaxoplanet_map.udeg,
+                inc=np.rad2deg(jaxoplanet_map.inc),
+                obl=np.rad2deg(jaxoplanet_map.obl),
+                amp=jaxoplanet_map.amplitude,
+            )
+        return map_kwargs
+
     starry = pytest.importorskip("starry")
     starry.config.lazy = False
 
@@ -124,42 +138,43 @@ def test_compare_starry_system(keplerian_system):
     jaxoplanet_flux = light_curve(keplerian_system)(time)
 
     # starry system
+    central_map_kwargs = extract_starry_map_kwargs(central_map)
     pri = starry.Primary(
-        starry.Map(
-            ydeg=central_map.ydeg,
-            udeg=central_map.udeg,
-            inc=np.rad2deg(central_map.inc),
-            obl=np.rad2deg(central_map.obl),
-            amp=central_map.amplitude,
-        ),
+        starry.Map(**central_map_kwargs),
         r=central.radius.magnitude,
         m=central.mass.magnitude,
-        prot=central_map.period,
+        prot=0 if central_map is None else central_map.period,
     )
-    if central_map.u:
+    if central_map and central_map.u:
         pri.map[1:] = central_map.u
-    if central_map.deg > 0:
+    if central_map and central_map.deg > 0:
         pri.map[1:, :] = np.asarray(central_map.y.todense())[1:]
 
+    body_map_kwargs = extract_starry_map_kwargs(body_map)
     sec = starry.Secondary(
-        starry.Map(
-            ydeg=body_map.ydeg,
-            udeg=body_map.udeg,
-            inc=np.rad2deg(body_map.inc),
-            obl=np.rad2deg(body_map.obl),
-            amp=body_map.amplitude,
-        ),
+        starry.Map(**body_map_kwargs),
         r=body.radius.magnitude,
         m=body.mass.magnitude,
         porb=body.period.magnitude,
-        prot=body_map.period,
+        prot=0 if body_map is None else body_map.period,
     )
-    if body_map.u:
+    if body_map and body_map.u:
         sec.map[1:] = body_map.u
-
-    if body_map.deg > 0:
+    if body_map and body_map.deg > 0:
         sec.map[1:, :] = np.asarray(body_map.y.todense())[1:]
 
     starry_system = starry.System(pri, sec)
     starry_flux = starry_system.flux(time, total=False)
-    assert_allclose(jaxoplanet_flux, starry_flux)
+
+    # compare summed jaxponet fluxes with the corresponding starry fluxes
+    if body_map is None:
+        assert_allclose(jax.numpy.squeeze(jaxoplanet_flux), starry_flux[0])
+    elif central_map is None:
+        assert_allclose(jax.numpy.squeeze(jaxoplanet_flux), starry_flux[1])
+    else:
+        assert_allclose(jax.numpy.squeeze(jaxoplanet_flux), np.sum(starry_flux, axis=0))
+
+    # compare individual jaxpolanet fluxes with the corresponding starry fluxes
+    # for jaxoplanet_flux_item, starry_flux_item in zip(jaxoplanet_flux, starry_flux):
+    #     if jaxoplanet_flux_item is not None:
+    #         assert_allclose(jax.numpy.squeeze(jaxoplanet_flux_item), starry_flux_item)
