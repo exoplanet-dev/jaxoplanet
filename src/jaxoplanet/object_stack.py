@@ -1,3 +1,5 @@
+__all__ = ["ObjectStack"]
+
 from collections.abc import Callable, Sequence
 from functools import wraps
 from typing import Any, Generic, Optional, TypeVar, Union
