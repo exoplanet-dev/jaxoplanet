@@ -1,3 +1,9 @@
+"""This module provides the functions needed to compute a limb darkened light curve as
+described by `Agol et al. (2020) <https://arxiv.org/abs/1908.03222>`_.
+"""
+
+__all__ = ["light_curve"]
+
 from functools import partial
 from typing import Callable
 
@@ -12,7 +18,25 @@ from jaxoplanet.utils import zero_safe_sqrt
 
 @partial(jax.jit, static_argnames=("order",))
 def light_curve(u: Array, b: Array, r: Array, *, order: int = 10):
-    u = jnp.atleast_1d(u)
+    """Compute the light curve for arbitrary polynomial limb darkening
+
+    See `Agol et al. (2020) <https://arxiv.org/abs/1908.03222>`_ for more technical
+    details. Unlike in that paper, here we don't evaluate all the solution vector
+    integrals in closed form. Instead, for all but the lowest order terms, we numerically
+    integrate the relevant 1D line integral using Gauss-Legendre quadrature at fixed
+    order ``order``.
+
+
+    Args:
+        u (Array): The coefficients of the polynomial limb darkening model
+        b (Array): The center-to-center distance between the occultor and the occulted
+            body
+        r (Array): The radius ratio between the occultor and the occulted body
+        order (int): The quadrature order to use when numerically computing the the 1D
+            line integral
+    """
+
+    u = jnp.asarray(u)
     assert u.ndim == 1
     if u.shape[0] == 0:
         g = jnp.full((1,), 1.0 / jnp.pi)
@@ -36,27 +60,25 @@ def solution_vector(l_max: int, order: int = 10) -> Callable[[Array, Array], Arr
         no_occ = jnp.greater_equal(b, 1 + r)
         full_occ = jnp.less_equal(1 + b, r)
         cond = jnp.logical_or(no_occ, full_occ)
-        b_ = jnp.where(cond, jnp.ones_like(b), b)
+        b_: Array = jnp.where(cond, jnp.ones_like(b), b)
 
         b2 = jnp.square(b_)
         r2 = jnp.square(r)
 
         s0, s2 = s0s2(b_, r, b2, r2, area, kappa0, kappa1)
-        s0 = jnp.where(no_occ, jnp.pi, s0)
+        s0: Array = jnp.where(no_occ, jnp.pi, s0)
         s0 = jnp.where(full_occ, jnp.zeros_like(s0), s0)
         s2 = jnp.where(cond, jnp.zeros_like(s2), s2)
 
-        if l_max >= 1:
-            P = p_integral(order, l_max, b_, r, b2, r2, kappa0)
-            P = jnp.where(cond, jnp.zeros_like(P), P)
-
         s = [s0[None]]
         if l_max >= 1:
+            P: Array = p_integral(order, l_max, b_, r, b2, r2, kappa0)
+            P = jnp.where(cond, jnp.zeros_like(P), P)
             s.append(-P[:1] - 2 * (kappa1 - jnp.pi) / 3)
-        if l_max >= 2:
-            s.append(s2[None])
-        if l_max >= 3:
-            s.append(-P[1:])
+            if l_max >= 2:
+                s.append(s2[None])  # type: ignore
+            if l_max >= 3:
+                s.append(-P[1:])
         return jnp.concatenate(s, axis=0)
 
     return impl
@@ -82,7 +104,7 @@ def kappas(b: Array, r: Array) -> tuple[Array, Array, Array]:
     factor = (r - 1) * (r + 1)
     cond = jnp.logical_and(jnp.greater(b, jnp.abs(1 - r)), jnp.less(b, 1 + r))
     b_ = jnp.where(cond, b, jnp.ones_like(b))
-    area = jnp.where(cond, kite_area(r, b_, jnp.ones_like(r)), jnp.zeros_like(r))
+    area: Array = jnp.where(cond, kite_area(r, b_, jnp.ones_like(r)), jnp.zeros_like(r))
     return area, jnp.arctan2(area, b2 + factor), jnp.arctan2(area, b2 - factor)
 
 
@@ -127,7 +149,7 @@ def p_integral(
     # This is a hack for when r -> 0 or b -> 0, so k2 -> inf
     factor = 4 * b * r
     k2_cond = jnp.less(factor, 10 * jnp.finfo(factor.dtype).eps)
-    factor = jnp.where(k2_cond, jnp.ones_like(factor), factor)
+    factor: Array = jnp.where(k2_cond, jnp.ones_like(factor), factor)
     k2 = jnp.maximum(jnp.zeros_like(factor), (1 - r2 - b2 + 2 * b * r) / factor)
 
     roots, weights = roots_legendre(order)

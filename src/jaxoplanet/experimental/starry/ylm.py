@@ -28,15 +28,15 @@ class Ylm(eqx.Module):
         ValueError: if relative is True and the (0, 0) coefficient is zero.
     """
 
+    # coefficients of the spherical harmonic expansion of the map in the form
+    # {(l, m): coefficient}
+    data: dict[tuple[int, int], Array]
+
     # maximum degree of the spherical harmonic expansion
     ell_max: int = eqx.field(static=True)
 
     # whether the spherical harmonic expansion is diagonal (all m=0)
     diagonal: bool = eqx.field(static=True)
-
-    # coefficients of the spherical harmonic expansion of the map in the form
-    # {(l, m): coefficient}
-    data: Optional[dict[tuple[int, int], Array]] = None
 
     def __init__(
         self,
@@ -56,28 +56,24 @@ class Ylm(eqx.Module):
         self.diagonal = all(m == 0 for _, m in data.keys())
 
     @property
-    def shape(self):
+    def shape(self) -> tuple[int, ...]:
         """The number of coefficients in the expansion. This sets the shape of
         the output of `todense`."""
-        return self.ell_max**2 + 2 * self.ell_max + 1
+        return (self.ell_max**2 + 2 * self.ell_max + 1,)
 
     @property
-    def indices(self):
-        return self.data.keys()
+    def indices(self) -> list[tuple[int, int]]:
+        return list(self.data.keys())
 
     def index(self, ell: Array, m: Array) -> Array:
         """Convert the degree and order of the spherical harmonic to the
         corresponding index in the coefficient array."""
-        if np.any(np.abs(m) > ell):
-            raise ValueError(
-                "All spherical harmonic orders 'm' must be in the range [-ell, ell]"
-            )
         return ell * (ell + 1) + m
 
     def tosparse(self) -> BCOO:
         indices, values = zip(*self.data.items())
-        idx = np.array([self.index(ell, m) for ell, m in indices])[:, None]
-        return BCOO((jnp.asarray(values), idx), shape=(self.shape,))
+        idx = jnp.array([self.index(ell, m) for ell, m in indices])[:, None]
+        return BCOO((jnp.asarray(values), idx), shape=self.shape)
 
     def todense(self) -> Array:
         return self.tosparse().todense()

@@ -59,6 +59,17 @@ def test_keplerian_central_density():
     )
 
 
+def test_keplerian_central_from_orbit():
+    sun = Central.from_orbital_properties(
+        period=1.0 * ureg.yr,
+        semimajor=1.0 * ureg.au,
+        radius=1.0 * ureg.R_sun,
+        body_mass=1.0 * ureg.M_earth,
+    )
+    # add large tolerance to account for lack of precision in ureg.yr
+    assert_quantity_allclose(sun.mass, 1.0 * ureg.M_sun, atol=5e-5)
+
+
 def test_keplerian_body_keplers_law():
     orbit = System().add_body(semimajor=1.0 * ureg.au)
     assert_quantity_allclose(

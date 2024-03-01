@@ -7,7 +7,6 @@ import jax.numpy as jnp
 from jax.scipy.spatial.transform import Rotation
 
 from jaxoplanet.experimental.starry.basis import A1, U0, poly_basis
-from jaxoplanet.experimental.starry.light_curves import map_light_curve
 from jaxoplanet.experimental.starry.pijk import Pijk
 from jaxoplanet.experimental.starry.rotation import (
     left_project,
@@ -179,6 +178,8 @@ class Map(eqx.Module):
         return self._intensity(x, y, z)
 
     def flux(self, time):
+        from jaxoplanet.experimental.starry.light_curves import map_light_curve
+
         theta = time * 2 * jnp.pi / self.period
         return (
             jnp.vectorize(partial(map_light_curve, self, 0.0, 2.0, 2.0, 2.0))(theta)
