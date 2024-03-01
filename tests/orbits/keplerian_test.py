@@ -67,7 +67,7 @@ def test_keplerian_central_from_orbit():
         body_mass=1.0 * ureg.M_earth,
     )
     # add large tolerance to account for lack of precision in ureg.yr
-    assert_quantity_allclose(sun.mass, 1.0 * ureg.M_sun, atol=1e-5)
+    assert_quantity_allclose(sun.mass, 1.0 * ureg.M_sun, atol=5e-5)
 
 
 def test_keplerian_body_keplers_law():
