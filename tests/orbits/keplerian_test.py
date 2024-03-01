@@ -60,7 +60,7 @@ def test_keplerian_central_density():
 
 
 def test_keplerian_central_from_orbit():
-    sun = keplerian.Central.from_orbital_properties(
+    sun = Central.from_orbital_properties(
         period=1.0 * ureg.yr,
         semimajor=1.0 * ureg.au,
         radius=1.0 * ureg.R_sun,
