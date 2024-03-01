@@ -176,12 +176,3 @@ class Map(eqx.Module):
         x, y, z = rotation.apply(jnp.array([x, y, z]).T).T
 
         return self._intensity(x, y, z)
-
-    def flux(self, time):
-        from jaxoplanet.experimental.starry.light_curves import map_light_curve
-
-        theta = time * 2 * jnp.pi / self.period
-        return (
-            jnp.vectorize(partial(map_light_curve, self, 0.0, 2.0, 2.0, 2.0))(theta)
-            * self.amplitude
-        )
