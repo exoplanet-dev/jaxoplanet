@@ -192,8 +192,6 @@ def test_compare_starry_system(keplerian_system):
 
         return starry_body
 
-        return starry_body
-
     time = np.linspace(-1.5, 1.0, 300)
 
     # jaxoplanet
@@ -219,7 +217,8 @@ def test_compare_starry_system(keplerian_system):
     # elif central_map is None:
     #     assert_allclose(jax.numpy.squeeze(jaxoplanet_flux), starry_flux[1])
     # else:
-    #     assert_allclose(jax.numpy.squeeze(jaxoplanet_flux), np.sum(starry_flux, axis=0))
+    #     assert_allclose(jax.numpy.squeeze(jaxoplanet_flux),
+    # np.sum(starry_flux, axis=0))
 
     # # compare individual jaxpolanet fluxes with the corresponding starry fluxes
     # for jaxoplanet_flux_item, starry_flux_item in zip(jaxoplanet_flux, starry_flux):
