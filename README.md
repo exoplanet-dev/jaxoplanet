@@ -52,12 +52,20 @@ the repo is:
 
 ```
 @software{jaxoplanet,
-  author = {{Foreman-Mackey}, D. and {Garcia}, L.~J. and {Hattori}, S.
-            and {Dong}, J. and {Murray}, C. and {Dholakia}, S. and {Degen}, D.},
-  title = {{jaxoplanet}: Astronomical time series analysis with {JAX}},
-  url = {http://github.com/exoplanet-dev/jaxoplanet},
-  version = {0.0.2},
-  year = {2024},
+  author       = {Soichiro Hattori and
+                  Lionel Garcia and
+                  Catriona Murray and
+                  Jiayin Dong and
+                  Shashank Dholakia and
+                  David Degen and
+                  Daniel Foreman-Mackey},
+  title        = {{exoplanet-dev/jaxoplanet: Astronomical time series analysis with JAX}},
+  month        = mar,
+  year         = 2024,
+  publisher    = {Zenodo},
+  version      = {v0.0.2},
+  doi          = {10.5281/zenodo.10736936},
+  url          = {https://doi.org/10.5281/zenodo.10736936}
 }
 ```
 
