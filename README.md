@@ -53,10 +53,10 @@ the repo is:
 ```
 @software{jaxoplanet,
   author = {{Foreman-Mackey}, D. and {Garcia}, L.~J. and {Hattori}, S.
-            and {Dong}, J. and {Murray}, C.},
+            and {Dong}, J. and {Murray}, C. and {Dholakia}, S. and {Degen}, D.},
   title = {{jaxoplanet}: Astronomical time series analysis with {JAX}},
   url = {http://github.com/exoplanet-dev/jaxoplanet},
-  version = {0.0.1},
+  version = {0.0.2},
   year = {2024},
 }
 ```
