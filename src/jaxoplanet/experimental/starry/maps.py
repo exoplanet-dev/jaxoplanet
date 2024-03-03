@@ -23,7 +23,8 @@ class Map(eqx.Module):
         y (Optional[Union[Ylm, float]], optional): Ylm object containing the
         spherical harmonic expansion of the map. Defaults to None (a uniform map)
         with amplitude 1.0.
-        inc (Optional[float], optional): inclination of the map. Defaults to 0.
+        inc (Optional[float], optional): inclination of the map relative
+        to line of sight. Defaults to 90 degrees (pi/2 radians).
         obl (Optional[float], optional): obliquity iof the map. Defaults to 0.
         u (Optional[tuple], optional): polynomial limb-darkening coefficients of
         the map. Defaults to ().
@@ -111,6 +112,7 @@ class Map(eqx.Module):
         self.u = u
         self.period = period
         self.amplitude = amplitude
+        self.normalize = normalize
 
     @property
     def poly_basis(self):
