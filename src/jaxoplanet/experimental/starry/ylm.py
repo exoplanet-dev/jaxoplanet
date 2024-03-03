@@ -21,11 +21,11 @@ class Ylm(eqx.Module):
     Args:
         data (Mapping[tuple[int, int], Array], optional): dictionary of
             spherical harmonic coefficients. Defaults to {(0, 0): 1.0}.
-        relative (bool, optional): Whether to normalize the coefficients by the
+        normalize (bool, optional): Whether to normalize the coefficients by the
             value of the (0, 0) coefficient. Defaults to True.
 
     Raises:
-        ValueError: if relative is True and the (0, 0) coefficient is zero.
+        ValueError: if normalize is True and the (0, 0) coefficient is zero.
     """
 
     # coefficients of the spherical harmonic expansion of the map in the form
@@ -48,7 +48,7 @@ class Ylm(eqx.Module):
 
         if normalize:
             assert data[(0, 0)] != 0.0, ValueError(
-                "The (0, 0) coefficient must be non-zero if relative=True"
+                "The (0, 0) coefficient must be non-zero if normalize=True"
             )
             data = {k: v / data[(0, 0)] for k, v in data.items()}
         self.data = dict(data)
