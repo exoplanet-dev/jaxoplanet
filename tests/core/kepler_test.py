@@ -65,8 +65,10 @@ def test_pi():
 
 
 @pytest.mark.parametrize("e", [0.01, 0.1, 0.5, 0.6])
+@pytest.mark.xfail(
+    not jax.config.jax_enable_x64,
+    reason="Gradients can be noisy at single point precision",
+)
 def test_grad(e):
-    E = jnp.linspace(-5, 5, 100)
-    M, _ = get_mean_and_true_anomaly(e, E)
-    for m in M:
-        check_grads(kepler, (m, e), order=1)
+    M = jnp.linspace(-5, 5, 100)
+    check_grads(kepler, (M, e), order=1)
