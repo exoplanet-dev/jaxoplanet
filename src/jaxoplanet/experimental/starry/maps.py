@@ -24,12 +24,13 @@ class Map(eqx.Module):
     Args:
         y: Ylm object containing the spherical harmonic expansion of the map. Defaults to
             a uniform map with amplitude 1.0.
-        inc: inclination of the map.
-        obl: obliquity iof the map.
-        u: polynomial limb-darkening coefficients of  map.
+        inc: inclination of the map relative to line of sight.
+            Defaults to 90 degrees (pi/2 radians).
+        obl: obliquity of the map.
+        u: polynomial limb-darkening coefficients of the map.
         period: rotation period of the map.
-        amplitude: amplitude of the map, this quantity is to the luminosity of the map
-            and multiplies all flux-related observables.
+        amplitude: amplitude of the map; this quantity is proportional to the luminosity
+            of the map and multiplies all flux-related observables.
         normalize: whether to normalize the coefficients of the spherical harmonics. If
             True, Ylm is normalized and the amplitude of the map is set to y[(0, 0)].
 
@@ -69,6 +70,9 @@ class Map(eqx.Module):
     # Amplitude of the map, a quantity proportional to map luminosity.
     amplitude: Array
 
+    # Boolean to specify whether the Ylm coefficients should be normalized
+    normalize: bool
+
     def __init__(
         self,
         *,
@@ -80,12 +84,13 @@ class Map(eqx.Module):
         amplitude: Array = 1.0,
         normalize: bool = True,
     ):
+
         if y is None:
             y = Ylm()
 
         if normalize:
-            amplitude = y[(0, 0)]
-            y = Ylm(data=y.data, normalize=True)
+            amplitude = float(y[(0, 0)])
+            y = Ylm(data=y.data).normalize()
 
         self.y = y
         self.inc = inc
@@ -93,6 +98,7 @@ class Map(eqx.Module):
         self.u = tuple(u)
         self.period = period
         self.amplitude = amplitude
+        self.normalize = normalize
 
     @property
     def poly_basis(self):
