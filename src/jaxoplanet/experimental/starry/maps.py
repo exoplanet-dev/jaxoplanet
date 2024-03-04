@@ -70,6 +70,9 @@ class Map(eqx.Module):
     # Amplitude of the map, a quantity proportional to map luminosity.
     amplitude: Array
 
+    # Boolean to specify whether the Ylm coefficients should be normalized
+    normalize: bool
+
     def __init__(
         self,
         *,
