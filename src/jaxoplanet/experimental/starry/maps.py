@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from functools import partial
 from typing import Optional
 
@@ -14,28 +15,24 @@ from jaxoplanet.experimental.starry.rotation import (
 )
 from jaxoplanet.experimental.starry.utils import ortho_grid
 from jaxoplanet.experimental.starry.ylm import Ylm
+from jaxoplanet.types import Array
 
 
 class Map(eqx.Module):
     """Surface map object.
 
     Args:
-        y (Optional[Union[Ylm, float]], optional): Ylm object containing the
-        spherical harmonic expansion of the map. Defaults to None (a uniform map)
-        with amplitude 1.0.
-        inc (Optional[float], optional): inclination of the map relative
-        to line of sight. Defaults to 90 degrees (pi/2 radians).
-        obl (Optional[float], optional): obliquity iof the map. Defaults to 0.
-        u (Optional[tuple], optional): polynomial limb-darkening coefficients of
-        the map. Defaults to ().
-        period (Optional[float], optional): rotation period of the map. Defaults to
-        1e15.
-        amplitude (Optional[float], optional): amplitude of the map, this quantity is
-        proportional to the luminosity of the map and multiplies all flux-related
-        observables. Defaults to 1..
-        normalize (Optional[bool], optional): whether to normalize the coefficients
-        of the spherical harmonics. If None or True, Ylm is normalized and the
-        amplitude of the map is set to y[(0, 0)]. Defaults to None.
+        y: Ylm object containing the spherical harmonic expansion of the map. Defaults to
+            a uniform map with amplitude 1.0.
+        inc: inclination of the map relative to line of sight.
+            Defaults to 90 degrees (pi/2 radians).
+        obl: obliquity of the map.
+        u: polynomial limb-darkening coefficients of the map.
+        period: rotation period of the map.
+        amplitude: amplitude of the map; this quantity is proportional to the luminosity
+            of the map and multiplies all flux-related observables.
+        normalize: whether to normalize the coefficients of the spherical harmonics. If
+            True, Ylm is normalized and the amplitude of the map is set to y[(0, 0)].
 
     Example:
 
@@ -56,51 +53,37 @@ class Map(eqx.Module):
     """
 
     # Ylm object representing the spherical harmonic expansion of the map.
-    y: Optional[Ylm] = None
+    y: Ylm
 
     # Inclination of the map in radians.
-    inc: Optional[float] = None
+    inc: Array
 
     # Obliquity of the map in radians.
-    obl: Optional[float] = None
+    obl: Array
 
     # Tuple of limb darkening coefficients.
-    u: Optional[tuple] = None
+    u: tuple[Array, ...]
 
     # Rotation period of the map in days (attribute subject to change)
-    period: Optional[float] = None
+    period: Optional[Array]
 
     # Amplitude of the map, a quantity proportional to map luminosity.
-    amplitude: Optional[float] = None
-
-    # Whether to normalize the coefficients of the spherical harmonic.
-    normalize: Optional[bool] = None
+    amplitude: Array
 
     def __init__(
         self,
         *,
         y: Optional[Ylm] = None,
-        inc: Optional[float] = None,
-        obl: Optional[float] = None,
-        u: Optional[tuple] = None,
-        period: Optional[float] = None,
-        amplitude: Optional[float] = None,
-        normalize: Optional[bool] = None,
+        inc: Array = 0.5 * jnp.pi,
+        obl: Array = 0.0,
+        u: Iterable[Array] = (),
+        period: Optional[Array] = None,
+        amplitude: Array = 1.0,
+        normalize: bool = True,
     ):
+
         if y is None:
             y = Ylm()
-        if inc is None:
-            inc = jnp.pi / 2
-        if obl is None:
-            obl = 0.0
-        if u is None:
-            u = ()
-        if period is None:
-            period = 1e15
-        if amplitude is None:
-            amplitude = 1.0
-        if normalize is None:
-            normalize = True
 
         if normalize:
             amplitude = float(y[(0, 0)])
@@ -109,7 +92,7 @@ class Map(eqx.Module):
         self.y = y
         self.inc = inc
         self.obl = obl
-        self.u = u
+        self.u = tuple(u)
         self.period = period
         self.amplitude = amplitude
         self.normalize = normalize
@@ -179,10 +162,16 @@ class Map(eqx.Module):
 
         return self._intensity(x, y, z)
 
+    def rotational_phase(self, time: Array) -> Array:
+        if self.period is None:
+            return jnp.zeros_like(time)
+        else:
+            return 2 * jnp.pi * time / self.period
+
     def flux(self, time):
         from jaxoplanet.experimental.starry.light_curves import map_light_curve
 
-        theta = time * 2 * jnp.pi / self.period
+        theta = self.rotational_phase(time)
         return (
             jnp.vectorize(partial(map_light_curve, self, 0.0, 2.0, 2.0, 2.0))(theta)
             * self.amplitude
