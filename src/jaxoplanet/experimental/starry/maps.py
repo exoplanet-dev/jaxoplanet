@@ -90,7 +90,7 @@ class Map(eqx.Module):
 
         if normalize:
             amplitude = float(y[(0, 0)])
-            y = Ylm(data=y.data, normalize=True)
+            y = Ylm(data=y.data).normalize()
 
         self.y = y
         self.inc = inc
