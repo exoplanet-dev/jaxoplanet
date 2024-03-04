@@ -26,7 +26,7 @@ def light_curve(
 
     @partial(system.surface_map_vmap, in_axes=(0, 0, 0, 0, None))
     def compute_body_light_curve(surface_map, radius, x, y, z, time):
-        theta = time.magnitude * 2 * jnp.pi / surface_map.period
+        theta = surface_map.rotational_phase(time.magnitude)
         return (
             map_light_curve(
                 surface_map,
@@ -47,7 +47,7 @@ def light_curve(
         if system.surface_map is None:
             central_light_curves = None
         else:
-            theta = time.magnitude * 2 * jnp.pi / system.surface_map.period
+            theta = system.surface_map.rotational_phase(time.magnitude)
             central_radius = system.central.radius
             central_light_curves = (
                 central_bodies_lc(
