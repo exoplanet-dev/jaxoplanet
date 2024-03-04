@@ -90,7 +90,11 @@ class Ylm(eqx.Module):
             ell = int(np.floor(np.sqrt(i)))
             m = i - ell * (ell + 1)
             data[(ell, m)] = ylm
-        return cls(data, normalize=normalize)
+        ylm = cls(data)
+        if normalize:
+            return ylm.normalize()
+        else:
+            return ylm
 
     def __mul__(self, other: Any) -> "Ylm":
         if isinstance(other, Ylm):
