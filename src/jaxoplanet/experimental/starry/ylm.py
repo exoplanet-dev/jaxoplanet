@@ -21,11 +21,6 @@ class Ylm(eqx.Module):
     Args:
         data (Mapping[tuple[int, int], Array], optional): dictionary of
             spherical harmonic coefficients. Defaults to {(0, 0): 1.0}.
-        normalize (bool, optional): Whether to normalize the coefficients by the
-            value of the (0, 0) coefficient. Defaults to True.
-
-    Raises:
-        ValueError: if normalize is True and the (0, 0) coefficient is zero.
     """
 
     # coefficients of the spherical harmonic expansion of the map in the form
@@ -41,16 +36,10 @@ class Ylm(eqx.Module):
     def __init__(
         self,
         data: Optional[Mapping[tuple[int, int], Array]] = None,
-        normalize: bool = True,
     ):
         if data is None:
             data = {(0, 0): 1.0}
 
-        if normalize:
-            assert data[(0, 0)] != 0.0, ValueError(
-                "The (0, 0) coefficient must be non-zero if normalize=True"
-            )
-            data = {k: v / data[(0, 0)] for k, v in data.items()}
         self.data = dict(data)
         self.ell_max = max(ell for ell, _ in data.keys())
         self.diagonal = all(m == 0 for _, m in data.keys())
@@ -69,6 +58,22 @@ class Ylm(eqx.Module):
         """Convert the degree and order of the spherical harmonic to the
         corresponding index in the coefficient array."""
         return ell * (ell + 1) + m
+
+    def normalize(self) -> "Ylm":
+        """Return a new Ylm instance with normalized coefficients.
+
+        Returns:
+            Ylm instance with normalized coefficients.
+
+        Raises:
+            ValueError: if the (0, 0) coefficient is zero.
+        """
+
+        assert self.data[(0, 0)] != 0.0, ValueError(
+            "The (0, 0) coefficient must be non-zero to normalize"
+        )
+        data = {k: v / self.data[(0, 0)] for k, v in self.data.items()}
+        return Ylm(data=data)
 
     def tosparse(self) -> BCOO:
         indices, values = zip(*self.data.items())
