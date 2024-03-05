@@ -31,7 +31,7 @@ docs = [
     "matplotlib",
     "arviz",
     "corner",
-    "numpyro<0.14",
+    "numpyro",
     "numpyro-ext",
     "jaxopt",
     "myst-nb",
