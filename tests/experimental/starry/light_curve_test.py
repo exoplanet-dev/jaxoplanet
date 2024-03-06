@@ -106,7 +106,7 @@ def test_compare_starry(deg, u):
 )
 def keplerian_system(request):
     return SurfaceMapSystem(
-        request.param["central"], request.param.get("central_surface_map", None)
+        request.param["central"], request.param.get("surface_map", None)
     ).add_body(**request.param["body"])
 
 
