@@ -44,24 +44,24 @@ def light_curve(
     def light_curve_impl(time: Quantity) -> Array:
         xos, yos, zos = system.relative_position(time)
 
-        if system.surface_map is None:
+        if system.central_surface_map is None:
             central_light_curves = None
         else:
-            theta = system.surface_map.rotational_phase(time.magnitude)
+            theta = system.central_surface_map.rotational_phase(time.magnitude)
             central_radius = system.central.radius
             central_light_curves = (
                 central_bodies_lc(
-                    system.surface_map,
+                    system.central_surface_map,
                     (system.radius / central_radius).magnitude,
                     (xos / central_radius).magnitude,
                     (yos / central_radius).magnitude,
                     (zos / central_radius).magnitude,
                     theta,
                 )
-                * system.surface_map.amplitude
+                * system.central_surface_map.amplitude
             )
 
-        if all(surface_map is None for surface_map in system.surface_maps):
+        if all(surface_map is None for surface_map in system.bodies_surface_maps):
             body_light_curves = None
         else:
             body_light_curves = compute_body_light_curve(  # type: ignore
