@@ -6,10 +6,8 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import scipy
-from jax.experimental import sparse
 
 from jaxoplanet.experimental.starry.basis import A1, U0, A2_inv
-from jaxoplanet.experimental.starry.maps import Map
 from jaxoplanet.experimental.starry.orbit import SurfaceMapSystem
 from jaxoplanet.experimental.starry.pijk import Pijk
 from jaxoplanet.experimental.starry.rotation import left_project
@@ -81,42 +79,55 @@ def light_curve(
 
 # TODO: figure out the sparse matrices (and Pijk) to avoid todense()
 def map_light_curve(
-    map: Optional[Map], r: Array, xo: Array, yo: Array, zo: Array, theta: Array
-) -> Array:
-    """Light curve of a map
+    map,
+    r: Optional[Array] = None,
+    xo: Optional[Array] = None,
+    yo: Optional[Array] = None,
+    zo: Optional[Array] = None,
+    theta: Optional[Array] = 0.0,
+):
+    """Light curve of an occulted map.
 
     Args:
         map (Map): map object
-        r (float): radius of the occulting body, relative to the current map body
-        xo (float): x position of the occulting body, relative to the current map body
-        yo (float): y position of the occulting body, relative to the current map body
-        zo (float): z position of the occulting body, relative to the current map body
+        r (float or None): radius of the occulting body, relative to the current map
+           body
+        xo (float or None): x position of the occulting body, relative to the current
+           map body
+        yo (float or None): y position of the occulting body, relative to the current
+           map body
+        zo (float or None): z position of the occulting body, relative to the current
+           map body
         theta (float): rotation angle of the map
 
     Returns:
-        ArrayLike: light curve
+        ArrayLike: flux
     """
-    if map is None:
-        return jnp.zeros_like(theta)
+    rT_deg = rT(map.deg)
 
-    # TODO(lgrcia): Is this the right behavior when map.u is None?
-    U = jnp.array([1, *(() if map.u is None else map.u)])
-    b = jnp.sqrt(jnp.square(xo) + jnp.square(yo))
-    b_rot = jnp.logical_or(jnp.greater_equal(b, 1.0 + r), jnp.less_equal(zo, 0.0))
-    b_occ = jnp.logical_not(b_rot)
+    # no occulting body
+    if r is None:
+        b_rot = True
+        theta_z = 0.0
+        x = rT_deg
 
-    # Occultation
-    theta_z = jnp.arctan2(xo, yo)
-    sT = solution_vector(map.deg)(b, r)
-    # the reason for this if is that scipy.sparse.linalg.inv of a sparse matrix[[1]]
-    # is a non-sparse [[1]], hence from_scipy_sparse raises an error (case deg=0) ...
-    if map.deg > 0:
-        A2 = scipy.sparse.linalg.inv(A2_inv(map.deg))
-        A2 = sparse.BCOO.from_scipy_sparse(A2)
+    # occulting body
     else:
-        A2 = jnp.array([1])
+        b = jnp.sqrt(jnp.square(xo) + jnp.square(yo))
+        b_rot = jnp.logical_or(jnp.greater_equal(b, 1.0 + r), jnp.less_equal(zo, 0.0))
+        b_occ = jnp.logical_not(b_rot)
+        theta_z = jnp.arctan2(xo, yo)
+        sT = solution_vector(map.deg)(b, r)
 
-    sTA2 = sT @ A2
+        # scipy.sparse.linalg.inv of a sparse matrix[[1]] is a non-sparse [[1]], hence
+        # `from_scipy_sparse`` raises an error (case deg=0)
+        if map.deg > 0:
+            A2 = scipy.sparse.linalg.inv(A2_inv(map.deg))
+            A2 = jax.experimental.sparse.BCOO.from_scipy_sparse(A2)
+        else:
+            A2 = jnp.array([1])
+
+        x = jnp.where(b_occ, sT @ A2, rT_deg)
 
     # TODO(lgrcia): Is this the right behavior when map.y is None?
     if map.y is None:
@@ -126,13 +137,13 @@ def map_light_curve(
             map.ydeg, map.inc, map.obl, theta, theta_z, map.y.todense()
         )
 
-    # limb darkening product
-    A1_val = sparse.BCOO.from_scipy_sparse(A1(map.ydeg))
+    # limb darkening
+    U = jnp.array([1, *map.u])
+    A1_val = jax.experimental.sparse.BCOO.from_scipy_sparse(A1(map.ydeg))
     p_y = Pijk.from_dense(A1_val @ rotated_y, degree=map.ydeg)
     p_u = Pijk.from_dense(U @ U0(map.udeg), degree=map.udeg)
     p_y = p_y * p_u
 
-    x = jnp.where(b_occ, sTA2, rT(map.deg))
     norm = np.pi / (p_u.tosparse() @ rT(map.udeg))
 
     return (p_y.tosparse() @ x) * norm

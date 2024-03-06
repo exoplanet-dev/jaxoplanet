@@ -170,12 +170,3 @@ class Map(eqx.Module):
             return jnp.zeros_like(time)
         else:
             return 2 * jnp.pi * time / self.period
-
-    def flux(self, time):
-        from jaxoplanet.experimental.starry.light_curves import map_light_curve
-
-        theta = self.rotational_phase(time)
-        return (
-            jnp.vectorize(partial(map_light_curve, self, 0.0, 2.0, 2.0, 2.0))(theta)
-            * self.amplitude
-        )

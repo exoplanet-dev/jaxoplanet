@@ -86,9 +86,10 @@ def right_project_axis_angle(inc, obl, theta, theta_z):
 
     # this is mostly useful for the float32 case, where
     # (1 - 0.5 * arg**2) in denominator can be negative due to numerical error
-    axis_x = jnp.where(angle != 0.0, numerator1 / denominator, 1.0)
-    axis_y = jnp.where(angle != 0.0, numerator2 / denominator, 0.0)
-    axis_z = jnp.where(angle != 0.0, numerator3 / denominator, 0.0)
+    positive_arg = arg**2 < 2.0
+    axis_x = jnp.where(positive_arg, numerator1 / denominator, 1.0)
+    axis_y = jnp.where(positive_arg, numerator2 / denominator, 0.0)
+    axis_z = jnp.where(positive_arg, numerator3 / denominator, 0.0)
 
     return axis_x, axis_y, axis_z, angle
 
