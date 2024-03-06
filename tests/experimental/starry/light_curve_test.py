@@ -106,7 +106,7 @@ def test_compare_starry(deg, u):
 )
 def keplerian_system(request):
     return SurfaceMapSystem(
-        request.param["central"], request.param.get("surface_map", None)
+        request.param["central"], request.param.get("central_surface_map", None)
     ).add_body(**request.param["body"])
 
 
@@ -132,7 +132,7 @@ def test_compare_starry_system(keplerian_system):
     central = keplerian_system.central
     central_map = keplerian_system.surface_map
     body = keplerian_system.bodies[0]
-    body_map = keplerian_system.surface_maps[0]
+    body_map = keplerian_system.bodies_surface_maps[0]
 
     time = np.linspace(-1.5, 1.0, 300)
     jaxoplanet_flux = light_curve(keplerian_system)(time)
