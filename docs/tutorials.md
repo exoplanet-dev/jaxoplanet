@@ -20,6 +20,7 @@ directly.
 
 tutorials/getting-started.ipynb
 tutorials/autodiff.ipynb
+tutorials/introduction-to-jax.ipynb
 tutorials/transit.ipynb
 tutorials/rv.ipynb
 tutorials/starry.ipynb
