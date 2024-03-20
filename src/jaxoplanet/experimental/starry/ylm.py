@@ -54,7 +54,8 @@ class Ylm(eqx.Module):
     def indices(self) -> list[tuple[int, int]]:
         return list(self.data.keys())
 
-    def index(self, ell: Array, m: Array) -> Array:
+    @staticmethod
+    def index(ell: Array, m: Array) -> Array:
         """Convert the degree and order of the spherical harmonic to the
         corresponding index in the coefficient array."""
         return ell * (ell + 1) + m
@@ -82,6 +83,25 @@ class Ylm(eqx.Module):
 
     def todense(self) -> Array:
         return self.tosparse().todense()
+
+    def to_dense_pad(self) -> Array:
+        new_y = jnp.zeros((self.ell_max + 1, 2 * self.ell_max + 1))
+        for l in range(self.ell_max + 1):
+            for m in range(-l, l + 1):
+                new_y = new_y.at[l, self.ell_max + m].set(self.data.get((l, m), 0.0))
+
+        return new_y
+
+    @classmethod
+    def from_dense_pad(cls, y: Array) -> "Ylm":
+        data = {}
+        ell_max, _ = y.shape
+
+        for l in range(ell_max):
+            for m in range(-l, l + 1):
+                data[(l, m)] = y[l, ell_max + m - 1]
+
+        return cls(data)
 
     @classmethod
     def from_dense(cls, y: Array, normalize: bool = True) -> "Ylm":
