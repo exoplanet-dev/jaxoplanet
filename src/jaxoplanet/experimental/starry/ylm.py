@@ -21,12 +21,11 @@ class Ylm(eqx.Module):
     Args:
         data (Mapping[tuple[int, int], Array], optional): dictionary of
             spherical harmonic coefficients. Defaults to {(0, 0): 1.0}.
-        relative (bool, optional): Whether to normalize the coefficients by the
-            value of the (0, 0) coefficient. Defaults to True.
-
-    Raises:
-        ValueError: if relative is True and the (0, 0) coefficient is zero.
     """
+
+    # coefficients of the spherical harmonic expansion of the map in the form
+    # {(l, m): coefficient}
+    data: dict[tuple[int, int], Array]
 
     # maximum degree of the spherical harmonic expansion
     ell_max: int = eqx.field(static=True)
@@ -34,51 +33,53 @@ class Ylm(eqx.Module):
     # whether the spherical harmonic expansion is diagonal (all m=0)
     diagonal: bool = eqx.field(static=True)
 
-    # coefficients of the spherical harmonic expansion of the map in the form
-    # {(l, m): coefficient}
-    data: Optional[dict[tuple[int, int], Array]] = None
-
     def __init__(
         self,
         data: Optional[Mapping[tuple[int, int], Array]] = None,
-        normalize: bool = True,
     ):
         if data is None:
             data = {(0, 0): 1.0}
 
-        if normalize:
-            assert data[(0, 0)] != 0.0, ValueError(
-                "The (0, 0) coefficient must be non-zero if relative=True"
-            )
-            data = {k: v / data[(0, 0)] for k, v in data.items()}
         self.data = dict(data)
         self.ell_max = max(ell for ell, _ in data.keys())
         self.diagonal = all(m == 0 for _, m in data.keys())
 
     @property
-    def shape(self):
+    def shape(self) -> tuple[int, ...]:
         """The number of coefficients in the expansion. This sets the shape of
         the output of `todense`."""
-        return self.ell_max**2 + 2 * self.ell_max + 1
+        return (self.ell_max**2 + 2 * self.ell_max + 1,)
 
     @property
-    def indices(self):
-        return self.data.keys()
+    def indices(self) -> list[tuple[int, int]]:
+        return list(self.data.keys())
 
     @staticmethod
     def index(ell: Array, m: Array) -> Array:
         """Convert the degree and order of the spherical harmonic to the
         corresponding index in the coefficient array."""
-        if np.any(np.abs(m) > ell):
-            raise ValueError(
-                "All spherical harmonic orders 'm' must be in the range [-ell, ell]"
-            )
         return ell * (ell + 1) + m
+
+    def normalize(self) -> "Ylm":
+        """Return a new Ylm instance with normalized coefficients.
+
+        Returns:
+            Ylm instance with normalized coefficients.
+
+        Raises:
+            ValueError: if the (0, 0) coefficient is zero.
+        """
+
+        assert self.data[(0, 0)] != 0.0, ValueError(
+            "The (0, 0) coefficient must be non-zero to normalize"
+        )
+        data = {k: v / self.data[(0, 0)] for k, v in self.data.items()}
+        return Ylm(data=data)
 
     def tosparse(self) -> BCOO:
         indices, values = zip(*self.data.items())
-        idx = np.array([self.index(ell, m) for ell, m in indices])[:, None]
-        return BCOO((jnp.asarray(values), idx), shape=(self.shape,))
+        idx = jnp.array([self.index(ell, m) for ell, m in indices])[:, None]
+        return BCOO((jnp.asarray(values), idx), shape=self.shape)
 
     def todense(self) -> Array:
         return self.tosparse().todense()
@@ -109,7 +110,11 @@ class Ylm(eqx.Module):
             ell = int(np.floor(np.sqrt(i)))
             m = i - ell * (ell + 1)
             data[(ell, m)] = ylm
-        return cls(data, normalize=normalize)
+        ylm = cls(data)
+        if normalize:
+            return ylm.normalize()
+        else:
+            return ylm
 
     def __mul__(self, other: Any) -> "Ylm":
         if isinstance(other, Ylm):

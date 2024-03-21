@@ -18,8 +18,8 @@ directly.
 ```{toctree}
 :maxdepth: 1
 
+tutorials/getting-started.ipynb
 tutorials/autodiff.ipynb
-tutorials/orbits.ipynb
 tutorials/transit.ipynb
 tutorials/rv.ipynb
 tutorials/starry.ipynb

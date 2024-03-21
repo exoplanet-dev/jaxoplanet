@@ -8,6 +8,7 @@
 maxdepth: 1
 ---
 
-installation
+guide
 tutorials
+contributing
 ```

@@ -1,3 +1,9 @@
+"""This module provides the core functionality to solve Kepler's equation in JAX. For
+more details, see the :ref:`core-from-scratch` tutorial.
+"""
+
+__all__ = ["kepler"]
+
 import jax
 import jax.numpy as jnp
 from jax.interpreters import ad
@@ -5,6 +11,7 @@ from jax.interpreters import ad
 from jaxoplanet.types import Array
 
 
+@jax.jit
 def kepler(M: Array, ecc: Array) -> tuple[Array, Array]:
     """Solve Kepler's equation to compute the true anomaly
 
