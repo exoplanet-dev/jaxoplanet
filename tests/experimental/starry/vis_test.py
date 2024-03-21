@@ -1,9 +1,9 @@
 import numpy as np
-import jax
-from jaxoplanet.experimental.starry.surface import Surface
-from jaxoplanet.experimental.starry.ylm import Ylm
+
 from jaxoplanet.experimental.starry.orbit import SurfaceBody
+from jaxoplanet.experimental.starry.surface import Surface
 from jaxoplanet.experimental.starry.visualization import show_map
+from jaxoplanet.experimental.starry.ylm import Ylm
 
 
 def test_show_map():
