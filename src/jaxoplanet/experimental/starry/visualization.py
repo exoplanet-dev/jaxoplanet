@@ -6,7 +6,7 @@ from jaxoplanet.experimental.starry.ylm import Ylm
 
 
 def show_map(
-    ylm_map_or_body,
+    ylm_surface_body,
     theta: float = 0.0,
     res: int = 400,
     n: int = 6,
@@ -17,7 +17,7 @@ def show_map(
     """Show map of a
 
     Args:
-        map_or_body (Map, Central or Body): Map or Body with a map
+        ylm_surface_body (Ylm, Surface or SurfaceBody): Map or Body with a map
         theta (float, optional): Rotation angle of the map wrt its rotation axis.
         Defaults to 0.0.
         res (int, optional): Resolution of the map render. Defaults to 400.
@@ -34,20 +34,23 @@ def show_map(
         if ax is None:
             ax = plt.subplot(111)
 
-    if hasattr(ylm_map_or_body, "map"):
-        map = ylm_map_or_body.map
-        radius = ylm_map_or_body.radius.magnitude
+    if hasattr(ylm_surface_body, "surface"):
+        surface = ylm_surface_body.surface
+        if ylm_surface_body.radius is not None:
+            radius = ylm_surface_body.radius.magnitude
+        else:
+            radius = 1.0
         n = int(np.ceil(n * np.cbrt(radius)))
     # import Ylm leads to circular import
-    elif isinstance(ylm_map_or_body, Ylm):
-        map = Surface(y=ylm_map_or_body)
+    elif isinstance(ylm_surface_body, Ylm):
+        surface = Surface(y=ylm_surface_body)
         radius = 1.0
     else:
-        map = ylm_map_or_body
+        surface = ylm_surface_body
         radius = 1.0
 
     ax.imshow(
-        map.render(
+        surface.render(
             theta,
             res,
         ),
@@ -57,8 +60,8 @@ def show_map(
     )
     if n is not None:
         graticule(
-            map.inc,
-            map.obl,
+            surface.inc,
+            surface.obl,
             theta,
             radius=radius,
             n=n,
