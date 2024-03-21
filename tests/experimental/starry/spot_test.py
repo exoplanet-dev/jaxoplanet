@@ -2,7 +2,7 @@ import jax
 import numpy as np
 import pytest
 
-from jaxoplanet.experimental.starry import Map
+from jaxoplanet.experimental.starry import Surface
 from jaxoplanet.experimental.starry.ylm import ylm_spot
 from jaxoplanet.test_utils import assert_allclose
 
@@ -18,7 +18,7 @@ def test_spot_intensity(ydeg, radius=0.5, contrast=0.1):
     lon = np.linspace(-np.pi, np.pi, 500)
     exp = map.intensity(0, np.rad2deg(lon))
 
-    jax_map = Map(y=ylm_spot(ydeg)(contrast, radius, 0.0, 0.0))
+    jax_map = Surface(y=ylm_spot(ydeg)(contrast, radius, 0.0, 0.0))
     calc = jax.vmap(jax_map.intensity, in_axes=(None, 0))(0.0, lon)
 
     assert_allclose(calc, exp)

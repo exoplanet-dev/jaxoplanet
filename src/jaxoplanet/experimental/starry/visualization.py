@@ -1,6 +1,6 @@
 import numpy as np
 
-from jaxoplanet.experimental.starry.maps import Map
+from jaxoplanet.experimental.starry.surface import Surface
 from jaxoplanet.experimental.starry.utils import graticule
 from jaxoplanet.experimental.starry.ylm import Ylm
 
@@ -40,7 +40,7 @@ def show_map(
         n = int(np.ceil(n * np.cbrt(radius)))
     # import Ylm leads to circular import
     elif isinstance(ylm_map_or_body, Ylm):
-        map = Map(y=ylm_map_or_body)
+        map = Surface(y=ylm_map_or_body)
         radius = 1.0
     else:
         map = ylm_map_or_body
