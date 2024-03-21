@@ -11,13 +11,13 @@ class SurfaceMapBody(Body):
 
 
 class SurfaceMapSystem(System):
-    surface_map: Optional[Map]
-    _surface_map_stack: ObjectStack[Map]
+    central_surface_map: Optional[Map]
+    _body_surface_map_stack: ObjectStack[Map]
 
     def __init__(
         self,
         central: Optional[Central] = None,
-        surface_map: Optional[Map] = None,
+        central_surface_map: Optional[Map] = None,
         *,
         bodies: Iterable[
             tuple[Union[Body, OrbitalBody, SurfaceMapBody], Optional[Map]]
@@ -25,30 +25,30 @@ class SurfaceMapSystem(System):
     ):
         self.central = Central() if central is None else central
 
-        if surface_map is None:
-            surface_map = Map()
+        if central_surface_map is None:
+            central_surface_map = Map()
 
-        self.surface_map = surface_map
+        self.central_surface_map = central_surface_map
 
         orbital_bodies = []
-        surface_maps = []
+        bodies_surface_maps = []
         for body, surface_map in bodies:
             if isinstance(body, OrbitalBody):
                 orbital_bodies.append(body)
-                surface_maps.append(surface_map)
+                bodies_surface_maps.append(surface_map)
             else:
                 orbital_bodies.append(OrbitalBody(self.central, body))
                 if surface_map is None:
-                    surface_maps.append(getattr(body, "surface_map", None))
+                    bodies_surface_maps.append(getattr(body, "surface_map", None))
                 else:
-                    surface_maps.append(surface_map)
+                    bodies_surface_maps.append(surface_map)
 
         self._body_stack = ObjectStack(*orbital_bodies)
-        self._surface_map_stack = ObjectStack(*surface_maps)
+        self._body_surface_map_stack = ObjectStack(*bodies_surface_maps)
 
     @property
-    def surface_maps(self) -> tuple[Map, ...]:
-        return self._surface_map_stack.objects
+    def bodies_surface_maps(self) -> tuple[Map, ...]:
+        return self._body_surface_map_stack.objects
 
     def add_body(
         self,
@@ -60,9 +60,13 @@ class SurfaceMapSystem(System):
             body = Body(**kwargs)
         if surface_map is None:
             surface_map = getattr(body, "surface_map", None)
-        bodies = list(zip(self.bodies, self.surface_maps)) + [(body, surface_map)]
+        bodies = list(zip(self.bodies, self.bodies_surface_maps)) + [
+            (body, surface_map)
+        ]
         return SurfaceMapSystem(
-            central=self.central, surface_map=self.surface_map, bodies=bodies
+            central=self.central,
+            central_surface_map=self.central_surface_map,
+            bodies=bodies,
         )
 
     def surface_map_vmap(
@@ -71,4 +75,6 @@ class SurfaceMapSystem(System):
         in_axes: Union[int, None, Sequence[Any]] = 0,
         out_axes: Any = 0,
     ) -> Callable:
-        return self._surface_map_stack.vmap(func, in_axes=in_axes, out_axes=out_axes)
+        return self._body_surface_map_stack.vmap(
+            func, in_axes=in_axes, out_axes=out_axes
+        )
