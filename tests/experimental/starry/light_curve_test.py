@@ -56,7 +56,7 @@ def test_compare_starry(deg, u):
                 mass=1.3,
                 radius=1.1,
             ),
-            "surface_map": Map(
+            "central_surface_map": Map(
                 y=Ylm.from_dense(
                     [1, 0.005, 0.05, 0.09, 0.0, 0.1, 0.03, 0.04, 0.4, 0.2, 0.1]
                 ),
@@ -84,7 +84,7 @@ def test_compare_starry(deg, u):
                 mass=1.3,
                 radius=1.1,
             ),
-            "surface_map": Map(
+            "central_surface_map": Map(
                 y=Ylm.from_dense(
                     [1, 0.005, 0.05, 0.09, 0.0, 0.1, 0.03, 0.04, 0.4, 0.2, 0.1]
                 ),
@@ -111,7 +111,7 @@ def test_compare_starry(deg, u):
                 mass=1.3,
                 radius=1.1,
             ),
-            "surface_map": Map(
+            "central_surface_map": Map(
                 y=Ylm.from_dense(np.hstack([1, 0.005, 0.05, 0.09, 0.0, 0.1, 0.03])),
                 period=1.2,
                 u=(0.1, 0.1),
@@ -146,7 +146,8 @@ def test_compare_starry(deg, u):
 )
 def keplerian_system(request):
     system = SurfaceMapSystem(
-        request.param["central"], surface_map=request.param.get("surface_map", None)
+        request.param["central"],
+        central_surface_map=request.param.get("central_surface_map", None),
     )
     for body in request.param["bodies"]:
         system = system.add_body(**body)
@@ -162,6 +163,11 @@ def test_compare_starry_system(keplerian_system):
         cls = (
             starry.Primary if isinstance(body, keplerian.Central) else starry.Secondary
         )
+        if surface_map is None or surface_map.period is None:
+            prot = 1e15
+        else:
+            prot = surface_map.period
+
         if surface_map is None:
             map_kwargs = dict(ydeg=0, rv=False, reflected=False)
         else:
@@ -176,7 +182,7 @@ def test_compare_starry_system(keplerian_system):
         body_kwargs = dict(
             r=body.radius.magnitude,
             m=body.mass.magnitude,
-            prot=0 if surface_map is None else surface_map.period,
+            prot=prot,
         )
 
         if isinstance(body, keplerian.OrbitalBody):
@@ -192,23 +198,19 @@ def test_compare_starry_system(keplerian_system):
 
         return starry_body
 
-    # jaxoplanet system
-    central = keplerian_system.central
-    central_map = keplerian_system.central_surface_map
-    body = keplerian_system.bodies[0]
-    body_map = keplerian_system.bodies_surface_maps[0]
-
     time = np.linspace(-1.5, 1.0, 300)
 
     # jaxoplanet
     jaxoplanet_flux = light_curve(keplerian_system)(time)
 
     # starry
-    primary = jaxoplanet2starry(keplerian_system.central, keplerian_system.surface_map)
+    primary = jaxoplanet2starry(
+        keplerian_system.central, keplerian_system.central_surface_map
+    )
     secondaries = [
         jaxoplanet2starry(body, surface_map)
         for body, surface_map in zip(
-            keplerian_system.bodies, keplerian_system.surface_maps
+            keplerian_system.bodies, keplerian_system.bodies_surface_maps
         )
     ]
 

@@ -47,8 +47,10 @@ def light_curve(
         else:
             theta = system.central_surface_map.rotational_phase(time.magnitude)
             central_radius = system.central.radius
-            central_phase_curve = map_light_curve(system.surface_map, theta=theta)
-            central_light_curve = (
+            central_phase_curve = map_light_curve(
+                system.central_surface_map, theta=theta
+            )
+            central_light_curves = (
                 central_bodies_lc(
                     system.central_surface_map,
                     (system.radius / central_radius).magnitude,
@@ -62,32 +64,20 @@ def light_curve(
 
             n = len(xos.magnitude)
 
-        if all(surface_map is None for surface_map in system.bodies_surface_maps):
-            body_light_curves = None
-        else:
-            body_light_curves = compute_body_light_curve(  # type: ignore
-                system.radius, -xos, -yos, -zos, time
-            )
-
-            if n > 1:
-                central_light_curve = central_light_curve.sum(
+            if n > 1 and central_light_curves is not None:
+                central_light_curves = central_light_curves.sum(
                     0
                 ) - central_phase_curve * (n - 1)
-                central_light_curve = jnp.expand_dims(central_light_curve, 0)
+                central_light_curves = jnp.expand_dims(central_light_curves, 0)
 
-        body_light_curves = compute_body_light_curve(  # type: ignore
+        body_light_curves = compute_body_light_curve(
             system.radius, -xos, -yos, -zos, time
         )
 
-        # result = jnp.zeros(system.shape, dtype=time.dtype)
-        # if central_light_curve is not None:
-        #     result += central_light_curve
-        # if body_light_curves is not None:
-        #     result += body_light_curves
+        if central_light_curves is None:
+            central_light_curves = jnp.zeros((n, 1))
 
-        return jnp.hstack([central_light_curve, body_light_curves])
-
-        # return result
+        return jnp.hstack([central_light_curves, body_light_curves])
 
     return light_curve_impl
 
