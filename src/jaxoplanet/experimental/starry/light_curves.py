@@ -24,9 +24,11 @@ def light_curve(
 
     @partial(system.surface_map_vmap, in_axes=(0, 0, 0, 0, None))
     def compute_body_light_curve(surface_map, radius, x, y, z, time):
-        theta = surface_map.rotational_phase(time.magnitude)
-        return (
-            map_light_curve(
+        if surface_map is None:
+            return 0.0
+        else:
+            theta = surface_map.rotational_phase(time.magnitude)
+            return map_light_curve(
                 surface_map,
                 (system.central.radius / radius).magnitude,
                 (x / radius).magnitude,
@@ -34,8 +36,6 @@ def light_curve(
                 (z / radius).magnitude,
                 theta,
             )
-            * surface_map.amplitude
-        )
 
     @quantity_input(time=ureg.day)
     @vectorize
@@ -47,6 +47,9 @@ def light_curve(
         else:
             theta = system.central_surface_map.rotational_phase(time.magnitude)
             central_radius = system.central.radius
+            central_phase_curve = map_light_curve(
+                system.central_surface_map, theta=theta
+            )
             central_light_curves = (
                 central_bodies_lc(
                     system.central_surface_map,
@@ -59,20 +62,22 @@ def light_curve(
                 * system.central_surface_map.amplitude
             )
 
-        if all(surface_map is None for surface_map in system.bodies_surface_maps):
-            body_light_curves = None
-        else:
-            body_light_curves = compute_body_light_curve(  # type: ignore
-                system.radius, -xos, -yos, -zos, time
-            )
+            n = len(xos.magnitude)
 
-        result = jnp.zeros(system.shape, dtype=time.dtype)
-        if central_light_curves is not None:
-            result += central_light_curves
-        if body_light_curves is not None:
-            result += body_light_curves
+            if n > 1 and central_light_curves is not None:
+                central_light_curves = central_light_curves.sum(
+                    0
+                ) - central_phase_curve * (n - 1)
+                central_light_curves = jnp.expand_dims(central_light_curves, 0)
 
-        return result
+        body_light_curves = compute_body_light_curve(
+            system.radius, -xos, -yos, -zos, time
+        )
+
+        if central_light_curves is None:
+            central_light_curves = jnp.zeros((n, 1))
+
+        return jnp.hstack([central_light_curves, body_light_curves])
 
     return light_curve_impl
 
@@ -80,11 +85,11 @@ def light_curve(
 # TODO: figure out the sparse matrices (and Pijk) to avoid todense()
 def map_light_curve(
     map,
-    r: Optional[Array] = None,
-    xo: Optional[Array] = None,
-    yo: Optional[Array] = None,
-    zo: Optional[Array] = None,
-    theta: Optional[Array] = 0.0,
+    r: float = None,
+    xo: float = None,
+    yo: float = None,
+    zo: float = None,
+    theta: float = 0.0,
 ):
     """Light curve of an occulted map.
 
