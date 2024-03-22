@@ -5,7 +5,7 @@ from jaxoplanet.experimental.starry.utils import graticule
 from jaxoplanet.experimental.starry.ylm import Ylm
 
 
-def show_map(
+def show_surface(
     ylm_surface_body,
     theta: float = 0.0,
     res: int = 400,

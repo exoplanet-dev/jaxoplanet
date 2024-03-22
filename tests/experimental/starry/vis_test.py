@@ -3,7 +3,7 @@ import pytest
 from jaxoplanet.experimental.starry.surface import Surface
 from jaxoplanet.experimental.starry.ylm import Ylm
 from jaxoplanet.experimental.starry.orbit import SurfaceBody
-from jaxoplanet.experimental.starry.visualization import show_map
+from jaxoplanet.experimental.starry.visualization import show_surface
 
 
 def test_show_map():
@@ -12,6 +12,6 @@ def test_show_map():
     surface = Surface(y=y, inc=0.9, obl=-0.3, period=1.2, u=[0.5, 0.5])
     surface_body = SurfaceBody(period=1.0, surface=surface)
 
-    show_map(surface_body)
-    show_map(surface)
-    show_map(y)
+    show_surface(surface_body)
+    show_surface(surface)
+    show_surface(y)
