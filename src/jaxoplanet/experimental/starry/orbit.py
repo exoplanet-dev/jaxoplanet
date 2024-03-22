@@ -27,23 +27,23 @@ class SurfaceSystem(System):
         self.central_surface = central_surface
 
         orbital_bodies = []
-        bodies_surfaces = []
+        body_surfaces = []
         for body, surface in bodies:
             if isinstance(body, OrbitalBody):
                 orbital_bodies.append(body)
-                bodies_surfaces.append(surface)
+                body_surfaces.append(surface)
             else:
                 orbital_bodies.append(OrbitalBody(self.central, body))
                 if surface is None:
-                    bodies_surfaces.append(getattr(body, "surface", None))
+                    body_surfaces.append(getattr(body, "surface", None))
                 else:
-                    bodies_surfaces.append(surface)
+                    body_surfaces.append(surface)
 
         self._body_stack = ObjectStack(*orbital_bodies)
-        self._body_surface_stack = ObjectStack(*bodies_surfaces)
+        self._body_surface_stack = ObjectStack(*body_surfaces)
 
     @property
-    def bodies_surfaces(self) -> tuple[Surface, ...]:
+    def body_surfaces(self) -> tuple[Surface, ...]:
         return self._body_surface_stack.objects
 
     def add_body(
@@ -56,7 +56,7 @@ class SurfaceSystem(System):
             body = Body(**kwargs)
         if surface is None:
             surface = getattr(body, "surface", None)
-        bodies = list(zip(self.bodies, self.bodies_surfaces)) + [(body, surface)]
+        bodies = list(zip(self.bodies, self.body_surfaces)) + [(body, surface)]
         return SurfaceSystem(
             central=self.central,
             central_surface=self.central_surface,

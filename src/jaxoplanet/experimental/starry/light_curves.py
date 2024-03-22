@@ -59,7 +59,7 @@ def light_curve(
                 * system.central_surface.amplitude
             )
 
-        if all(surface is None for surface in system.bodies_surfaces):
+        if all(surface is None for surface in system.body_surfaces):
             body_light_curves = None
         else:
             body_light_curves = compute_body_light_curve(  # type: ignore
