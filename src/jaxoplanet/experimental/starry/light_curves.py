@@ -8,7 +8,7 @@ import numpy as np
 import scipy
 
 from jaxoplanet.experimental.starry.basis import A1, U0, A2_inv
-from jaxoplanet.experimental.starry.orbit import SurfaceMapSystem
+from jaxoplanet.experimental.starry.orbit import SurfaceSystem
 from jaxoplanet.experimental.starry.pijk import Pijk
 from jaxoplanet.experimental.starry.rotation import left_project
 from jaxoplanet.experimental.starry.solution import solution_vector
@@ -18,23 +18,23 @@ from jaxoplanet.units import quantity_input, unit_registry as ureg
 
 
 def light_curve(
-    system: SurfaceMapSystem,
+    system: SurfaceSystem,
 ) -> Callable[[Quantity], tuple[Optional[Array], Optional[Array]]]:
     central_bodies_lc = jax.vmap(map_light_curve, in_axes=(None, 0, 0, 0, 0, None))
 
-    @partial(system.surface_map_vmap, in_axes=(0, 0, 0, 0, None))
-    def compute_body_light_curve(surface_map, radius, x, y, z, time):
-        theta = surface_map.rotational_phase(time.magnitude)
+    @partial(system.surface_vmap, in_axes=(0, 0, 0, 0, None))
+    def compute_body_light_curve(surface, radius, x, y, z, time):
+        theta = surface.rotational_phase(time.magnitude)
         return (
             map_light_curve(
-                surface_map,
+                surface,
                 (system.central.radius / radius).magnitude,
                 (x / radius).magnitude,
                 (y / radius).magnitude,
                 (z / radius).magnitude,
                 theta,
             )
-            * surface_map.amplitude
+            * surface.amplitude
         )
 
     @quantity_input(time=ureg.day)
@@ -42,24 +42,24 @@ def light_curve(
     def light_curve_impl(time: Quantity) -> Array:
         xos, yos, zos = system.relative_position(time)
 
-        if system.central_surface_map is None:
+        if system.central_surface is None:
             central_light_curves = None
         else:
-            theta = system.central_surface_map.rotational_phase(time.magnitude)
+            theta = system.central_surface.rotational_phase(time.magnitude)
             central_radius = system.central.radius
             central_light_curves = (
                 central_bodies_lc(
-                    system.central_surface_map,
+                    system.central_surface,
                     (system.radius / central_radius).magnitude,
                     (xos / central_radius).magnitude,
                     (yos / central_radius).magnitude,
                     (zos / central_radius).magnitude,
                     theta,
                 )
-                * system.central_surface_map.amplitude
+                * system.central_surface.amplitude
             )
 
-        if all(surface_map is None for surface_map in system.bodies_surface_maps):
+        if all(surface is None for surface in system.body_surfaces):
             body_light_curves = None
         else:
             body_light_curves = compute_body_light_curve(  # type: ignore

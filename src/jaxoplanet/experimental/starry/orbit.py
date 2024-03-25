@@ -1,76 +1,72 @@
 from collections.abc import Iterable, Sequence
 from typing import Any, Callable, Optional, Union
 
-from jaxoplanet.experimental.starry.maps import Map
+from jaxoplanet.experimental.starry.surface import Surface
 from jaxoplanet.object_stack import ObjectStack
 from jaxoplanet.orbits.keplerian import Body, Central, OrbitalBody, System
 
 
-class SurfaceMapBody(Body):
-    surface_map: Optional[Map] = None
+class SurfaceBody(Body):
+    surface: Optional[Surface] = None
 
 
-class SurfaceMapSystem(System):
-    central_surface_map: Optional[Map]
-    _body_surface_map_stack: ObjectStack[Map]
+class SurfaceSystem(System):
+    central_surface: Optional[Surface]
+    _body_surface_stack: ObjectStack[Surface]
 
     def __init__(
         self,
         central: Optional[Central] = None,
-        central_surface_map: Optional[Map] = None,
+        central_surface: Optional[Surface] = None,
         *,
         bodies: Iterable[
-            tuple[Union[Body, OrbitalBody, SurfaceMapBody], Optional[Map]]
+            tuple[Union[Body, OrbitalBody, SurfaceBody], Optional[Surface]]
         ] = (),
     ):
         self.central = Central() if central is None else central
-        self.central_surface_map = central_surface_map
+        self.central_surface = central_surface
 
         orbital_bodies = []
-        bodies_surface_maps = []
-        for body, surface_map in bodies:
+        body_surfaces = []
+        for body, surface in bodies:
             if isinstance(body, OrbitalBody):
                 orbital_bodies.append(body)
-                bodies_surface_maps.append(surface_map)
+                body_surfaces.append(surface)
             else:
                 orbital_bodies.append(OrbitalBody(self.central, body))
-                if surface_map is None:
-                    bodies_surface_maps.append(getattr(body, "surface_map", None))
+                if surface is None:
+                    body_surfaces.append(getattr(body, "surface", None))
                 else:
-                    bodies_surface_maps.append(surface_map)
+                    body_surfaces.append(surface)
 
         self._body_stack = ObjectStack(*orbital_bodies)
-        self._body_surface_map_stack = ObjectStack(*bodies_surface_maps)
+        self._body_surface_stack = ObjectStack(*body_surfaces)
 
     @property
-    def bodies_surface_maps(self) -> tuple[Map, ...]:
-        return self._body_surface_map_stack.objects
+    def body_surfaces(self) -> tuple[Surface, ...]:
+        return self._body_surface_stack.objects
 
     def add_body(
         self,
-        body: Optional[Union[Body, SurfaceMapBody]] = None,
-        surface_map: Optional[Map] = None,
+        body: Optional[Union[Body, SurfaceBody]] = None,
+        surface: Optional[Surface] = None,
         **kwargs: Any,
-    ) -> "SurfaceMapSystem":
+    ) -> "SurfaceSystem":
         if body is None:
             body = Body(**kwargs)
-        if surface_map is None:
-            surface_map = getattr(body, "surface_map", None)
-        bodies = list(zip(self.bodies, self.bodies_surface_maps)) + [
-            (body, surface_map)
-        ]
-        return SurfaceMapSystem(
+        if surface is None:
+            surface = getattr(body, "surface", None)
+        bodies = list(zip(self.bodies, self.body_surfaces)) + [(body, surface)]
+        return SurfaceSystem(
             central=self.central,
-            central_surface_map=self.central_surface_map,
+            central_surface=self.central_surface,
             bodies=bodies,
         )
 
-    def surface_map_vmap(
+    def surface_vmap(
         self,
         func: Callable,
         in_axes: Union[int, None, Sequence[Any]] = 0,
         out_axes: Any = 0,
     ) -> Callable:
-        return self._body_surface_map_stack.vmap(
-            func, in_axes=in_axes, out_axes=out_axes
-        )
+        return self._body_surface_stack.vmap(func, in_axes=in_axes, out_axes=out_axes)
