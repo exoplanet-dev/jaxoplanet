@@ -12,6 +12,7 @@ def show_surface(
     n: int = 6,
     ax=None,
     white_contour: bool = True,
+    radius: float = None,
     **kwargs,
 ):
     """Show map of a
@@ -26,6 +27,7 @@ def show_surface(
         ax (matplotlib.pyplot.Axes, optional): plot axes. Defaults to None.
         white_contour (bool, optional): Whether to surround the map by a white border
         (to hide border pixel aliasing). Defaults to True.
+        radius (float, optional): Radius of the body. Defaults to None.
     """
     import matplotlib.pyplot as plt
 
@@ -39,15 +41,15 @@ def show_surface(
         if ylm_surface_body.radius is not None:
             radius = ylm_surface_body.radius.magnitude
         else:
-            radius = 1.0
+            radius = 1.0 if radius is None else radius
         n = int(np.ceil(n * np.cbrt(radius)))
     # import Ylm leads to circular import
     elif isinstance(ylm_surface_body, Ylm):
         surface = Surface(y=ylm_surface_body)
-        radius = 1.0
+        radius = 1.0 if radius is None else radius
     else:
         surface = ylm_surface_body
-        radius = 1.0
+        radius = 1.0 if radius is None else radius
 
     ax.imshow(
         surface.render(
