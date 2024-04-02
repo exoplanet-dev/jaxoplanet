@@ -1,0 +1,41 @@
+{
+  "creators": [
+    {
+      "orcid": "0000-0002-0842-863X",
+      "affiliation": "Department of Astronomy, Columbia University, New York, NY, USA",
+      "name": "Soichiro Hattori"
+    },
+    {
+      "orcid": "0000-0002-4296-2246",
+      "affiliation": "Center for Computational Astrophysics, Flatiron Institute, New York, NY, USA",
+      "name": "Lionel Garcia"
+    },
+    {
+      "orcid": "0000-0001-8504-5862",
+      "affiliation": "Department of Astrophysical and Planetary Sciences, University of Colorado Boulder, Boulder, CO, USA",
+      "name": "Catriona Murray"
+    },
+    {
+      "orcid": "0000-0002-3610-6953",
+      "affiliation": "Center for Computational Astrophysics, Flatiron Institute, New York, NY, USA",
+      "name": "Jiayin Dong"
+    },
+    {
+      "orcid": "0000-0001-9145-8444",
+      "affiliation": "School of Mathematics and Physics, The University of Queensland, Brisbane, Australia",
+      "name": "Shashank Dholakia"
+    },
+    {
+      "orcid": "0009-0008-1068-481X",
+      "affiliation": "Queloz Group, ETH Zurich, Zurich, Switzerland",
+      "name": "David Degen"
+    },
+    {
+      "orcid": "0000-0002-9328-5652",
+      "affiliation": "Center for Computational Astrophysics, Flatiron Institute, New York, NY, USA",
+      "name": "Daniel Foreman-Mackey"
+    }
+  ],
+  "license": "MIT",
+  "title": "exoplanet-dev/jaxoplanet: Astronomical time series analysis with JAX "
+}

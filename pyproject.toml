@@ -15,7 +15,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dynamic = ["version"]
-dependencies = ["jax", "jaxlib", "jpu"]
+dependencies = ["jax", "jaxlib", "jpu>=0.0.2", "equinox"]
 
 [project.urls]
 "Homepage" = "https://jax.exoplanet.codes"
@@ -26,7 +26,7 @@ dependencies = ["jax", "jaxlib", "jpu"]
 dev = ["nox", "ruff", "black", "pre-commit", "pytest", "sympy"]
 test = ["pytest", "pytest-xdist", "exoplanet-core", "batman-package"]
 test-math = ["sympy"]
-comparison = ["starry", "numpy<1.22", "tqdm"]
+comparison = ["starry", "numpy<1.22", "tqdm", "xarray<2023.10.0"]
 docs = [
     "matplotlib",
     "arviz",
@@ -37,6 +37,8 @@ docs = [
     "myst-nb",
     "sphinx-book-theme",
     "sphinx-design",
+    "sphinx-autoapi",
+    "ipywidgets"
 ]
 
 [build-system]
@@ -56,6 +58,8 @@ line-length = 88
 [tool.ruff]
 line-length = 89
 target-version = "py39"
+
+[tool.ruff.lint]
 select = ["F", "I", "E", "W", "YTT", "B", "Q", "PLE", "PLR", "PLW", "UP"]
 ignore = [
     "B023",    # Allow using global variables in lambdas
@@ -65,8 +69,8 @@ ignore = [
     "PLR0915", # Allow many statements
     "PLR2004", # Allow magic numbers in comparisons
 ]
-exclude = []
+# exclude = []
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 known-first-party = ["jaxoplanet"]
 combine-as-imports = true

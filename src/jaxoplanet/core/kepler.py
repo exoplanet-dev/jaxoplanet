@@ -1,9 +1,17 @@
+"""This module provides the core functionality to solve Kepler's equation in JAX. For
+more details, see the :ref:`core-from-scratch` tutorial.
+"""
+
+__all__ = ["kepler"]
+
 import jax
 import jax.numpy as jnp
+from jax.interpreters import ad
 
 from jaxoplanet.types import Array
 
 
+@jax.jit
 def kepler(M: Array, ecc: Array) -> tuple[Array, Array]:
     """Solve Kepler's equation to compute the true anomaly
 
@@ -58,12 +66,15 @@ def _(primals, tangents):
     ecosf = e * cosf
     ome2 = 1 - e**2
 
+    def make_zero(tan):
+        if type(tan) is ad.Zero:
+            return ad.zeros_like_aval(tan.aval)
+        else:
+            return tan
+
     # Propagate the derivatives
-    f_dot = 0.0
-    if type(M_dot) is not jax.interpreters.ad.Zero:
-        f_dot += M_dot * (1 + ecosf) ** 2 / ome2**1.5
-    if type(e_dot) is not jax.interpreters.ad.Zero:
-        f_dot += e_dot * (2 + ecosf) * sinf / ome2
+    f_dot = make_zero(M_dot) * (1 + ecosf) ** 2 / ome2**1.5
+    f_dot += make_zero(e_dot) * (2 + ecosf) * sinf / ome2
 
     return (sinf, cosf), (cosf * f_dot, -sinf * f_dot)
 
@@ -77,7 +88,7 @@ def starter(M: Array, ecc: Array, ome: Array) -> Array:
     r = (3 * alphad * (d - ome) + M2) * M
     q = 2 * alphad * ome - M2
     q2 = jnp.square(q)
-    w = (jnp.abs(r) + jnp.sqrt(q2 * q + r * r)) ** (2.0 / 3)
+    w = jnp.square(jnp.cbrt(jnp.abs(r) + jnp.sqrt(q2 * q + r * r)))
     return (2 * r * w / (jnp.square(w) + w * q + q2) + M) / d
 
 

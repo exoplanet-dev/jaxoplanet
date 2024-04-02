@@ -1,52 +1,20 @@
-from typing import Optional
+__all__ = ["LightCurveOrbit"]
 
-from typing_extensions import Protocol
+from typing import Protocol
 
-from jaxoplanet.types import Array
+from jaxoplanet.types import Quantity
 
 
-class LightCurveBody(Protocol):
-    @property
-    def shape(self) -> tuple[int, ...]:
-        ...
+class LightCurveOrbit(Protocol):
+    """An interface for orbits that can be used to compute light curves"""
 
     @property
-    def radius(self) -> Array:
-        ...
-
-
-class LightCurveOrbit(LightCurveBody):
-    def relative_position(
-        self, t: Array, parallax: Optional[Array] = None
-    ) -> tuple[Array, Array, Array]:
-        ...
+    def shape(self) -> tuple[int, ...]: ...
 
     @property
-    def central_radius(self) -> Array:
-        ...
+    def radius(self) -> Quantity: ...
 
+    def relative_position(self, t: Quantity) -> tuple[Quantity, Quantity, Quantity]: ...
 
-class Orbit(LightCurveOrbit):
-    def position(
-        self, t: Array, parallax: Optional[Array] = None
-    ) -> tuple[Array, Array, Array]:
-        ...
-
-    def central_position(
-        self, t: Array, parallax: Optional[Array] = None
-    ) -> tuple[Array, Array, Array]:
-        ...
-
-    def velocity(self, t: Array) -> tuple[Array, Array, Array]:
-        ...
-
-    def central_velocity(self, t: Array) -> tuple[Array, Array, Array]:
-        ...
-
-    def relative_velocity(self, t: Array) -> tuple[Array, Array, Array]:
-        ...
-
-    def radial_velocity(
-        self, t: Array, semiamplitude: Optional[Array] = None
-    ) -> tuple[Array, Array, Array]:
-        ...
+    @property
+    def central_radius(self) -> Quantity: ...
