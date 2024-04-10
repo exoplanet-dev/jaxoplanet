@@ -2,7 +2,7 @@ import jax
 import jax.numpy as jnp
 
 from jaxoplanet.experimental.starry.cel import cel
-from jaxoplanet.utils import get_dtype_eps, where
+from jaxoplanet.utils import get_dtype_eps
 
 
 def solution_vector(b, r):
@@ -29,13 +29,13 @@ def _solution_vector_jvp(primals, tangents):
     no_occ = jnp.logical_or(jnp.less(r, tolerance), jnp.greater_equal(b, r + 1))
     cond = jnp.logical_or(comp_occ, no_occ)
 
-    s0 = where(no_occ, jnp.pi, where(comp_occ, 0, s0))
-    s1 = where(no_occ, 2 * jnp.pi / 3, where(comp_occ, 0, s1))
-    s2 = where(cond, 0, s2)
+    s0 = jnp.where(no_occ, jnp.pi, jnp.where(comp_occ, 0, s0))
+    s1 = jnp.where(no_occ, 2 * jnp.pi / 3, jnp.where(comp_occ, 0, s1))
+    s2 = jnp.where(cond, 0, s2)
 
-    ds0 = b_dot * where(cond, 0, ds0db) + r_dot * where(cond, 0, ds0dr)
-    ds1 = b_dot * where(cond, 0, ds1db) + r_dot * where(cond, 0, ds1dr)
-    ds2 = b_dot * where(cond, 0, ds2db) + r_dot * where(cond, 0, ds2dr)
+    ds0 = b_dot * jnp.where(cond, 0, ds0db) + r_dot * jnp.where(cond, 0, ds0dr)
+    ds1 = b_dot * jnp.where(cond, 0, ds1db) + r_dot * jnp.where(cond, 0, ds1dr)
+    ds2 = b_dot * jnp.where(cond, 0, ds2db) + r_dot * jnp.where(cond, 0, ds2dr)
 
     return (s0, s1, s2), (ds0, ds1, ds2)
 
@@ -76,18 +76,18 @@ def _s0_s2_and_grad(b, r):
 
     delta = 4 * b * r
     cond = jnp.greater(onembpr2 + delta, delta)
-    s0 = where(cond, s0_lrg, s0_sml)
-    s2 = 2 * s0 + where(cond, offset_lrg, offset_sml)
+    s0 = jnp.where(cond, s0_lrg, s0_sml)
+    s2 = 2 * s0 + jnp.where(cond, offset_lrg, offset_sml)
 
-    ds0db = where(cond, 0, area / b)
-    ds0dr = -2 * r * where(cond, jnp.pi, kappa0)
+    ds0db = jnp.where(cond, 0, area / b)
+    ds0dr = -2 * r * jnp.where(cond, jnp.pi, kappa0)
 
-    ds2db = 2 * ds0db + where(
+    ds2db = 2 * ds0db + jnp.where(
         cond,
         8 * jnp.pi * b * r2,
         2 * (4 * b2 * r2 * kappa0 - (1 + r2pb2) * area) / b,
     )
-    ds2dr = 2 * ds0dr + where(
+    ds2dr = 2 * ds0dr + jnp.where(
         cond, 8 * jnp.pi * r * r2pb2, 8 * r * (r2pb2 * kappa0 - area)
     )
 
@@ -108,17 +108,8 @@ def _(primals, tangents):
 
 
 def _s1_and_grad(b, r):
-    # TODO(dfm): Handle the following edge cases:
-    #            - (b >= 1 + r) || (r == 0): no occultation
-    #            - b <= r - 1: full occultation
-    #            - b == 0
-    #            - b == r
-    #
-    # Perhaps these should be handled at the top level calling function?
 
-    # TODO(dfm): Check this tolerance and add test
-    tolerance = 10 * jnp.finfo(jnp.result_type(b, r)).eps
-
+    # some pre-computations
     b2 = jnp.square(b)
     r2 = jnp.square(r)
     bpr = b + r
@@ -128,58 +119,120 @@ def _s1_and_grad(b, r):
     sqonembmr2 = jnp.sqrt(onembmr2)
     sqbr = jnp.sqrt(b * r)
     ratio = onembpr2 / onembmr2
-    fourbr = 4 * b * r
+    rootr1mr = jnp.sqrt(r * (1 - r))
+    twodpi = 2 / jnp.pi
+
+    # to deal with r = 0 or b = 0 none of the following variables are used
+    fourbr = jnp.where(sqbr == 0.0, 1.0, 4 * b * r)
     invfourbr = 1 / fourbr
     bmrdbpr = bmr / bpr
     mu = 3 * bmrdbpr / onembmr2
+    ksq = onembmr2 * invfourbr
 
-    ksq = onembpr2 * invfourbr + 1
-    ksq_cond = jnp.less(ksq, 1.0)
-    kcsq = where(ksq_cond, -onembpr2 * invfourbr, ratio)
+    ksq_lt_1 = jnp.less(ksq, 1.0)
+    kcsq = jnp.where(ksq_lt_1, -onembpr2 * invfourbr, ratio)
 
-    k_arg = where(ksq_cond, ksq, 1 / ksq)
-    p = where(ksq_cond, jnp.square(bmr), jnp.square(bmrdbpr)) * kcsq
+    k_arg = jnp.where(ksq_lt_1, ksq, 1 / ksq)
+    p = jnp.where(ksq_lt_1, jnp.square(bmr), jnp.square(bmrdbpr)) * kcsq
+    mk = 1 - kcsq
 
-    a1 = where(ksq_cond, 0.0, 1 + mu)
-    b1 = where(ksq_cond, 3 * kcsq * bmr * bpr, p + mu)
+    a1 = jnp.where(ksq_lt_1, 0.0, 1 + mu)
+    b1 = jnp.where(ksq_lt_1, 3 * kcsq * bmr * bpr, p + mu)
     Piofk = cel(k_arg, p, a1, b1)
-    Eofk = cel(k_arg, 1.0, 1.0, kcsq)
-    Em1mKdm = cel(k_arg, 1.0, 1.0, 0.0)
+    Eofk = cel(k_arg, 1.0, 1.0, kcsq)  # Agol 2019 (44)
+    Em1mKdm = cel(k_arg, 1.0, 1.0, 0.0)  # Agol 2019 (45)
 
-    lambda1 = where(
-        ksq_cond,
+    # full condition list (see eq. 47 from Agol et al. 2019)
+    cond_list = [
+        r == 0.0,
+        jnp.abs(r - b) >= 1.0,
+        b == 0.0,
+        (b == r) & (r == 0.5),
+        (b == r) & (r < 0.5),
+        (b == r) & (r > 0.5),
+        b + r == 1.0,
+        ksq < 1.0,
+        ksq > 1.0,
+    ]
+
+    _L = [
+        # r = 0
+        0.0,
+        # |r - b| >= 1
+        0.0,
+        # b = 0
+        -2 * jnp.pi * (1 - r2) ** (3 / 2),
+        # b = r = 1/2,
+        jnp.pi - (4 / 3),
+        # b = r < 1/2
+        jnp.pi + (2 / 3) * cel(k_arg, 1.0, mk - 3.0, (1 - mk) * (2 * mk - 3)),
+        # b = r > 1/2
+        jnp.pi + (4 * r / 3) * cel(k_arg, 1.0, 1.0 - 3 * mk, mk - 1),
+        # b + r = 1
+        (
+            2 * jnp.arccos(1.0 - 2 * r)
+            - 4 * (3 + 2 * r - 8 * r2) * rootr1mr / 3
+            - 2 * jnp.pi * (r > 0.5)
+        ),
+        # k^2 < 1
         onembmr2
         * (Piofk + (-3 + 6 * r2 + 2 * b * r) * Em1mKdm - fourbr * Eofk)
         / (3 * sqbr),
+        # k^2 > 1
         2 * sqonembmr2 * (onembpr2 * Piofk - (4 - 7 * r2 - b2) * Eofk) / 3,
-    )
+    ]
 
-    dsdb = where(
-        ksq_cond,
+    L = jnp.select(cond_list, _L)
+
+    # derivative w.r.t. r
+    _dLdr = [
+        # r = 0
+        0.0,
+        # |r - b| >= 1
+        0.0,
+        # b = 0
+        2 * r * rootr1mr,
+        # b = r = 1/2
+        twodpi,
+        # b = r < 1/2
+        2 * twodpi * r * cel(k_arg, 1.0, 1.0, 4 * r2),
+        # b = r > 1/2
+        twodpi * Em1mKdm,
+        # b + r = 1
+        4 * twodpi * r / jnp.pi * rootr1mr,
+        # k^2 < 1
         2 * r * onembmr2 * (-Em1mKdm + 2 * Eofk) / (3 * sqbr),
+        # k^2 > 1
         -4 * r * sqonembmr2 * (Eofk - 2 * Em1mKdm) / 3,
-    )
-    dsdr = where(
-        ksq_cond, -2 * r * onembmr2 * Em1mKdm / sqbr, -4 * r * sqonembmr2 * Eofk
-    )
+    ]
 
-    # Below we handle the edge cases:
+    dLdr = jnp.select(cond_list, _dLdr)
 
-    # 1. ksq ~ 1
-    ksq_one = jnp.less(jnp.abs(kcsq), tolerance)
-    rootr1mr = jnp.sqrt(r * (1 - r))
-    lambda1 = where(
-        ksq_one,
-        2 * jnp.arccos(1.0 - 2.0 * r)
-        - 4 * (3 + 2 * r - 8 * r2) * rootr1mr / 3
-        - 2 * jnp.pi * (r > 0.5),
-        lambda1,
-    )
-    tmp = 8 * r * rootr1mr
-    dsdb = where(ksq_one, -tmp, dsdb)
-    dsdr = where(ksq_one, tmp / 3, dsdr)
+    # derivative w.r.t. b
+    _dLdb = [
+        # r = 0
+        0.0,
+        # |r - b| >= 1
+        0.0,
+        # b = 0
+        0.0,
+        # b = r = 1/2
+        -twodpi / 3,
+        # b = r < 1/2
+        2 * twodpi * r / 3 * cel(k_arg, 1.0, -1.0, -kcsq),
+        # b = r > 1/2
+        -2 * twodpi / 3 * cel(k_arg, 1.0, 1.0, 2 * kcsq),
+        # b + r = 1
+        -4 * twodpi / 3 * rootr1mr,
+        # k^2 < 1
+        -2 * r * onembmr2 * Em1mKdm / sqbr,
+        # k^2 > 1
+        -4 * r * sqonembmr2 * Eofk,
+    ]
 
-    return (2 * jnp.pi * (1 - (r > b)) - lambda1) / 3, (dsdb, dsdr)
+    dLdb = jnp.select(cond_list, _dLdb)
+
+    return (2 * jnp.pi * (1 - (r > b)) - L) / 3, (dLdb, dLdr)
 
 
 def kite_area(a, b, c):
