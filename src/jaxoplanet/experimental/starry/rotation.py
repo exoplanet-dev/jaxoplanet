@@ -106,7 +106,7 @@ def left_project(ydeg, inc, obl, theta, theta_z, x):
 
 @partial(jax.jit, static_argnums=(0,))
 def compute_rotation_matrices(ydeg, x, y, z, theta):
-    # We need the axis to be a unit vector - enforce that here
+    # we need the axis to be a unit vector - enforce that here
     norm = jnp.sqrt(x * x + y * y + z * z)
     # handle the case where axis is (0, 0, 0)
     x = jnp.where(norm == 0.0, 0.0, x / norm)
