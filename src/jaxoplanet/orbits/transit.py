@@ -10,14 +10,36 @@ from jaxoplanet.units import unit_registry as ureg
 
 
 class TransitOrbit(eqx.Module):
-    """An orbit parameterized to be useful for fitting transiting planets"""
+    """An orbit parameterized to be useful for fitting transiting planets.
+
+    Args:
+        period: Orbital periods of the planets [time unit].
+        duration (Optional[Quantity]): Durations of transits [time unit].
+            Either this or `speed` must be provided.
+        speed (Optional[Quantity]): Speeds of the planets [distance unit / time unit].
+            Either this or `duration` must be provided.
+        time_transit (Optional[Quantity]): The epochs of reference transits [time unit].
+            Default is 0.
+        impact_param (Optional[Quantity]): Impact parameters of the transits.
+            Default is 0.
+        ror (Optional[Quantity]): Ratio of planet radii to star radius. Default is 0.
+
+    Raises:
+        ValueError: If neither `speed` nor `duration` is provided.
+
+    Properties:
+        - shape: Returns the shape of the period, i.e. the number of planets.
+        - central_radius: A quantity representing the radius of the central body.
+            Its value is always 1 in this class, but required for compatibility reasons.
+        - relative_position: The relative position of the orbiting body at a given time.
+    """
 
     period: Quantity = units.field(units=ureg.d)
     speed: Quantity = units.field(units=1 / ureg.d)
     duration: Quantity = units.field(units=ureg.d)
     time_transit: Quantity = units.field(units=ureg.d)
     impact_param: Quantity = units.field(units=ureg.dimensionless)
-    radius: Quantity = units.field(units=ureg.dimensionless)
+    ror: Quantity = units.field(units=ureg.dimensionless)
 
     @units.quantity_input(
         period=ureg.d,
@@ -25,7 +47,7 @@ class TransitOrbit(eqx.Module):
         speed=1 / ureg.d,
         time_transit=ureg.d,
         impact_param=ureg.dimensionless,
-        radius=ureg.dimensionless,
+        ror=ureg.dimensionless,
     )
     def __init__(
         self,
@@ -35,7 +57,7 @@ class TransitOrbit(eqx.Module):
         speed: Optional[Quantity] = None,
         time_transit: Optional[Quantity] = None,
         impact_param: Optional[Quantity] = None,
-        radius: Optional[Quantity] = None,
+        ror: Optional[Quantity] = None,
     ):
         if duration is None:
             if speed is None:
@@ -56,12 +78,12 @@ class TransitOrbit(eqx.Module):
         else:
             self.impact_param = impact_param
 
-        if radius is None:
-            self.radius = 0.0 * ureg.dimensionless
+        if ror is None:
+            self.ror = 0.0 * ureg.dimensionless
         else:
-            self.radius = radius
+            self.ror = ror
 
-        x2 = jnpu.square(1 + self.radius) - jnpu.square(self.impact_param)
+        x2 = jnpu.square(1 + self.ror) - jnpu.square(self.impact_param)
         if duration is None:
             self.duration = 2 * jnpu.sqrt(jnpu.maximum(0, x2)) / self.speed
         else:
@@ -70,6 +92,10 @@ class TransitOrbit(eqx.Module):
     @property
     def shape(self) -> tuple[int, ...]:
         return jnp.shape(self.period)
+
+    @property
+    def radius(self) -> Quantity:
+        return self.ror
 
     @property
     def central_radius(self) -> Quantity:
