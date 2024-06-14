@@ -1,8 +1,14 @@
 import jax
 import jax.numpy as jnp
+import numpy as np
+
+
+from scipy.special import factorial, factorial2, binom
 
 from jaxoplanet.experimental.starry.cel import cel
 from jaxoplanet.utils import get_dtype_eps
+
+REFINE_J_AT = 25
 
 
 def solution_vector(b, r):
@@ -255,3 +261,254 @@ def kappas(b, r):
     factor = (r - 1) * (r + 1)
     area = kite_area(r, b, jnp.ones_like(r))
     return area, jnp.arctan2(area, b2 + factor), jnp.arctan2(area, b2 - factor)
+
+
+# --------------------
+# Closed form solution
+# --------------------
+
+from scipy.special import roots_legendre
+from scipy.integrate import quad
+
+
+def _J_numerical(v, k, order=100):
+    """Return the integral J, evaluated numerically."""
+    roots, weights = roots_legendre(order)
+    kappa = jnp.where(k < 1, 2 * jnp.arcsin(k), jnp.pi)
+    rng = 0.5 * kappa
+    phi = rng * roots
+    f = jnp.sin(phi) ** (2 * v) * (1 - k ** (-2) * jnp.sin(phi) ** 2) ** 1.5
+    return rng * jnp.dot(f, weights)
+
+
+def J_numerical(v, k):
+    epsabs = 1e-15
+    epsrel = 1e-13
+    """Return the integral J, evaluated numerically."""
+    kappa = 2 * np.arcsin(k) if k < 1 else np.pi
+    func = lambda x: np.sin(x) ** (2 * v) * (1 - k ** (-2) * np.sin(x) ** 2) ** 1.5
+    res, err = quad(func, -0.5 * kappa, 0.5 * kappa, epsabs=epsabs, epsrel=epsrel)
+    return res
+
+
+def A(i, u, v, delta):
+    def _(i, u, v, j):
+        return (
+            binom(u, j)
+            * binom(v, u + v - i - j)
+            * (-1) ** (u + j)
+            * delta ** (u + v - i - j)
+        )
+
+    bounds = np.array([np.max([[0, u - i]]), np.min([u + v - i, u]) + 1]).astype(int)
+    return sum([_(i, u, v, j) for j in range(*bounds)])
+
+
+def I_k2g1(v, I):
+    if v not in I:
+        I[v] = jnp.pi * factorial2(2 * v - 1) / (2**v * factorial(v))
+
+    return I[v]
+
+
+def J_down(v, k, k2, J):
+    if v not in J:
+        J[v] = (1 / ((2 * v + 1) * k2)) * (
+            2 * (3 + v + (1 + v) * k2) * J_down(v + 1, k, k2, J)
+            - (2 * v + 7) * J_down(v + 2, k, k2, J)
+        )
+
+    return J[v]
+
+
+def J_up(v, k, k2, J):
+    if v not in J:
+        J[v] = (1 / (2 * v + 3)) * (
+            2 * (v + (v - 1) * k2 + 1) * J_up(v - 1, k, k2, J)
+            - k2 * (2 * v - 3) * J_up(v - 2, k, k2, J)
+        )
+
+    return J[v]
+
+
+def I_k2l1_up(v, k, kc, I):
+    if v not in I:
+        I[v] = (1 / v) * (
+            (2 * v - 1) / 2 * I_k2l1_up(v - 1, k, kc, I) - k ** (2 * v - 1) * kc
+        )
+
+    return I[v]
+
+
+def IJ_k2l1_initial(k2):
+    k = jnp.sqrt(k2)
+    k3 = k2 * k
+    mk = k2  # k^2 < 1
+    Ek2 = cel(k2, 1.0, 1.0, 1 - mk)
+    Kk2 = (Ek2 - mk * cel(k2, 1.0, 1.0, 0.0)) / (1 - mk)
+
+    I = {0: 2 * jnp.arcsin(k)}
+    J = {
+        0: 2 / (3 * k3) * (2 * (2 * k2 - 1) * Ek2 + (1 - k2) * (2 - 3 * k2) * Kk2),
+        1: 2
+        / (15 * k3)
+        * ((-3 * k2**2 + 13 * k2 - 8) * Ek2 + (1 - k2) * (8 - 9 * k2) * Kk2),
+    }
+
+    return I, J
+
+
+def J_k2g1_Series(v, k, nterms=30):
+    """Return the integral J, evaluated as a series."""
+    res = 0
+    for j in range(nterms):
+        add = (
+            (-1.0) ** j
+            * binom(1.5, j)
+            * factorial2(2 * j + 2 * v - 1)
+            / (2 ** (j + v) * factorial(j + v))
+            * k ** (-2 * j)
+        )
+        res += add
+    return np.pi * float(res)
+
+
+def IJ_k2g1_initial(k2, v_max=None):
+    ik2 = 1 / k2
+    mk = ik2  # k^2 >= 1
+    Eik2 = cel(ik2, 1.0, 1.0, 1 - mk)
+    Kik2 = (Eik2 - mk * cel(ik2, 1.0, 1.0, 0.0)) / (1 - mk)
+
+    # Luger2019 - D51
+    J = {
+        0: (1 / 3) * ((8 - 4 * ik2) * Eik2 - 2 * (1 - ik2) * Kik2),
+        1: (1 / 15)
+        * ((-6 * k2 + 26 - 16 * ik2) * Eik2 + 2 * (1 - ik2) * (3 * k2 - 4) * Kik2),
+    }
+
+    if v_max is not None:
+        n = (v_max // REFINE_J_AT) + 1
+        for i in np.arange(REFINE_J_AT, REFINE_J_AT * n, REFINE_J_AT):
+            J[i] = J_k2g1_Series(i, np.sqrt(k2))
+            J[i - 1] = J_k2g1_Series(i - 1, np.sqrt(k2))
+
+    return {}, J
+
+
+def P_exact(l_max, b, r):
+    b = jnp.abs(b)
+    r = jnp.abs(r)
+    k2 = jnp.maximum(0, (1 - r**2 - b**2 + 2 * b * r) / (4 * b * r))
+    k = jnp.sqrt(k2)
+
+    if k2 < 1.0:
+        _I, _J = IJ_k2l1_initial(k2)
+    else:
+        _I = {}
+        # The series expansion of J doesn't provide enough precision
+        _J = {l_max: J_numerical(l_max, k), l_max - 1: J_numerical(l_max - 1, k)}
+
+    def I(v):
+        if v not in _I:
+            if k2 < 1.0:
+                _I[v] = I_k2l1_up(v, k, jnp.sqrt(1 - k2), _I)
+            else:
+                _I[v] = I_k2g1(v, _I)
+
+        return _I[v]
+
+    def J(v):
+        if v not in _J:
+            if k2 < 1.0:
+                _J[v] = J_up(v, k, k2, _J)
+            else:
+                _J[v] = J_down(v, k, k2, _J)
+
+        return _J[v]
+
+    def K(u, v, delta):
+        u = int(u)
+        v = int(v)
+        return np.sum([A(i, u, v, delta) * I(i + u) for i in range(u + v + 1)])
+
+    def L(u, v, t, delta, k):
+        u = int(u)
+        v = int(v)
+        return k**3 * np.sum(
+            [A(i, u, v, delta) * J(i + u + t) for i in range(u + v + 1)]
+        )
+
+    # experimental, this is what we will ideally use if we figure
+    # out the conditional logic
+    def _P_green(r, b, l, m):
+        r_cond = jnp.less(r, 10 * jnp.finfo(r.dtype).eps)
+        delta = (b - r) / (2 * jnp.where(r_cond, 1, r))
+
+        mu = l - m
+        nu = l + m
+
+        F = (2 * r) ** (l - 1) * (4 * b * r) ** 1.5
+
+        conditions = [
+            (mu / 2) % 2 == 0,
+            (mu == 1) and (l % 2 == 0),
+            (mu == 1) and (l != 1) and (l % 2 != 0),
+            ((mu - 1) % 2) == 0 and ((mu - 1) // 2 % 2 == 0) and (l != 1),
+            (mu == 1) and (l == 1),
+        ]
+
+        res = [
+            2 * (2 * r) ** (l + 2) * K((mu + 4) / 4, nu / 2, delta),
+            F * L((l - 2) / 2, 0, 0, delta, k) - 2 * L((l - 2) / 2, 0, 1, delta, k),
+            F * L((l - 3) / 2, 1, 0, delta, k) - 2 * L((l - 3) / 2, 1, 1, delta, k),
+            2 * F * L((mu - 1) / 4, (nu - 1) / 2, 0, delta, k),
+            -1,
+        ]
+
+        return jnp.select(conditions, res, 0.0), 0
+
+    def P_green(r, b, l, m):
+        r_cond = jnp.less(r, 10 * jnp.finfo(r.dtype).eps)
+        delta = (b - r) / (2 * jnp.where(r_cond, 1, r))
+
+        mu = l - m
+        nu = l + m
+
+        F = (2 * r) ** (l - 1) * (4 * b * r) ** 1.5
+
+        if mu == 1 and l == 1:
+            case = 0
+            P = -1
+
+        elif mu % 2 == 0 and (mu // 2) % 2 == 0:
+            case = 1
+            P = 2 * (2 * r) ** (l + 2) * K((mu + 4) / 4, nu / 2, delta)
+
+        elif mu == 1 and l % 2 == 0:
+            case = 2
+            P = F * (
+                L((l - 2) / 2, 0, 0, delta, k) - 2 * L((l - 2) / 2, 0, 1, delta, k)
+            )
+
+        elif mu == 1:
+            case = 3
+            P = F * (
+                L((l - 3) / 2, 1, 0, delta, k) - 2 * L((l - 3) / 2, 1, 1, delta, k)
+            )
+
+        elif (mu - 1) % 2 == 0 and ((mu - 1) // 2) % 2 == 0:
+            case = 4
+            P = 2 * F * L((mu - 1) / 4, (nu - 1) / 2, 0, delta, k)
+        else:
+            case = 5
+            P = 0.0
+
+        return P
+
+    P = []
+
+    for l in range(l_max + 1):
+        for m in range(-l, l + 1):
+            P.append(P_green(r, b, l, m))
+
+    return jnp.array(P)
