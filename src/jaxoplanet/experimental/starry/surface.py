@@ -18,7 +18,7 @@ from jaxoplanet.experimental.starry.ylm import Ylm
 from jaxoplanet.types import Array
 
 
-class Map(eqx.Module):
+class Surface(eqx.Module):
     """Surface map object.
 
     Args:
