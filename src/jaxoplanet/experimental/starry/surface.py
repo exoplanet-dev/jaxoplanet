@@ -11,7 +11,7 @@ from jaxoplanet.experimental.starry.basis import A1, U0, poly_basis
 from jaxoplanet.experimental.starry.pijk import Pijk
 from jaxoplanet.experimental.starry.rotation import (
     left_project,
-    right_project_axis_angle,
+    full_rotation_axis_angle,
 )
 from jaxoplanet.experimental.starry.utils import ortho_grid
 from jaxoplanet.experimental.starry.ylm import Ylm
@@ -158,7 +158,7 @@ class Surface(eqx.Module):
         y = jnp.sin(lat) * jnp.sin(lon)
         z = jnp.cos(lat) * jnp.ones_like(x)
 
-        axis = right_project_axis_angle(self.inc - jnp.pi / 2, self.obl, 0.0, 0.0)
+        axis = full_rotation_axis_angle(self.inc - jnp.pi / 2, self.obl, 0.0, 0.0)
         axis = jnp.array(axis[0:3]) * axis[-1]
         rotation = Rotation.from_rotvec(axis)
         x, y, z = rotation.apply(jnp.array([x, y, z]).T).T
