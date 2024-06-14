@@ -4,8 +4,8 @@ from functools import partial
 import jax
 import jax.numpy as jnp
 
-from jaxoplanet.utils import get_dtype_eps
 from jaxoplanet.types import Array
+from jaxoplanet.utils import get_dtype_eps
 
 
 def dot_rotation_matrix(ydeg, x, y, z, theta):
