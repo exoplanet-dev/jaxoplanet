@@ -6,11 +6,11 @@ import jax
 import numpy as np
 import pytest
 
-from jaxoplanet.experimental.starry.solution import solution_vector, _kappas
+from jaxoplanet.core.limb_dark import solution_vector as solution_vector_limb
+from jaxoplanet.experimental.starry.solution import _kappas, solution_vector
 from jaxoplanet.experimental.starry.solution_closed_form import (
     solution_vector as solution_vector_closed,
 )
-from jaxoplanet.core.limb_dark import solution_vector as solution_vector_limb
 from jaxoplanet.test_utils import assert_allclose
 
 
