@@ -5,9 +5,9 @@ import pytest
 
 from jaxoplanet.experimental.starry.rotation import (
     dot_rotation_matrix,
+    full_rotation_axis_angle,
     left_project,
     right_project,
-    right_project_axis_angle,
 )
 from jaxoplanet.test_utils import assert_allclose
 
@@ -62,7 +62,7 @@ def test_right_project_axis_angle_edge_case():
     theta = theta_z = obl = 0.0
     inc = jnp.pi / 2
 
-    x = jnp.array(right_project_axis_angle(inc, obl, theta, theta_z))
+    x = jnp.array(full_rotation_axis_angle(inc, obl, theta, theta_z))
     assert jnp.all(jnp.isfinite(x))
 
 
