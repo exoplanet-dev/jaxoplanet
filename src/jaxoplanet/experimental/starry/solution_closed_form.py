@@ -1,9 +1,7 @@
 import jax
 import jax.numpy as jnp
 import numpy as np
-
-
-from scipy.special import factorial, factorial2, binom
+from scipy.special import binom, factorial, factorial2
 
 from jaxoplanet.experimental.starry.cel import cel
 from jaxoplanet.utils import get_dtype_eps
@@ -267,8 +265,8 @@ def kappas(b, r):
 # Closed form solution
 # --------------------
 
-from scipy.special import roots_legendre
 from scipy.integrate import quad
+from scipy.special import roots_legendre
 
 
 def _J_numerical(v, k, order=100):
