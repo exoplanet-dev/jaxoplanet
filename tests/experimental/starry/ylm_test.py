@@ -14,7 +14,7 @@ def test_starry_ylm_compare(data):
     data = dict(data)
     data.update({(0, 0): 1.0})
     ylm = Ylm(data)
-    starry_map = starry.Map(ylm.ell_max)
+    starry_map = starry.Map(ylm.deg)
     for (ell, m), c in data.items():
         if (ell, m) == (0, 0):
             continue
