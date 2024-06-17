@@ -20,7 +20,7 @@ from jaxoplanet.units import quantity_input, unit_registry as ureg
 def light_curve(
     system: SurfaceSystem,
 ) -> Callable[[Quantity], tuple[Optional[Array], Optional[Array]]]:
-    central_bodies_lc = jax.vmap(map_light_curve, in_axes=(None, 0, 0, 0, 0, None))
+    central_bodies_lc = jax.vmap(surface_light_curve, in_axes=(None, 0, 0, 0, 0, None))
 
     @partial(system.surface_vmap, in_axes=(0, 0, 0, 0, None))
     def compute_body_light_curve(surface, radius, x, y, z, time):
@@ -28,7 +28,7 @@ def light_curve(
             return 0.0
         else:
             theta = surface.rotational_phase(time.magnitude)
-            return map_light_curve(
+            return surface_light_curve(
                 surface,
                 (system.central.radius / radius).magnitude,
                 (x / radius).magnitude,
@@ -48,7 +48,9 @@ def light_curve(
         else:
             theta = system.central_surface.rotational_phase(time.magnitude)
             central_radius = system.central.radius
-            central_phase_curve = map_light_curve(system.central_surface, theta=theta)
+            central_phase_curve = surface_light_curve(
+                system.central_surface, theta=theta
+            )
             central_light_curves = (
                 central_bodies_lc(
                     system.central_surface,
@@ -77,8 +79,8 @@ def light_curve(
 
 
 # TODO: figure out the sparse matrices (and Pijk) to avoid todense()
-def map_light_curve(
-    map,
+def surface_light_curve(
+    surface,
     r: float = None,
     xo: float = None,
     yo: float = None,
@@ -102,7 +104,7 @@ def map_light_curve(
     Returns:
         ArrayLike: flux
     """
-    rT_deg = rT(map.deg)
+    rT_deg = rT(surface.deg)
 
     # no occulting body
     if r is None:
@@ -116,12 +118,16 @@ def map_light_curve(
         b_rot = jnp.logical_or(jnp.greater_equal(b, 1.0 + r), jnp.less_equal(zo, 0.0))
         b_occ = jnp.logical_not(b_rot)
         theta_z = jnp.arctan2(xo, yo)
-        sT = solution_vector(map.deg)(b, r)
+
+        # trick to avoid nans in following where
+        r = jnp.where(b_rot, 0.0, r)
+        b = jnp.where(b_rot, 0.0, b)
+        sT = solution_vector(surface.deg)(b, r)
 
         # scipy.sparse.linalg.inv of a sparse matrix[[1]] is a non-sparse [[1]], hence
         # `from_scipy_sparse`` raises an error (case deg=0)
-        if map.deg > 0:
-            A2 = scipy.sparse.linalg.inv(A2_inv(map.deg))
+        if surface.deg > 0:
+            A2 = scipy.sparse.linalg.inv(A2_inv(surface.deg))
             A2 = jax.experimental.sparse.BCOO.from_scipy_sparse(A2)
         else:
             A2 = jnp.array([1])
@@ -129,21 +135,21 @@ def map_light_curve(
         x = jnp.where(b_occ, sT @ A2, rT_deg)
 
     # TODO(lgrcia): Is this the right behavior when map.y is None?
-    if map.y is None:
-        rotated_y = jnp.zeros(map.ydeg)
+    if surface.y is None:
+        rotated_y = jnp.zeros(surface.ydeg)
     else:
         rotated_y = left_project(
-            map.ydeg, map.inc, map.obl, theta, theta_z, map.y.todense()
+            surface.ydeg, surface.inc, surface.obl, theta, theta_z, surface.y.todense()
         )
 
     # limb darkening
-    U = jnp.array([1, *map.u])
-    A1_val = jax.experimental.sparse.BCOO.from_scipy_sparse(A1(map.ydeg))
-    p_y = Pijk.from_dense(A1_val @ rotated_y, degree=map.ydeg)
-    p_u = Pijk.from_dense(U @ U0(map.udeg), degree=map.udeg)
+    U = jnp.array([1, *surface.u])
+    A1_val = jax.experimental.sparse.BCOO.from_scipy_sparse(A1(surface.ydeg))
+    p_y = Pijk.from_dense(A1_val @ rotated_y, degree=surface.ydeg)
+    p_u = Pijk.from_dense(U @ U0(surface.udeg), degree=surface.udeg)
     p_y = p_y * p_u
 
-    norm = np.pi / (p_u.tosparse() @ rT(map.udeg))
+    norm = np.pi / (p_u.tosparse() @ rT(surface.udeg))
 
     return (p_y.tosparse() @ x) * norm
 

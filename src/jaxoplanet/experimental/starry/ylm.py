@@ -28,7 +28,7 @@ class Ylm(eqx.Module):
     data: dict[tuple[int, int], Array]
 
     # maximum degree of the spherical harmonic expansion
-    ell_max: int = eqx.field(static=True)
+    deg: int = eqx.field(static=True)
 
     # whether the spherical harmonic expansion is diagonal (all m=0)
     diagonal: bool = eqx.field(static=True)
@@ -41,14 +41,14 @@ class Ylm(eqx.Module):
             data = {(0, 0): 1.0}
 
         self.data = dict(data)
-        self.ell_max = max(ell for ell, _ in data.keys())
+        self.deg = max(ell for ell, _ in data.keys())
         self.diagonal = all(m == 0 for _, m in data.keys())
 
     @property
     def shape(self) -> tuple[int, ...]:
         """The number of coefficients in the expansion. This sets the shape of
         the output of `todense`."""
-        return (self.ell_max**2 + 2 * self.ell_max + 1,)
+        return (self.deg**2 + 2 * self.deg + 1,)
 
     @property
     def indices(self) -> list[tuple[int, int]]:
@@ -117,8 +117,8 @@ def _mul(f: Ylm, g: Ylm) -> Ylm:
 
     https://github.com/moble/spherical/blob/0aa81c309cac70b90f8dfb743ce35d2cc9ae6dee/spherical/multiplication.py
     """
-    ellmax_f = f.ell_max
-    ellmax_g = g.ell_max
+    ellmax_f = f.deg
+    ellmax_g = g.deg
     ellmax_fg = ellmax_f + ellmax_g
     fg = defaultdict(lambda *_: 0.0)
     m_calculator = Wigner3jCalculator(ellmax_f, ellmax_g)
