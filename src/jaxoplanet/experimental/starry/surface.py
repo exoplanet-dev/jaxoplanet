@@ -89,7 +89,7 @@ class Surface(eqx.Module):
             y = Ylm()
 
         if normalize:
-            amplitude = float(y[(0, 0)])
+            amplitude = jnp.array(y[(0, 0)], float)
             y = Ylm(data=y.data).normalize()
 
         self.y = y
