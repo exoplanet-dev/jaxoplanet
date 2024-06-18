@@ -119,7 +119,7 @@ def surface_light_curve(
         b_occ = jnp.logical_not(b_rot)
         theta_z = jnp.arctan2(xo, yo)
 
-        # trick to avoid nans in following where
+        # trick to avoid nan `x=jnp.where...` grad caused by nan sT
         r = jnp.where(b_rot, 0.0, r)
         b = jnp.where(b_rot, 0.0, b)
         sT = solution_vector(surface.deg)(b, r)
@@ -139,7 +139,12 @@ def surface_light_curve(
         rotated_y = jnp.zeros(surface.ydeg)
     else:
         rotated_y = left_project(
-            surface.ydeg, surface.inc, surface.obl, theta, theta_z, surface.y.todense()
+            surface.ydeg,
+            surface.inc,
+            surface.obl,
+            theta + surface.phase,
+            theta_z,
+            surface.y.todense(),
         )
 
     # limb darkening
