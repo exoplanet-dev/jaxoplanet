@@ -40,6 +40,9 @@ class Ylm(eqx.Module):
         if data is None:
             data = {(0, 0): 1.0}
 
+        if not (0, 0) in data:
+            data[(0, 0)] = 1.0
+
         self.data = dict(data)
         self.deg = max(ell for ell, _ in data.keys())
         self.diagonal = all(m == 0 for _, m in data.keys())
@@ -70,9 +73,9 @@ class Ylm(eqx.Module):
             ValueError: if the (0, 0) coefficient is zero.
         """
 
-        assert self.data[(0, 0)] != 0.0, ValueError(
-            "The (0, 0) coefficient must be non-zero to normalize"
-        )
+        # assert self.data[(0, 0)] != 0.0, ValueError(
+        #     "The (0, 0) coefficient must be non-zero to normalize"
+        # )
         data = {k: v / self.data[(0, 0)] for k, v in self.data.items()}
         return Ylm(data=data)
 
@@ -213,7 +216,7 @@ def spot_profile(theta, radius, spot_fac=300):
     return 1 / (1 + jnp.exp(-z)) - 1
 
 
-def ylm_spot(ydeg: int) -> callable:
+def ylm_spot(ydeg: int, npts=1000) -> callable:
     """spot expansion in the spherical harmonics basis.
 
     Args:
@@ -222,7 +225,8 @@ def ylm_spot(ydeg: int) -> callable:
     Returns:
         callable: function that returns the spherical harmonics coefficients of the spot
     """
-    B, theta, indices = Bp(ydeg)
+    B, theta, indices = Bp(ydeg, npts=npts)
+    Y = jnp.zeros((ydeg + 1) * (ydeg + 1))
 
     def func(contrast: float, r: float, lat: float = 0.0, lon: float = 0.0):
         """spot expansion in the spherical harmonics basis.
@@ -243,8 +247,7 @@ def ylm_spot(ydeg: int) -> callable:
             Ylm: Ylm object containing the spherical harmonics coefficients of the spot
         """
         b = spot_profile(theta, r)
-        y = jnp.zeros((ydeg + 1) * (ydeg + 1))
-        y = y.at[indices].set(B @ b * contrast)
+        y = Y.at[indices].set(B @ b * contrast)
         y = y.at[0].set(y[0] + 1.0)
         y = dot_rotation_matrix(ydeg, 1.0, 0.0, 0.0, lat)(y)
         y = dot_rotation_matrix(ydeg, 0.0, 1.0, 0.0, -lon)(y)
