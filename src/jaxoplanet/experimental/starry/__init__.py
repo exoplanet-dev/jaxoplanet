@@ -4,3 +4,4 @@ from jaxoplanet.experimental.starry.solution import (
 from jaxoplanet.experimental.starry.surface import Surface as Surface
 from jaxoplanet.experimental.starry.visualization import show_surface as show_surface
 from jaxoplanet.experimental.starry.ylm import Ylm as Ylm
+from jaxoplanet.experimental.starry.light_curves import light_curve as light_curve

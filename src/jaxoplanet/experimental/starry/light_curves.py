@@ -18,9 +18,11 @@ from jaxoplanet.units import quantity_input, unit_registry as ureg
 
 
 def light_curve(
-    system: SurfaceSystem,
+    system: SurfaceSystem, order: int = 20
 ) -> Callable[[Quantity], tuple[Optional[Array], Optional[Array]]]:
-    central_bodies_lc = jax.vmap(surface_light_curve, in_axes=(None, 0, 0, 0, 0, None))
+    central_bodies_lc = jax.vmap(
+        surface_light_curve, in_axes=(None, 0, 0, 0, 0, None, None)
+    )
 
     @partial(system.surface_vmap, in_axes=(0, 0, 0, 0, None))
     def compute_body_light_curve(surface, radius, x, y, z, time):
@@ -35,6 +37,7 @@ def light_curve(
                 (y / radius).magnitude,
                 (z / radius).magnitude,
                 theta,
+                order=order,
             )
 
     @quantity_input(time=ureg.day)
@@ -49,7 +52,7 @@ def light_curve(
             theta = system.central_surface.rotational_phase(time.magnitude)
             central_radius = system.central.radius
             central_phase_curve = surface_light_curve(
-                system.central_surface, theta=theta
+                system.central_surface, theta=theta, order=order
             )
             central_light_curves = (
                 central_bodies_lc(
@@ -86,6 +89,7 @@ def surface_light_curve(
     yo: float = None,
     zo: float = None,
     theta: float = 0.0,
+    order: int = 20,
 ):
     """Light curve of an occulted map.
 
@@ -122,7 +126,7 @@ def surface_light_curve(
         # trick to avoid nan `x=jnp.where...` grad caused by nan sT
         r = jnp.where(b_rot, 0.0, r)
         b = jnp.where(b_rot, 0.0, b)
-        sT = solution_vector(surface.deg)(b, r)
+        sT = solution_vector(surface.deg, order=order)(b, r)
 
         # scipy.sparse.linalg.inv of a sparse matrix[[1]] is a non-sparse [[1]], hence
         # `from_scipy_sparse`` raises an error (case deg=0)
@@ -156,7 +160,7 @@ def surface_light_curve(
 
     norm = np.pi / (p_u.tosparse() @ rT(surface.udeg))
 
-    return (p_y.tosparse() @ x) * norm
+    return surface.amplitude * (p_y.tosparse() @ x) * norm
 
 
 def rT(lmax: int) -> Array:
