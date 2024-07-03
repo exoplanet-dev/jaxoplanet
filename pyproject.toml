@@ -52,12 +52,12 @@ source = "vcs"
 version-file = "src/jaxoplanet/jaxoplanet_version.py"
 
 [tool.black]
-target-version = ["py39"]
+target-version = ["py310"]
 line-length = 88
 
 [tool.ruff]
 line-length = 89
-target-version = "py39"
+target-version = "py310"
 
 [tool.ruff.lint]
 select = ["F", "I", "E", "W", "YTT", "B", "Q", "PLE", "PLR", "PLW", "UP"]
