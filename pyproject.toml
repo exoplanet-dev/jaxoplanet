@@ -3,7 +3,7 @@ name = "jaxoplanet"
 description = "Probabilistic models for exoplanet inference in JAX"
 authors = [{ name = "Dan Foreman-Mackey", email = "foreman.mackey@gmail.com" }]
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = { text = "MIT License" }
 classifiers = [
     "Development Status :: 4 - Beta",
