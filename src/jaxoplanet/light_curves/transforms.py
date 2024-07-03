@@ -1,7 +1,7 @@
 __all__ = ["integrate", "interpolate"]
 
 from functools import wraps
-from typing import Any, Optional, Union
+from typing import Any
 
 import jax
 import jax.numpy as jnp
@@ -23,7 +23,7 @@ except ImportError:
 @units.quantity_input(exposure_time=ureg.d)
 def integrate(
     func: LightCurveFunc,
-    exposure_time: Optional[Quantity] = None,
+    exposure_time: Quantity | None = None,
     order: int = 0,
     num_samples: int = 7,
 ) -> LightCurveFunc:
@@ -94,7 +94,7 @@ def integrate(
     @wraps(func)
     @units.quantity_input(time=ureg.d)
     @vectorize
-    def wrapped(time: Quantity, *args: Any, **kwargs: Any) -> Union[Array, Quantity]:
+    def wrapped(time: Quantity, *args: Any, **kwargs: Any) -> Array | Quantity:
         if jnpu.ndim(time) != 0:
             raise ValueError(
                 "The time passed to 'integrate_exposure_time' has shape "
@@ -123,9 +123,9 @@ def interpolate(
     period: Quantity,
     time_transit: Quantity,
     num_samples: int,
-    duration: Optional[Quantity] = None,
+    duration: Quantity | None = None,
     args: tuple[Any, ...] = (),
-    kwargs: Optional[dict[str, Any]] = None,
+    kwargs: dict[str, Any] | None = None,
 ) -> LightCurveFunc:
     """Transform a light curve function to pre-compute the model on a grid
 
@@ -173,7 +173,7 @@ def interpolate(
     @wraps(func)
     @units.quantity_input(time=ureg.d)
     @vectorize
-    def wrapped(time: Quantity, *args: Any, **kwargs: Any) -> Union[Array, Quantity]:
+    def wrapped(time: Quantity, *args: Any, **kwargs: Any) -> Array | Quantity:
         del args, kwargs
         time_wrapped = (
             jnpu.mod(time - time_transit + 0.5 * period, period)

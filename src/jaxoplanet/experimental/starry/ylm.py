@@ -1,7 +1,7 @@
 import math
 from collections import defaultdict
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
 import equinox as eqx
 import jax
@@ -35,7 +35,7 @@ class Ylm(eqx.Module):
 
     def __init__(
         self,
-        data: Optional[Mapping[tuple[int, int], Array]] = None,
+        data: Mapping[tuple[int, int], Array] | None = None,
     ):
         if data is None:
             data = {(0, 0): 1.0}
@@ -76,7 +76,7 @@ class Ylm(eqx.Module):
         return Ylm(data=data)
 
     def tosparse(self) -> BCOO:
-        indices, values = zip(*self.data.items())
+        indices, values = zip(*self.data.items(), strict=False)
         idx = jnp.array([self.index(ell, m) for ell, m in indices])[:, None]
         return BCOO((jnp.asarray(values), idx), shape=self.shape)
 

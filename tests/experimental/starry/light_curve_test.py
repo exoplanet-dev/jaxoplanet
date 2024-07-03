@@ -210,7 +210,7 @@ def test_compare_starry_system(keplerian_system):
     secondaries = [
         jaxoplanet2starry(body, surface_map)
         for body, surface_map in zip(
-            keplerian_system.bodies, keplerian_system.body_surfaces
+            keplerian_system.bodies, keplerian_system.body_surfaces, strict=False
         )
     ]
 
