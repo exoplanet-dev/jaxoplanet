@@ -2,7 +2,7 @@
 
 import nox
 
-ALL_PYTHON_VS = ["3.9", "3.10", "3.11"]
+ALL_PYTHON_VS = ["3.10", "3.11", "3.12"]
 
 
 @nox.session(python=ALL_PYTHON_VS)
