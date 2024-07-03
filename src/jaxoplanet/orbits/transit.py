@@ -1,4 +1,3 @@
-
 import equinox as eqx
 import jax.numpy as jnp
 import jpu.numpy as jnpu

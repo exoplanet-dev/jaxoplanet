@@ -45,7 +45,9 @@ def lon_lat_lines(n: int = 6, pts: int = 100, radius: float = 1.0):
     lat = np.array(
         [
             (r * np.cos(_theta), r * np.sin(_theta), np.ones_like(_theta) * h)
-            for (h, r) in zip(sqrt_radius * np.cos(_phi), sqrt_radius * np.sin(_phi), strict=False)
+            for (h, r) in zip(
+                sqrt_radius * np.cos(_phi), sqrt_radius * np.sin(_phi), strict=False
+            )
         ]
     )
 

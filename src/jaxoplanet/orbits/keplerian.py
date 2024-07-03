@@ -160,12 +160,8 @@ class Body(eqx.Module):
     period: Quantity | None = units.field(default=None, units=ureg.d)
     semimajor: Quantity | None = units.field(default=None, units=ureg.R_sun)
     inclination: Quantity | None = units.field(default=None, units=ureg.radian)
-    impact_param: Quantity | None = units.field(
-        default=None, units=ureg.dimensionless
-    )
-    eccentricity: Quantity | None = units.field(
-        default=None, units=ureg.dimensionless
-    )
+    impact_param: Quantity | None = units.field(default=None, units=ureg.dimensionless)
+    eccentricity: Quantity | None = units.field(default=None, units=ureg.dimensionless)
     omega_peri: Quantity | None = units.field(default=None, units=ureg.radian)
     sin_omega_peri: Quantity | None = units.field(
         default=None, units=ureg.dimensionless
@@ -174,12 +170,8 @@ class Body(eqx.Module):
         default=None, units=ureg.dimensionless
     )
     asc_node: Quantity | None = units.field(default=None, units=ureg.radian)
-    sin_asc_node: Quantity | None = units.field(
-        default=None, units=ureg.dimensionless
-    )
-    cos_asc_node: Quantity | None = units.field(
-        default=None, units=ureg.dimensionless
-    )
+    sin_asc_node: Quantity | None = units.field(default=None, units=ureg.dimensionless)
+    cos_asc_node: Quantity | None = units.field(default=None, units=ureg.dimensionless)
     mass: Quantity | None = units.field(default=None, units=ureg.M_sun)
     radius: Quantity | None = units.field(default=None, units=ureg.R_sun)
     radial_velocity_semiamplitude: Quantity | None = units.field(

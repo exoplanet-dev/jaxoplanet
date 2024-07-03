@@ -136,6 +136,9 @@ def index_helper(n, arg, axis):
 
 @lu.transformation_with_aux  # type: ignore
 def flatten_func_for_object_vmap(in_tree, in_axes_flat, index, body, *args_flat):
-    args_indexed = (index_helper(index, *args) for args in zip(args_flat, in_axes_flat, strict=False))
+    args_indexed = (
+        index_helper(index, *args)
+        for args in zip(args_flat, in_axes_flat, strict=False)
+    )
     ans = yield (body,) + in_tree.unflatten(args_indexed), {}
     yield tree_flatten(ans, is_leaf=batching.is_vmappable)

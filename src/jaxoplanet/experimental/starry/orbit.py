@@ -19,9 +19,7 @@ class SurfaceSystem(System):
         central: Central | None = None,
         central_surface: Surface | None = None,
         *,
-        bodies: Iterable[
-            tuple[Body | OrbitalBody | SurfaceBody, Surface | None]
-        ] = (),
+        bodies: Iterable[tuple[Body | OrbitalBody | SurfaceBody, Surface | None]] = (),
     ):
         self.central = Central() if central is None else central
 
@@ -60,7 +58,9 @@ class SurfaceSystem(System):
             body = Body(**kwargs)
         if surface is None:
             surface = getattr(body, "surface", None)
-        bodies = list(zip(self.bodies, self.body_surfaces, strict=False)) + [(body, surface)]
+        bodies = list(zip(self.bodies, self.body_surfaces, strict=False)) + [
+            (body, surface)
+        ]
         return SurfaceSystem(
             central=self.central,
             central_surface=self.central_surface,
