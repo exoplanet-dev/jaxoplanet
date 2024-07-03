@@ -1,5 +1,5 @@
-from collections.abc import Iterable, Sequence
-from typing import Any, Callable, Optional, Union
+from collections.abc import Callable, Iterable, Sequence
+from typing import Any
 
 from jaxoplanet.experimental.starry.surface import Surface
 from jaxoplanet.object_stack import ObjectStack
@@ -7,20 +7,20 @@ from jaxoplanet.orbits.keplerian import Body, Central, OrbitalBody, System
 
 
 class SurfaceBody(Body):
-    surface: Optional[Surface] = None
+    surface: Surface | None = None
 
 
 class SurfaceSystem(System):
-    central_surface: Optional[Surface]
+    central_surface: Surface | None
     _body_surface_stack: ObjectStack[Surface]
 
     def __init__(
         self,
-        central: Optional[Central] = None,
-        central_surface: Optional[Surface] = None,
+        central: Central | None = None,
+        central_surface: Surface | None = None,
         *,
         bodies: Iterable[
-            tuple[Union[Body, OrbitalBody, SurfaceBody], Optional[Surface]]
+            tuple[Body | OrbitalBody | SurfaceBody, Surface | None]
         ] = (),
     ):
         self.central = Central() if central is None else central
@@ -52,15 +52,15 @@ class SurfaceSystem(System):
 
     def add_body(
         self,
-        body: Optional[Union[Body, SurfaceBody]] = None,
-        surface: Optional[Surface] = None,
+        body: Body | SurfaceBody | None = None,
+        surface: Surface | None = None,
         **kwargs: Any,
     ) -> "SurfaceSystem":
         if body is None:
             body = Body(**kwargs)
         if surface is None:
             surface = getattr(body, "surface", None)
-        bodies = list(zip(self.bodies, self.body_surfaces)) + [(body, surface)]
+        bodies = list(zip(self.bodies, self.body_surfaces, strict=False)) + [(body, surface)]
         return SurfaceSystem(
             central=self.central,
             central_surface=self.central_surface,
@@ -70,7 +70,7 @@ class SurfaceSystem(System):
     def surface_vmap(
         self,
         func: Callable,
-        in_axes: Union[int, None, Sequence[Any]] = 0,
+        in_axes: int | None | Sequence[Any] = 0,
         out_axes: Any = 0,
     ) -> Callable:
         return self._body_surface_stack.vmap(func, in_axes=in_axes, out_axes=out_axes)

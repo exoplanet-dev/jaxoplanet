@@ -1,7 +1,7 @@
 __all__ = ["vectorize"]
 
 from functools import wraps
-from typing import Any, Union
+from typing import Any
 
 import jax
 from jpu.core import is_quantity
@@ -25,7 +25,7 @@ def vectorize(func: LightCurveFunc) -> LightCurveFunc:
     """
 
     @wraps(func)
-    def wrapped(time: Quantity, *args: Any, **kwargs: Any) -> Union[Array, Quantity]:
+    def wrapped(time: Quantity, *args: Any, **kwargs: Any) -> Array | Quantity:
         if is_quantity(time):
             time_magnitude = time.magnitude
             time_units = time.units
@@ -33,7 +33,7 @@ def vectorize(func: LightCurveFunc) -> LightCurveFunc:
             time_magnitude = time
             time_units = None
 
-        def inner(time_magnitude: Array) -> Union[Array, Quantity]:
+        def inner(time_magnitude: Array) -> Array | Quantity:
             if time_units is None:
                 return func(time_magnitude, *args, **kwargs)
             else:

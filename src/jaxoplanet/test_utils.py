@@ -54,5 +54,5 @@ def assert_quantity_pytree_allclose(
     leaves1, treedef1 = tree_util.tree_flatten(calculated, is_leaf=is_leaf)
     leaves2, treedef2 = tree_util.tree_flatten(expected, is_leaf=is_leaf)
     assert treedef1 == treedef2
-    for l1, l2 in zip(leaves1, leaves2):
+    for l1, l2 in zip(leaves1, leaves2, strict=False):
         assert_quantity_allclose(l1, l2, *args, **kwargs)

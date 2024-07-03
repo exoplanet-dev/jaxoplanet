@@ -1,6 +1,5 @@
 from collections.abc import Iterable
 from functools import partial
-from typing import Optional
 
 import equinox as eqx
 import jax
@@ -65,7 +64,7 @@ class Surface(eqx.Module):
     u: tuple[Array, ...]
 
     # Rotation period of the map in days (attribute subject to change)
-    period: Optional[Array]
+    period: Array | None
 
     # Amplitude of the map, a quantity proportional to map luminosity.
     amplitude: Array
@@ -76,11 +75,11 @@ class Surface(eqx.Module):
     def __init__(
         self,
         *,
-        y: Optional[Ylm] = None,
+        y: Ylm | None = None,
         inc: Array = 0.5 * jnp.pi,
         obl: Array = 0.0,
         u: Iterable[Array] = (),
-        period: Optional[Array] = None,
+        period: Array | None = None,
         amplitude: Array = 1.0,
         normalize: bool = True,
     ):

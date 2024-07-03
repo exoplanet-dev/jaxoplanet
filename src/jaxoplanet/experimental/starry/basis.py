@@ -276,7 +276,7 @@ def gtilde(n):
         K = [1, 1, 1]
         C = [(mu - 3) // 2, -(mu - 3) // 2, -(mu + 3) // 2]
     res = {}
-    for i, j, k, c in zip(I, J, K, C):
+    for i, j, k, c in zip(I, J, K, C, strict=False):
         res[(i, j, k)] = c
     return res
 
@@ -424,7 +424,7 @@ def U0(udeg: int):
     P = np.zeros((udeg + 1, n))
     for i in range(udeg + 1):
         idxs, values = u_p(p, None, None, i)
-        for j, v in zip(idxs, values):
+        for j, v in zip(idxs, values, strict=False):
             P[i, j] += v
 
     return P

@@ -4,8 +4,8 @@ described by `Agol et al. (2020) <https://arxiv.org/abs/1908.03222>`_.
 
 __all__ = ["light_curve"]
 
+from collections.abc import Callable
 from functools import partial
-from typing import Callable
 
 import jax
 import jax.numpy as jnp

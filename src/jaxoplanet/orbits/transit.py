@@ -1,4 +1,3 @@
-from typing import Optional
 
 import equinox as eqx
 import jax.numpy as jnp
@@ -31,11 +30,11 @@ class TransitOrbit(eqx.Module):
         self,
         *,
         period: Quantity,
-        duration: Optional[Quantity] = None,
-        speed: Optional[Quantity] = None,
-        time_transit: Optional[Quantity] = None,
-        impact_param: Optional[Quantity] = None,
-        radius: Optional[Quantity] = None,
+        duration: Quantity | None = None,
+        speed: Quantity | None = None,
+        time_transit: Quantity | None = None,
+        impact_param: Quantity | None = None,
+        radius: Quantity | None = None,
     ):
         if duration is None:
             if speed is None:
@@ -77,7 +76,7 @@ class TransitOrbit(eqx.Module):
 
     @units.quantity_input(t=ureg.d, parallax=ureg.arcsec)
     def relative_position(
-        self, t: Quantity, parallax: Optional[Quantity] = None
+        self, t: Quantity, parallax: Quantity | None = None
     ) -> tuple[Quantity, Quantity, Quantity]:
         del parallax
 

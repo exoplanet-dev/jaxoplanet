@@ -94,7 +94,7 @@ class Pijk(eqx.Module):
         return int((l + 1) * l + m)
 
     def tosparse(self) -> BCOO:
-        indices, values = zip(*self.data.items())
+        indices, values = zip(*self.data.items(), strict=False)
         idx = np.array([self.index(i, j, k) for i, j, k in indices])[:, None]
         return BCOO((jnp.asarray(values), idx), shape=(self.shape,))
 

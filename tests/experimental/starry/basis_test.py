@@ -282,7 +282,7 @@ def A2_inv_symbolic(lmax):
             C = [(mu - 3) // 2, -(mu - 3) // 2, -(mu + 3) // 2]
 
         res = 0
-        for i, j, k, c in zip(I, J, K, C):
+        for i, j, k, c in zip(I, J, K, C, strict=False):
             res += c * x**i * y**j * sm.sqrt(1 - x**2 - y**2) ** k
         return res
 
