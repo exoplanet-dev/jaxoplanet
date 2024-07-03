@@ -15,7 +15,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dynamic = ["version"]
-dependencies = ["jax", "jaxlib", "jpu>=0.0.2", "equinox", "pint<0.24"]
+dependencies = ["jax", "jaxlib", "jpu>=0.0.2", "equinox", "pint"]
 
 [project.urls]
 "Homepage" = "https://jax.exoplanet.codes"
