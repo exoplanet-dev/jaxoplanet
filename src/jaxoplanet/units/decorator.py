@@ -1,8 +1,9 @@
 __all__ = ["quantity_input"]
 
 import inspect
+from collections.abc import Callable
 from functools import partial, wraps
-from typing import Any, Callable, Optional
+from typing import Any
 
 import jax
 from pint import DimensionalityError
@@ -11,7 +12,7 @@ from jaxoplanet.units.registry import unit_registry
 
 
 def quantity_input(
-    func: Optional[Callable[..., Any]] = None,
+    func: Callable[..., Any] | None = None,
     *,
     _strict: bool = False,
     **kwargs: Any,
@@ -176,7 +177,7 @@ class QuantityInput:
 
 
 def _apply_units(
-    value: Any, units: Any, strict: bool = False, name: Optional[str] = None
+    value: Any, units: Any, strict: bool = False, name: str | None = None
 ) -> Any:
     if units is None:
         return value

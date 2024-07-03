@@ -1,6 +1,5 @@
 from collections.abc import Callable
 from functools import partial
-from typing import Optional
 
 import jax
 import jax.numpy as jnp
@@ -19,7 +18,7 @@ from jaxoplanet.units import quantity_input, unit_registry as ureg
 
 def light_curve(
     system: SurfaceSystem,
-) -> Callable[[Quantity], tuple[Optional[Array], Optional[Array]]]:
+) -> Callable[[Quantity], tuple[Array | None, Array | None]]:
     central_bodies_lc = jax.vmap(map_light_curve, in_axes=(None, 0, 0, 0, 0, None))
 
     @partial(system.surface_vmap, in_axes=(0, 0, 0, 0, None))

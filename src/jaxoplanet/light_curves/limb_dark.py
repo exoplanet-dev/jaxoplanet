@@ -1,7 +1,7 @@
 __all__ = ["light_curve"]
 
+from collections.abc import Callable
 from functools import partial
-from typing import Callable
 
 import jax.numpy as jnp
 import jpu.numpy as jnpu
