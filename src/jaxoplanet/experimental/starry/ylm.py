@@ -58,10 +58,18 @@ class Ylm(eqx.Module):
         return list(self.data.keys())
 
     @staticmethod
-    def index(ell: Array, m: Array) -> Array:
+    def index(l: Array, m: Array) -> Array:
         """Convert the degree and order of the spherical harmonic to the
         corresponding index in the coefficient array."""
-        return ell * (ell + 1) + m
+        return l * (l + 1) + m
+
+    @staticmethod
+    def lm(index: int) -> tuple[int, int]:
+        """Convert the index in the coefficient array to the degree and order
+        of the spherical harmonic."""
+        l = int(np.floor(np.sqrt(index)))
+        m = index - l * (l + 1)
+        return l, m
 
     def normalize(self) -> "Ylm":
         """Return a new Ylm instance with normalized coefficients.
@@ -88,21 +96,21 @@ class Ylm(eqx.Module):
         return self.tosparse().todense()
 
     def to_dense_pad(self) -> Array:
-        new_y = jnp.zeros((self.ell_max + 1, 2 * self.ell_max + 1))
+        new_y = jnp.zeros((self.deg + 1, 2 * self.deg + 1))
         for l in range(self.ell_max + 1):
             for m in range(-l, l + 1):
-                new_y = new_y.at[l, self.ell_max + m].set(self.data.get((l, m), 0.0))
+                new_y = new_y.at[l, self.deg + m].set(self.data.get((l, m), 0.0))
 
         return new_y
 
     @classmethod
     def from_dense_pad(cls, y: Array) -> "Ylm":
         data = {}
-        ell_max, _ = y.shape
+        l_max, _ = y.shape
 
-        for l in range(ell_max):
+        for l in range(l_max):
             for m in range(-l, l + 1):
-                data[(l, m)] = y[l, ell_max + m - 1]
+                data[(l, m)] = y[l, l_max + m - 1]
 
         return cls(data)
 
@@ -110,9 +118,8 @@ class Ylm(eqx.Module):
     def from_dense(cls, y: Array, normalize: bool = True) -> "Ylm":
         data = {}
         for i, ylm in enumerate(y):
-            ell = int(np.floor(np.sqrt(i)))
-            m = i - ell * (ell + 1)
-            data[(ell, m)] = ylm
+            l, m = cls.lm(i)
+            data[l, m] = ylm
         ylm = cls(data)
         if normalize:
             return ylm.normalize()
