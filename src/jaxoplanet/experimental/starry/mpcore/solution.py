@@ -8,15 +8,36 @@ def check_occultation(b, r):
         raise ValueError(f"occultation is full with b = {b} and r = {r}.")
 
 
+def kappas(b, r):
+    b2 = b**2
+    factor = (r - 1) * (r + 1)
+    area = kite_area(r, b, 1.0)
+    return mp.atan2(area, b2 + factor), mp.atan2(area, b2 - factor)
+
+
+def kite_area(a, b, c):
+    def sort2(a, b):
+        return min(a, b), max(a, b)
+
+    a, b = sort2(a, b)
+    b, c = sort2(b, c)
+    a, b = sort2(a, b)
+
+    square_area = (a + (b + c)) * (c - (a - b)) * (c + (a - b)) * (a + (b - c))
+    return mp.sqrt(max(0, square_area))
+
+
 def P(l, m, b, r):
     """Compute the P integral numerically from its new parametrization."""
     mu = l - m
     nu = l + m
 
     if (abs(1 - r) < b) and (b < 1 + r):
-        phi = mp.asin((1 - r**2 - b**2) / (2 * b * r))
+        kappa = kappas(b, r)[0]
+        phi = kappa - mp.pi / 2
     else:
         phi = mp.pi / 2
+        kappa = mp.pi
 
     kappa = phi + mp.pi / 2
     delta = (b - r) / (2 * r)
@@ -102,7 +123,7 @@ def p_numerical(l_max, b, r):
 def q_numerical(l_max, b, r):
 
     if (abs(1 - r) < b) and (b < 1 + r):
-        lam = mp.asin((1 - r**2 + b**2) / (2 * b))
+        lam = 0.5 * mp.pi - kappas(b, r)[1]
     else:
         lam = mp.pi / 2
 

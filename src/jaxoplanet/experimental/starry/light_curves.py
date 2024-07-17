@@ -7,7 +7,10 @@ import jax.numpy as jnp
 import numpy as np
 import scipy
 
-from jaxoplanet.experimental.starry.basis import A1, U0, A2_inv
+from jaxoplanet.experimental.starry.basis import U0
+from jaxoplanet.experimental.starry.mpcore.solution import rT
+from jaxoplanet.experimental.starry.mpcore.basis import A1, A2_inv
+from jaxoplanet.experimental.starry.mpcore.utils import to_numpy
 from jaxoplanet.experimental.starry.orbit import SurfaceSystem
 from jaxoplanet.experimental.starry.pijk import Pijk
 from jaxoplanet.experimental.starry.rotation import left_project
@@ -108,7 +111,7 @@ def surface_light_curve(
     Returns:
         ArrayLike: flux
     """
-    rT_deg = rT(surface.deg)
+    rT_deg = to_numpy(rT(surface.deg))
 
     # no occulting body
     if r is None:
@@ -131,8 +134,7 @@ def surface_light_curve(
         # scipy.sparse.linalg.inv of a sparse matrix[[1]] is a non-sparse [[1]], hence
         # `from_scipy_sparse`` raises an error (case deg=0)
         if surface.deg > 0:
-            A2 = scipy.sparse.linalg.inv(A2_inv(surface.deg))
-            A2 = jax.experimental.sparse.BCOO.from_scipy_sparse(A2)
+            A2 = to_numpy(A2_inv(surface.deg) ** -1)
         else:
             A2 = jnp.array([1])
 
@@ -153,7 +155,7 @@ def surface_light_curve(
 
     # limb darkening
     U = jnp.array([1, *surface.u])
-    A1_val = jax.experimental.sparse.BCOO.from_scipy_sparse(A1(surface.ydeg))
+    A1_val = to_numpy(A1(surface.ydeg))
     p_y = Pijk.from_dense(A1_val @ rotated_y, degree=surface.ydeg)
     p_u = Pijk.from_dense(U @ U0(surface.udeg), degree=surface.udeg)
     p_y = p_y * p_u

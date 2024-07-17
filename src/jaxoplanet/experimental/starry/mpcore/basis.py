@@ -172,7 +172,7 @@ def gtilde(n):
     return res
 
 
-def A2inv(l_max):
+def A2_inv(l_max):
     n = (l_max + 1) ** 2
     p = {m: p_coeffs(m) for m in range(n)}
     res = mp.zeros(n, n)
