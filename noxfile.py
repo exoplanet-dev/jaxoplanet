@@ -2,7 +2,7 @@
 
 import nox
 
-ALL_PYTHON_VS = ["3.9", "3.10", "3.11"]
+ALL_PYTHON_VS = ["3.10", "3.11", "3.12"]
 
 
 @nox.session(python=ALL_PYTHON_VS)
@@ -18,7 +18,7 @@ def test_x64(session):
     session.run("pytest", "-n", "auto", *session.posargs, env=env)
 
 
-@nox.session(python=["3.9"])
+@nox.session(python=["3.10"])
 def comparison(session):
     session.install(".[test,comparison]", "numpy<1.22")
     session.run("python", "-c", "import starry")

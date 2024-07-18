@@ -1,6 +1,5 @@
 from collections.abc import Callable
 from functools import partial
-from typing import Optional
 
 import jax
 import jax.numpy as jnp

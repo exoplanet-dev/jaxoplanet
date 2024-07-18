@@ -2,7 +2,7 @@ __all__ = ["ObjectStack"]
 
 from collections.abc import Callable, Sequence
 from functools import wraps
-from typing import Any, Generic, Optional, TypeVar, Union
+from typing import Any, Generic, TypeVar
 
 import equinox as eqx
 import jax
@@ -32,7 +32,7 @@ class ObjectStack(eqx.Module, Generic[Obj]):
     """
 
     objects: tuple[Obj, ...]
-    stack: Optional[Obj]
+    stack: Obj | None
 
     def __init__(self, *objects: Obj):
         self.objects = objects
@@ -54,7 +54,7 @@ class ObjectStack(eqx.Module, Generic[Obj]):
     def vmap(
         self,
         func: Callable,
-        in_axes: Union[int, None, Sequence[Any]] = 0,
+        in_axes: int | None | Sequence[Any] = 0,
         out_axes: Any = 0,
     ) -> Callable:
         """Map a function over the objects in this stack
@@ -120,7 +120,7 @@ class ObjectStack(eqx.Module, Generic[Obj]):
             )
             return out_tree.unflatten(  # type: ignore
                 parts[0] if a is None else jnpu.stack(parts, axis=a)
-                for a, *parts in zip(out_axes_flat, *results)  # type: ignore
+                for a, *parts in zip(out_axes_flat, *results, strict=False)  # type: ignore
             )
 
         return impl
@@ -136,6 +136,9 @@ def index_helper(n, arg, axis):
 
 @lu.transformation_with_aux  # type: ignore
 def flatten_func_for_object_vmap(in_tree, in_axes_flat, index, body, *args_flat):
-    args_indexed = (index_helper(index, *args) for args in zip(args_flat, in_axes_flat))
+    args_indexed = (
+        index_helper(index, *args)
+        for args in zip(args_flat, in_axes_flat, strict=False)
+    )
     ans = yield (body,) + in_tree.unflatten(args_indexed), {}
     yield tree_flatten(ans, is_leaf=batching.is_vmappable)
