@@ -1,4 +1,9 @@
+import os
 import jaxoplanet
+
+html_baseurl = os.environ.get("READTHEDOCS_CANONICAL_URL", "")
+if os.environ.get("READTHEDOCS", "") == "True":
+    html_context = {"READTHEDOCS": True}
 
 language = "en"
 master_doc = "index"
