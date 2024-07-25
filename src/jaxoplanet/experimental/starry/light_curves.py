@@ -7,7 +7,6 @@ import numpy as np
 import scipy
 
 from jaxoplanet.experimental.starry.basis import U0
-from jaxoplanet.experimental.starry.mpcore.solution import rT
 from jaxoplanet.experimental.starry.mpcore.basis import A1, A2_inv
 from jaxoplanet.experimental.starry.mpcore.utils import to_numpy
 from jaxoplanet.experimental.starry.orbit import SurfaceSystem
@@ -17,6 +16,8 @@ from jaxoplanet.experimental.starry.solution import solution_vector
 from jaxoplanet.light_curves.utils import vectorize
 from jaxoplanet.types import Array, Quantity
 from jaxoplanet.units import quantity_input, unit_registry as ureg
+
+from typing import Optional
 
 
 def light_curve(
@@ -64,6 +65,7 @@ def light_curve(
                     (yos / central_radius).magnitude,
                     (zos / central_radius).magnitude,
                     theta,
+                    order,
                 )
                 * system.central_surface.amplitude
             )
@@ -86,10 +88,10 @@ def light_curve(
 # TODO: figure out the sparse matrices (and Pijk) to avoid todense()
 def surface_light_curve(
     surface,
-    r: float = None,
-    xo: float = None,
-    yo: float = None,
-    zo: float = None,
+    r: float | None = None,
+    xo: float | None = None,
+    yo: float | None = None,
+    zo: float | None = None,
     theta: float = 0.0,
     order: int = 20,
 ):
@@ -110,7 +112,7 @@ def surface_light_curve(
     Returns:
         ArrayLike: flux
     """
-    rT_deg = to_numpy(rT(surface.deg))
+    rT_deg = rT(surface.deg)
 
     # no occulting body
     if r is None:
@@ -154,7 +156,7 @@ def surface_light_curve(
 
     # limb darkening
     U = jnp.array([1, *surface.u])
-    A1_val = to_numpy(A1(surface.ydeg))
+    A1_val = np.atleast_2d(to_numpy(A1(surface.ydeg)))
     p_y = Pijk.from_dense(A1_val @ rotated_y, degree=surface.ydeg)
     p_u = Pijk.from_dense(U @ U0(surface.udeg), degree=surface.udeg)
     p_y = p_y * p_u
