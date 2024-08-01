@@ -11,7 +11,7 @@ from jaxoplanet.experimental.starry.mpcore.utils import to_numpy
 from jaxoplanet.experimental.starry.orbit import SurfaceSystem
 from jaxoplanet.experimental.starry.pijk import Pijk
 from jaxoplanet.experimental.starry.rotation import left_project
-from jaxoplanet.experimental.starry.solution import solution_vector
+from jaxoplanet.experimental.starry.solution import solution_vector, rT
 from jaxoplanet.light_curves.utils import vectorize
 from jaxoplanet.types import Array, Quantity
 from jaxoplanet.units import quantity_input, unit_registry as ureg
@@ -173,47 +173,3 @@ def surface_light_curve(
     norm = np.pi / (p_u.tosparse() @ rT(surface.udeg))
 
     return surface.amplitude * (p_y.tosparse() @ design_matrix_p) * norm
-
-
-def rT(lmax: int) -> Array:
-    rt = [0.0 for _ in range((lmax + 1) * (lmax + 1))]
-    amp0 = jnp.pi
-    lfac1 = 1.0
-    lfac2 = 2.0 / 3.0
-    for ell in range(0, lmax + 1, 4):
-        amp = amp0
-        for m in range(0, ell + 1, 4):
-            mu = ell - m
-            nu = ell + m
-            rt[ell * ell + ell + m] = amp * lfac1
-            rt[ell * ell + ell - m] = amp * lfac1
-            if ell < lmax:
-                rt[(ell + 1) * (ell + 1) + ell + m + 1] = amp * lfac2
-                rt[(ell + 1) * (ell + 1) + ell - m + 1] = amp * lfac2
-            amp *= (nu + 2.0) / (mu - 2.0)
-        lfac1 /= (ell / 2 + 2) * (ell / 2 + 3)
-        lfac2 /= (ell / 2 + 2.5) * (ell / 2 + 3.5)
-        amp0 *= 0.0625 * (ell + 2) * (ell + 2)
-
-    amp0 = 0.5 * jnp.pi
-    lfac1 = 0.5
-    lfac2 = 4.0 / 15.0
-    for ell in range(2, lmax + 1, 4):
-        amp = amp0
-        for m in range(2, ell + 1, 4):
-            mu = ell - m
-            nu = ell + m
-            rt[ell * ell + ell + m] = amp * lfac1
-            rt[ell * ell + ell - m] = amp * lfac1
-            if ell < lmax:
-                rt[(ell + 1) * (ell + 1) + ell + m + 1] = amp * lfac2
-                rt[(ell + 1) * (ell + 1) + ell - m + 1] = amp * lfac2
-            amp *= (nu + 2.0) / (mu - 2.0)
-        lfac1 /= (ell / 2 + 2) * (ell / 2 + 3)
-        lfac2 /= (ell / 2 + 2.5) * (ell / 2 + 3.5)
-        amp0 *= 0.0625 * ell * (ell + 4)
-    return np.array(rt)
-
-
-def rTA1(lmax: int) -> Array:
-    return rT(lmax) @ A1(lmax)
