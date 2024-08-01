@@ -4,9 +4,8 @@ from functools import partial
 import jax
 import jax.numpy as jnp
 import numpy as np
-import scipy
 
-from jaxoplanet.experimental.starry.basis import U0
+from jaxoplanet.experimental.starry.basis import U
 from jaxoplanet.experimental.starry.mpcore.basis import A1, A2_inv
 from jaxoplanet.experimental.starry.mpcore.utils import to_numpy
 from jaxoplanet.experimental.starry.orbit import SurfaceSystem
@@ -16,6 +15,7 @@ from jaxoplanet.experimental.starry.solution import solution_vector
 from jaxoplanet.light_curves.utils import vectorize
 from jaxoplanet.types import Array, Quantity
 from jaxoplanet.units import quantity_input, unit_registry as ureg
+from jaxoplanet.experimental.starry.surface import Surface
 
 from typing import Optional
 
@@ -87,11 +87,11 @@ def light_curve(
 
 # TODO: figure out the sparse matrices (and Pijk) to avoid todense()
 def surface_light_curve(
-    surface,
+    surface: Surface,
     r: float | None = None,
-    xo: float | None = None,
-    yo: float | None = None,
-    zo: float | None = None,
+    x: float | None = None,
+    y: float | None = None,
+    z: float | None = None,
     theta: float = 0.0,
     order: int = 20,
 ):
@@ -101,49 +101,53 @@ def surface_light_curve(
         map (Map): map object
         r (float or None): radius of the occulting body, relative to the current map
            body
-        xo (float or None): x position of the occulting body, relative to the current
-           map body
-        yo (float or None): y position of the occulting body, relative to the current
-           map body
-        zo (float or None): z position of the occulting body, relative to the current
-           map body
-        theta (float): rotation angle of the map
+        x (float or None): x position of the occulting body, relative to the current
+           map body. By default (None) 0.0
+        y (float or None): y position of the occulting body, relative to the current
+           map body. By default (None) 0.0
+        z (float or None): z position of the occulting body, relative to the current
+           map body. By default (None) 0.0
+        theta (float):
+            rotation angle of the map, in radians. By default 0.0
+        order (int):
+            order of the P integral Gauss-Legendre approximation. By default 20
 
     Returns:
         ArrayLike: flux
     """
     rT_deg = rT(surface.deg)
 
+    x = 0.0 if x is None else x
+    y = 0.0 if y is None else y
+    z = 0.0 if z is None else z
+
     # no occulting body
     if r is None:
         b_rot = True
         theta_z = 0.0
-        x = rT_deg
+        design_matrix_p = rT_deg
 
     # occulting body
     else:
-        b = jnp.sqrt(jnp.square(xo) + jnp.square(yo))
-        b_rot = jnp.logical_or(jnp.greater_equal(b, 1.0 + r), jnp.less_equal(zo, 0.0))
+        b = jnp.sqrt(jnp.square(x) + jnp.square(y))
+        b_rot = jnp.logical_or(jnp.greater_equal(b, 1.0 + r), jnp.less_equal(z, 0.0))
         b_occ = jnp.logical_not(b_rot)
-        theta_z = jnp.arctan2(xo, yo)
+        theta_z = jnp.arctan2(x, y)
 
         # trick to avoid nan `x=jnp.where...` grad caused by nan sT
         r = jnp.where(b_rot, 0.0, r)
         b = jnp.where(b_rot, 0.0, b)
         sT = solution_vector(surface.deg, order=order)(b, r)
 
-        # scipy.sparse.linalg.inv of a sparse matrix[[1]] is a non-sparse [[1]], hence
-        # `from_scipy_sparse`` raises an error (case deg=0)
         if surface.deg > 0:
             A2 = to_numpy(A2_inv(surface.deg) ** -1)
         else:
-            A2 = jnp.array([1])
+            A2 = jnp.array([[1]])
 
-        x = jnp.where(b_occ, sT @ A2, rT_deg)
+        design_matrix_p = jnp.where(b_occ, sT @ A2, rT_deg)
 
-    # TODO(lgrcia): Is this the right behavior when map.y is None?
-    if surface.y is None:
-        rotated_y = jnp.zeros(surface.ydeg)
+    if surface.ydeg == 0:
+        rotated_y = surface.y.todense()
     else:
         rotated_y = left_project(
             surface.ydeg,
@@ -155,15 +159,20 @@ def surface_light_curve(
         )
 
     # limb darkening
-    U = jnp.array([1, *surface.u])
+    if surface.udeg == 0:
+        p_u = Pijk.from_dense(jnp.array([1]))
+    else:
+        u = jnp.array([1, *surface.u])
+        p_u = Pijk.from_dense(u @ U(surface.udeg), degree=surface.udeg)
+
+    # surface map * limb darkening map
     A1_val = np.atleast_2d(to_numpy(A1(surface.ydeg)))
     p_y = Pijk.from_dense(A1_val @ rotated_y, degree=surface.ydeg)
-    p_u = Pijk.from_dense(U @ U0(surface.udeg), degree=surface.udeg)
     p_y = p_y * p_u
 
     norm = np.pi / (p_u.tosparse() @ rT(surface.udeg))
 
-    return surface.amplitude * (p_y.tosparse() @ x) * norm
+    return surface.amplitude * (p_y.tosparse() @ design_matrix_p) * norm
 
 
 def rT(lmax: int) -> Array:

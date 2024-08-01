@@ -410,7 +410,7 @@ def u_p(p, l, m, n):
     return indices[idx], data[idx]
 
 
-def U0(udeg: int):
+def U(udeg: int):
     """Change of basis matrix from limb darkening basis to polynomial basis.
 
     Args:

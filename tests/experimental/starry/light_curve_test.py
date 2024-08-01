@@ -19,7 +19,7 @@ def test_compare_starry(deg, u):
     # map
     inc = np.pi / 2
     np.random.seed(deg)
-    y = Ylm.from_dense(np.random.randn((deg + 1) ** 2))
+    y = Ylm.from_dense(np.random.randn((deg + 1) ** 2), normalize=True)
     map = Surface(y=y, u=u, inc=inc)
 
     # occultor
@@ -256,7 +256,7 @@ def test_compare_starry_rot(deg):
     # map
     inc = np.pi / 2
     np.random.seed(deg)
-    y = Ylm.from_dense(np.random.randn((deg + 1) ** 2))
+    y = Ylm.from_dense(np.random.randn((deg + 1) ** 2), normalize=True)
     map = Surface(y=y, inc=inc)
 
     # phase
