@@ -12,6 +12,9 @@ from scipy.special import legendre as LegendreP
 
 from jaxoplanet.experimental.starry.rotation import dot_rotation_matrix
 from jaxoplanet.experimental.starry.wigner3j import Wigner3jCalculator
+from jaxoplanet.experimental.starry.pijk import Pijk
+from jaxoplanet.experimental.starry import basis
+from jaxoplanet.experimental.starry import solution
 from jaxoplanet.types import Array
 
 
@@ -57,6 +60,20 @@ class Ylm(eqx.Module):
     def indices(self) -> list[tuple[int, int]]:
         return list(self.data.keys())
 
+    def __mul__(self, other: Any) -> "Ylm":
+        if isinstance(other, Ylm):
+            return _mul(self, other)
+        else:
+            return jax.tree_util.tree_map(lambda x: x * other, self)
+
+    def __rmul__(self, other: Any) -> "Ylm":
+        assert not isinstance(other, Ylm)
+        return jax.tree_util.tree_map(lambda x: other * x, self)
+
+    def __getitem__(self, key) -> Array:
+        assert isinstance(key, tuple)
+        return self.todense()[self.index(*key)]
+
     @staticmethod
     def index(l: Array, m: Array) -> Array:
         """Convert the degree and order of the spherical harmonic to the
@@ -70,6 +87,42 @@ class Ylm(eqx.Module):
         l = int(np.floor(np.sqrt(index)))
         m = index - l * (l + 1)
         return l, m
+
+    @classmethod
+    def from_dense_pad(cls, y: Array) -> "Ylm":
+        data = {}
+        l_max, _ = y.shape
+
+        for l in range(l_max):
+            for m in range(-l, l + 1):
+                data[(l, m)] = y[l, l_max + m - 1]
+
+        return cls(data)
+
+    @classmethod
+    def from_dense(cls, y: Array, normalize: bool = False) -> "Ylm":
+        data = {}
+        for i, ylm in enumerate(y):
+            l, m = cls.lm(i)
+            data[l, m] = ylm
+        ylm = cls(data)
+        if normalize:
+            return ylm.normalize()
+        else:
+            return ylm
+
+    @classmethod
+    def from_limb_darkening(cls, u: Array) -> "Ylm":
+        """
+        Spherical harmonics coefficients from limb darkening coefficients.
+        """
+        deg = len(u)
+        _u = np.array([1, *u])
+        pu = _u @ basis.U(deg)
+        yu = np.linalg.inv(basis.A1(deg).todense()) @ pu
+        yu = Ylm.from_dense(yu, normalize=False)
+        norm = 1 / (Pijk.from_dense(pu, degree=deg).tosparse() @ solution.rT(deg))
+        return yu * norm
 
     def normalize(self) -> "Ylm":
         """Return a new Ylm instance with normalized coefficients.
@@ -102,43 +155,6 @@ class Ylm(eqx.Module):
                 new_y = new_y.at[l, self.deg + m].set(self.data.get((l, m), 0.0))
 
         return new_y
-
-    @classmethod
-    def from_dense_pad(cls, y: Array) -> "Ylm":
-        data = {}
-        l_max, _ = y.shape
-
-        for l in range(l_max):
-            for m in range(-l, l + 1):
-                data[(l, m)] = y[l, l_max + m - 1]
-
-        return cls(data)
-
-    @classmethod
-    def from_dense(cls, y: Array, normalize: bool = True) -> "Ylm":
-        data = {}
-        for i, ylm in enumerate(y):
-            l, m = cls.lm(i)
-            data[l, m] = ylm
-        ylm = cls(data)
-        if normalize:
-            return ylm.normalize()
-        else:
-            return ylm
-
-    def __mul__(self, other: Any) -> "Ylm":
-        if isinstance(other, Ylm):
-            return _mul(self, other)
-        else:
-            return jax.tree_util.tree_map(lambda x: x * other, self)
-
-    def __rmul__(self, other: Any) -> "Ylm":
-        assert not isinstance(other, Ylm)
-        return jax.tree_util.tree_map(lambda x: other * x, self)
-
-    def __getitem__(self, key) -> Array:
-        assert isinstance(key, tuple)
-        return self.todense()[self.index(*key)]
 
 
 def _mul(f: Ylm, g: Ylm) -> Ylm:
