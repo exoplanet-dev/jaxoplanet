@@ -2,11 +2,12 @@ from collections.abc import Callable
 from functools import partial
 
 import jax
+import scipy
 import jax.numpy as jnp
 import numpy as np
 
-from jaxoplanet.experimental.starry.basis import U
-from jaxoplanet.experimental.starry.mpcore.basis import A1, A2_inv
+from jaxoplanet.experimental.starry.basis import U, A2_inv
+from jaxoplanet.experimental.starry.mpcore.basis import A1
 from jaxoplanet.experimental.starry.mpcore.utils import to_numpy
 from jaxoplanet.experimental.starry.orbit import SurfaceSystem
 from jaxoplanet.experimental.starry.pijk import Pijk
@@ -95,10 +96,10 @@ def surface_light_curve(
     theta: float = 0.0,
     order: int = 20,
 ):
-    """Light curve of an occulted map.
+    """Light curve of an occulted surface.
 
     Args:
-        map (Map): map object
+        surface (Surface): map object
         r (float or None): radius of the occulting body, relative to the current map
            body
         x (float or None): x position of the occulting body, relative to the current
@@ -140,7 +141,8 @@ def surface_light_curve(
         sT = solution_vector(surface.deg, order=order)(b, r)
 
         if surface.deg > 0:
-            A2 = to_numpy(A2_inv(surface.deg) ** -1)
+            A2 = scipy.sparse.linalg.inv(A2_inv(surface.deg))
+            A2 = jax.experimental.sparse.BCOO.from_scipy_sparse(A2)
         else:
             A2 = jnp.array([[1]])
 

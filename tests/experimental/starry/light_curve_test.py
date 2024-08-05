@@ -12,7 +12,7 @@ from jaxoplanet.light_curves import limb_dark_light_curve
 
 @pytest.mark.parametrize("deg", [2, 5, 10])
 @pytest.mark.parametrize("u", [[], [0.1], [0.2, 0.1]])
-def test_compare_starry(deg, u):
+def test_compare_starry_limb_dark(deg, u):
     starry = pytest.importorskip("starry")
     starry.config.lazy = False
 

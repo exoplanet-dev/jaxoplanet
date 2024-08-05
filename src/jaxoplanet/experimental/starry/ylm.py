@@ -119,8 +119,8 @@ class Ylm(eqx.Module):
         deg = len(u)
         _u = np.array([1, *u])
         pu = _u @ basis.U(deg)
-        yu = np.linalg.inv(basis.A1(deg).todense()) @ pu
-        yu = Ylm.from_dense(yu, normalize=False)
+        yu = np.array(np.linalg.inv(basis.A1(deg).todense()) @ pu)
+        yu = Ylm.from_dense(yu.flatten(), normalize=False)
         norm = 1 / (Pijk.from_dense(pu, degree=deg).tosparse() @ solution.rT(deg))
         return yu * norm
 
