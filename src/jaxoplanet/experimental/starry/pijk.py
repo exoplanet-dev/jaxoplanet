@@ -12,18 +12,18 @@ from jaxoplanet.types import Array
 
 
 class Pijk(eqx.Module):
-    r"""A class to represent and manipulate spherical harmonics in the polynomial basis.
-    Several indices are used throughout the class:
+    r"""A class to represent and manipulate spherical harmonics in the
+    polynomial basis. Several indices are used throughout the class:
 
-    - Indices :math:`(i, j, k)` represent the order of the polynomials of :math:`(x, y, z)`,
-    for example :math:`(1, 0, 2)` represents :math:`x\,z^2`.
+    - Indices :math:`(i, j, k)` represent the order of the polynomials of
+    :math:`(x, y, z)`, for example :math:`(1, 0, 2)` represents :math:`x\,z^2`.
 
     - Indices :math:`(l, m)` represent the orders of the spherical harmonics.
 
     - Index n represent the index of the polynomial in the flattened array.
 
-    Flattened array ``todense`` and ``from_dense`` follow the convention from Luger et al.
-    (2019). More specifically:
+    Flattened array ``todense`` and ``from_dense`` follow the convention from
+    Luger et al. (2019). More specifically:
 
     .. math::
 

@@ -2,9 +2,9 @@ r"""A module to manipulate vectors in the spherical harmonic basis.
 
 The spherical harmonics basis is a set of orthogonal functions defined on the
 unit sphere. In jaxoplanet, this basis is used to represent the intensity at the surface
-of a spherical body, such as a star or a planet. We say that :math:`y` represents the intensity
-of a surface in the spherical harmonics basis if the specific intensity at the :math:`(x,y)` on 
-the surface can be written as:
+of a spherical body, such as a star or a planet. We say that :math:`y` represents the 
+intensity of a surface in the spherical harmonics basis if the specific intensity at the 
+:math:`(x,y)` on the surface can be written as:
 
 .. math::
 
@@ -25,9 +25,9 @@ arranged in increasing degree and order:
     \end{pmatrix}^\mathsf{T}
     \quad,
 
-where :math:`Y_{l, m} = Y_{l, m}(x, y)` is the spherical harmonic of degree :math:`l` and order :math:`m`.
-For reference, in this basis the coefficient of the spherical harmonic :math:`Y_{l, m}` is located at 
-the index
+where :math:`Y_{l, m} = Y_{l, m}(x, y)` is the spherical harmonic of degree :math:`l` 
+and order :math:`m`. For reference, in this basis the coefficient of the spherical 
+harmonic :math:`Y_{l, m}` is located at the index
 
 .. math::
 
@@ -115,8 +115,9 @@ class Ylm(eqx.Module):
         return Ylm(data=data)
 
     def tosparse(self) -> BCOO:
-        """Return a sparse (jax.experimental.sparse.BCOO) spherical harmonic coefficients vector where the spherical
-        harmonic :math:`Y_{l, m}` is located at the index :math:`n = l^2 + l + m`.
+        """Return a sparse (jax.experimental.sparse.BCOO) spherical harmonic
+        coefficients vector where the spherical harmonic :math:`Y_{l, m}` is located at
+        the index :math:`n = l^2 + l + m`.
         """
         indices, values = zip(*self.data.items(), strict=False)
         idx = jnp.array([self.index(ell, m) for ell, m in indices])[:, None]
@@ -164,7 +165,8 @@ def _mul(f: Ylm, g: Ylm) -> Ylm:
     """
     Based closely on the implementation from the MIT-licensed spherical package:
 
-    https://github.com/moble/spherical/blob/0aa81c309cac70b90f8dfb743ce35d2cc9ae6dee/spherical/multiplication.py
+    https://github.com/moble/spherical/blob/0aa81c309cac70b90f8dfb743ce35d2cc9ae6dee/
+    spherical/multiplication.py
     """
     ellmax_f = f.ell_max
     ellmax_g = g.ell_max
@@ -257,8 +259,8 @@ def ylm_spot(ydeg: int) -> callable:
         """spot expansion in the spherical harmonics basis.
 
         Args:
-            contrast (float): spot contrast, defined as (1-c) where c is the intensity of
-            the center of the spot relative to the unspotted surface. A contrast of 1.
+            contrast (float): spot contrast, defined as (1-c) where c is the intensity
+            of the center of the spot relative to the unspotted surface. A contrast of 1.
             means that the spot intensity drops to zero at the center, 0. means that
             the intensity at the center of the spot is the same as the intensity of the
             unspotted surface.
