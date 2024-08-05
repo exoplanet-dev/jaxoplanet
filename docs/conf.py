@@ -19,7 +19,7 @@ extensions = [
 ]
 
 autoapi_dirs = ["../src"]
-autoapi_ignore = ["*/experimental/*", "*_version*", "*/types*"]
+autoapi_ignore = ["*_version*", "*/types*"]
 autoapi_options = [
     "members",
     "undoc-members",
@@ -29,6 +29,8 @@ autoapi_options = [
     "special-members",
     # "imported-members",
 ]
+autoapi_add_toctree_entry = False
+
 suppress_warnings = ["autoapi.python_import_resolution"]
 
 myst_enable_extensions = ["dollarmath", "colon_fence"]
