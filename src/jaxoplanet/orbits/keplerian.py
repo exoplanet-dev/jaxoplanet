@@ -1,3 +1,6 @@
+"""A module to define Keplerian systems of bodies.
+"""
+
 from collections.abc import Callable, Iterable, Sequence
 from typing import Any
 
@@ -717,6 +720,15 @@ class System(eqx.Module):
         central: Central | None = None,
         **kwargs: Any,
     ) -> "System":
+        """Add a body to the system and return a new system
+
+        Args:
+            body (Body | None, optional): body to add. Defaults to None.
+            central (Central | None, optional): TODO. Defaults to None.
+
+        Returns:
+            System: :py:class:`~jaxoplanet.orbits.keplerian.System` with the added body
+        """
         body_: Body | OrbitalBody | None = body
         if body_ is None:
             body_ = Body(**kwargs)
