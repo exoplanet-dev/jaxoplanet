@@ -10,7 +10,6 @@ why
 install
 troubleshooting
 tutorials/getting-started.ipynb
-examples
 ```
 
 ```{toctree}
@@ -28,4 +27,6 @@ api
 tutorials/autodiff.ipynb
 tutorials/introduction-to-jax.ipynb
 tutorials/core-from-scratch.ipynb
+contributing
+
 ```
