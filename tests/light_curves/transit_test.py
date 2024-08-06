@@ -18,7 +18,7 @@ def test_radius_ratio_depth():
 
     transit_orbit = TransitOrbit(
         period=period,
-        radius=radius_ratio,
+        radius_ratio=radius_ratio,
         duration=0.1 * ureg.day,
     )
 
