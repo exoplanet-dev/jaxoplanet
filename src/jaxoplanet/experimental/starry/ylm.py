@@ -2,8 +2,8 @@ r"""A module to manipulate vectors in the spherical harmonic basis.
 
 The spherical harmonics basis is a set of orthogonal functions defined on the
 unit sphere. In jaxoplanet, this basis is used to represent the intensity at the surface
-of a spherical body, such as a star or a planet. We say that :math:`y` represents the 
-intensity of a surface in the spherical harmonics basis if the specific intensity at the 
+of a spherical body, such as a star or a planet. We say that :math:`y` represents the
+intensity of a surface in the spherical harmonics basis if the specific intensity at the
 :math:`(x,y)` on the surface can be written as:
 
 .. math::
@@ -25,8 +25,8 @@ arranged in increasing degree and order:
     \end{pmatrix}^\mathsf{T}
     \quad,
 
-where :math:`Y_{l, m} = Y_{l, m}(x, y)` is the spherical harmonic of degree :math:`l` 
-and order :math:`m`. For reference, in this basis the coefficient of the spherical 
+where :math:`Y_{l, m} = Y_{l, m}(x, y)` is the spherical harmonic of degree :math:`l`
+and order :math:`m`. For reference, in this basis the coefficient of the spherical
 harmonic :math:`Y_{l, m}` is located at the index
 
 .. math::
