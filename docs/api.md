@@ -41,5 +41,6 @@ starry light curve <autoapi/jaxoplanet/experimental/starry/surface/index>
 Ylm <autoapi/jaxoplanet/experimental/starry/ylm/index>
 Pijk <autoapi/jaxoplanet/experimental/starry/pijk/index>
 visualization <autoapi/jaxoplanet/experimental/starry/visualization/index>
-
 ```
+
+**Missing something?** Check the [full API reference](autoapi/jaxoplanet/index).
