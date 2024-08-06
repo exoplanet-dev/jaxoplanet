@@ -8,7 +8,7 @@ from jaxoplanet.units import unit_registry as ureg
 
 
 class TransitOrbit(eqx.Module):
-    """An orbit parameterized to be useful for fitting transiting planets.
+    """An orbit parameterized by the transit signal parameters.
 
     Args:
         period: Orbital periods of the planets [time unit].
