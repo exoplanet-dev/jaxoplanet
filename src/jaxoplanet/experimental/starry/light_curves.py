@@ -13,7 +13,8 @@ from jaxoplanet.experimental.starry.rotation import left_project
 from jaxoplanet.experimental.starry.solution import solution_vector
 from jaxoplanet.light_curves.utils import vectorize
 from jaxoplanet.types import Array, Quantity
-from jaxoplanet.units import quantity_input, unit_registry as ureg
+from jaxoplanet.units import quantity_input
+from jaxoplanet.units import unit_registry as ureg
 
 
 def light_curve(
@@ -87,7 +88,7 @@ def map_light_curve(
     """Light curve of an occulted map.
 
     Args:
-        map (Map): map object
+        map (Map): Surface object
         r (float or None): radius of the occulting body, relative to the current map
            body
         xo (float or None): x position of the occulting body, relative to the current
