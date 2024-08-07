@@ -46,7 +46,7 @@ def docs(session):
             "sphinx",
             "-T",
             "-E",
-            # "-W",
+            "-W",
             "--keep-going",
             "-b",
             "dirhtml",
