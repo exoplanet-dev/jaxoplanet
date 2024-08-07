@@ -6,7 +6,6 @@
 ```{toctree}
 :caption: User guide
 
-why
 install
 troubleshooting
 tutorials/getting-started.ipynb
