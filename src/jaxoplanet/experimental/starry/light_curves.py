@@ -13,8 +13,7 @@ from jaxoplanet.experimental.starry.rotation import left_project
 from jaxoplanet.experimental.starry.solution import solution_vector
 from jaxoplanet.light_curves.utils import vectorize
 from jaxoplanet.types import Array, Quantity
-from jaxoplanet.units import quantity_input
-from jaxoplanet.units import unit_registry as ureg
+from jaxoplanet.units import quantity_input, unit_registry as ureg
 
 
 def light_curve(
