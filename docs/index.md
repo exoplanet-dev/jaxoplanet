@@ -14,6 +14,7 @@ tutorials/getting-started.ipynb
 ```{toctree}
 :caption: Tutorials
 
+tutorials/about.ipynb
 tutorials/transit.ipynb
 tutorials/rv.ipynb
 tutorials/starry.ipynb
