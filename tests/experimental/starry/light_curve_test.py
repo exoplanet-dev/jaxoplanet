@@ -311,7 +311,8 @@ def test_EB():
         secondary, secondary_surface
     )
 
-    flux_function = lambda time: light_curve(system)(time)
+    def flux_function(time):
+        light_curve(system)(time)
 
     # no occultation
     assert_allclose(
