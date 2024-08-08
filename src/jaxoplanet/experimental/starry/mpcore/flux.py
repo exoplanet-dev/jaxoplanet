@@ -1,11 +1,11 @@
 from jaxoplanet.experimental.starry.mpcore import mp
 from jaxoplanet.experimental.starry.mpcore.basis import A1, A2inv
-from jaxoplanet.experimental.starry.mpcore.solution import rT, sT
 from jaxoplanet.experimental.starry.mpcore.rotation import (
     R,
     dot_rotation_matrix,
     dot_rz,
 )
+from jaxoplanet.experimental.starry.mpcore.solution import rT, sT
 
 
 def flux_function(l_max, inc, obl):
@@ -47,10 +47,9 @@ def flux_function(l_max, inc, obl):
     def impl(y, b, r, phi):
         if abs(b) >= (r + 1):
             return rot_flux(y, phi)
+        elif r > 1 and abs(b) <= (r - 1):
+            return mp.mpf(0.0)
         else:
-            if r > 1 and abs(b) <= (r - 1):
-                return mp.mpf(0.0)
-            else:
-                return occ_flux(y, b, r, phi)[0]
+            return occ_flux(y, b, r, phi)[0]
 
     return impl

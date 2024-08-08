@@ -1,6 +1,7 @@
-from jaxoplanet.experimental.starry.mpcore import mp
 import mpmath
 import numpy as np
+
+from jaxoplanet.experimental.starry.mpcore import mp
 
 
 def to_numpy(x):

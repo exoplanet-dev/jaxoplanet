@@ -10,11 +10,10 @@ import numpy as np
 from jax.experimental.sparse import BCOO
 from scipy.special import legendre as LegendreP
 
+from jaxoplanet.experimental.starry import basis, solution
+from jaxoplanet.experimental.starry.pijk import Pijk
 from jaxoplanet.experimental.starry.rotation import dot_rotation_matrix
 from jaxoplanet.experimental.starry.wigner3j import Wigner3jCalculator
-from jaxoplanet.experimental.starry.pijk import Pijk
-from jaxoplanet.experimental.starry import basis
-from jaxoplanet.experimental.starry import solution
 from jaxoplanet.types import Array
 
 
@@ -43,7 +42,7 @@ class Ylm(eqx.Module):
         if data is None:
             data = {(0, 0): 1.0}
 
-        if not (0, 0) in data:
+        if (0, 0) not in data:
             data[(0, 0)] = 1.0
 
         self.data = dict(data)

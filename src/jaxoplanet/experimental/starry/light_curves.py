@@ -2,28 +2,26 @@ from collections.abc import Callable
 from functools import partial
 
 import jax
-import scipy
 import jax.numpy as jnp
 import numpy as np
+import scipy
 
-from jaxoplanet.experimental.starry.basis import U, A2_inv
+from jaxoplanet.experimental.starry.basis import A2_inv, U
 from jaxoplanet.experimental.starry.mpcore.basis import A1
 from jaxoplanet.experimental.starry.mpcore.utils import to_numpy
 from jaxoplanet.experimental.starry.orbit import SurfaceSystem
 from jaxoplanet.experimental.starry.pijk import Pijk
 from jaxoplanet.experimental.starry.rotation import left_project
-from jaxoplanet.experimental.starry.solution import solution_vector, rT
+from jaxoplanet.experimental.starry.solution import rT, solution_vector
+from jaxoplanet.experimental.starry.surface import Surface
 from jaxoplanet.light_curves.utils import vectorize
 from jaxoplanet.types import Array, Quantity
 from jaxoplanet.units import quantity_input, unit_registry as ureg
-from jaxoplanet.experimental.starry.surface import Surface
-
-from typing import Optional
 
 
 def light_curve(
     system: SurfaceSystem, order: int = 20
-) -> Callable[[Quantity], tuple[Optional[Array], Optional[Array]]]:
+) -> Callable[[Quantity], tuple[Array | None, Array | None]]:
     central_bodies_lc = jax.vmap(
         surface_light_curve, in_axes=(None, 0, 0, 0, 0, None, None)
     )
