@@ -88,6 +88,7 @@ def surface_light_curve(
     theta: float = 0.0,
 ):
     """Light curve of an occulted surface.
+
     Args:
         map (Map): Surface object
         r (float or None): radius of the occulting body, relative to the current map
