@@ -6,7 +6,7 @@ import jax
 import jax.numpy as jnp
 from jax.scipy.spatial.transform import Rotation
 
-from jaxoplanet.experimental.starry.basis import A1, U0, poly_basis
+from jaxoplanet.experimental.starry.basis import A1, U, poly_basis
 from jaxoplanet.experimental.starry.pijk import Pijk
 from jaxoplanet.experimental.starry.rotation import (
     full_rotation_axis_angle,
@@ -110,8 +110,7 @@ class Surface(eqx.Module):
 
     @property
     def ydeg(self):
-        """Degree of the spherical harmonic expansion."""
-        return self.y.ell_max
+        return self.y.deg
 
     @property
     def deg(self):
@@ -123,8 +122,8 @@ class Surface(eqx.Module):
         Ry = left_project(self.ydeg, self.inc, self.obl, theta, 0.0, self.y.todense())
         A1Ry = A1(self.ydeg).todense() @ Ry
         p_y = Pijk.from_dense(A1Ry, degree=self.ydeg)
-        U = jnp.array([1, *self.u])
-        p_u = Pijk.from_dense(U @ U0(self.udeg), degree=self.udeg)
+        u = jnp.array([1, *self.u])
+        p_u = Pijk.from_dense(u @ U(self.udeg), degree=self.udeg)
         p = (p_y * p_u).todense()
         return pT @ p * self.amplitude
 
