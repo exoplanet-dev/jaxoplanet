@@ -90,12 +90,12 @@ def surface_light_curve(
         map (Map): Surface object
         r (float or None): radius of the occulting body, relative to the current map
            body
-        x (float or None): x position of the occulting body, relative to the current
-           map body. By default (None) 0.0
-        y (float or None): y position of the occulting body, relative to the current
-           map body. By default (None) 0.0
-        z (float or None): z position of the occulting body, relative to the current
-           map body. By default (None) 0.0
+        x (float or None): x coordinate of the occulting body relative to the surface
+           center. By default (None) 0.0
+        y (float or None): y coordinate of the occulting body relative to the surface
+           center. By default (None) 0.0
+        z (float or None): z coordinate of the occulting body relative to the surface
+           center. By default (None) 0.0
         theta (float):
             rotation angle of the map, in radians. By default 0.0
 
