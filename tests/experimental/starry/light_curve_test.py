@@ -328,6 +328,40 @@ def test_EB():
     )
 
 
+def test_compare_limb_dark_light_curve():
+    time = np.linspace(-0.1, 0.1, 200)
+
+    params = {
+        "stellar_mass": 0.3,
+        "stellar_radius": 0.3,
+        "planet_radius": 0.1,
+        "u": (0.1, 0.1),
+        "planet_period": 15.0,
+    }
+
+    system = keplerian.System(
+        keplerian.Central(mass=params["stellar_mass"], radius=params["stellar_radius"]),
+    )
+
+    system = system.add_body(
+        radius=params["planet_radius"], period=params["planet_period"]
+    )
+
+    expected = limb_dark_light_curve(system, params["u"])(time)[:, 0] + 1.0
+
+    surface_system = SurfaceSystem(
+        keplerian.Central(mass=params["stellar_mass"], radius=params["stellar_radius"]),
+        Surface(u=params["u"]),
+    )
+    surface_system = surface_system.add_body(
+        radius=params["planet_radius"], period=params["planet_period"]
+    )
+
+    calc = light_curve(surface_system)(time)[:, 0]
+
+    assert_allclose(calc, expected)
+
+
 def test_EB_interchanged():
 
     from jaxoplanet.units import unit_registry as ureg
