@@ -51,26 +51,26 @@ class Surface(eqx.Module):
             show_map(m)
     """
 
-    # Ylm object representing the spherical harmonic expansion of the map.
     y: Ylm
+    """Ylm object representing the spherical harmonic expansion of the map"""
 
-    # Inclination of the map in radians.
     inc: Array
+    """Inclination of the map in radians"""
 
-    # Obliquity of the map in radians.
     obl: Array
+    """Obliquity of the map in radians."""
 
-    # Tuple of limb darkening coefficients.
     u: tuple[Array, ...]
+    """Tuple of limb darkening coefficients."""
 
-    # Rotation period of the map in days (attribute subject to change)
     period: Array | None
+    """Rotation period of the map in days (attribute subject to change)"""
 
-    # Amplitude of the map, a quantity proportional to map luminosity.
     amplitude: Array
+    """Amplitude of the map, a quantity proportional to map luminosity."""
 
-    # Boolean to specify whether the Ylm coefficients should be normalized
     normalize: bool
+    """Boolean to specify whether the Ylm coefficients should be normalized"""
 
     def __init__(
         self,
@@ -100,11 +100,12 @@ class Surface(eqx.Module):
         self.normalize = normalize
 
     @property
-    def poly_basis(self):
+    def _poly_basis(self):
         return jax.jit(poly_basis(self.deg))
 
     @property
     def udeg(self):
+        """Order of the polynomial limb darkening."""
         return len(self.u)
 
     @property
@@ -113,10 +114,11 @@ class Surface(eqx.Module):
 
     @property
     def deg(self):
+        """Total degree of the spherical harmonic expansion (`udeg + ydeg`)."""
         return self.ydeg + self.udeg
 
     def _intensity(self, x, y, z, theta=0.0):
-        pT = self.poly_basis(x, y, z)
+        pT = self._poly_basis(x, y, z)
         Ry = left_project(self.ydeg, self.inc, self.obl, theta, 0.0, self.y.todense())
         A1Ry = A1(self.ydeg).todense() @ Ry
         p_y = Pijk.from_dense(A1Ry, degree=self.ydeg)
@@ -165,6 +167,14 @@ class Surface(eqx.Module):
         return self._intensity(x, y, z)
 
     def rotational_phase(self, time: Array) -> Array:
+        """Returns the rotational phase of the map at a given time.
+
+        Args:
+            time (ArrayLike): time in same units as the period
+
+        Returns:
+            ArrayLike: rotational phase of the map at the given time
+        """
         if self.period is None:
             return jnp.zeros_like(time)
         else:
