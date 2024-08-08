@@ -40,9 +40,6 @@ def light_curve(
     @quantity_input(time=ureg.day)
     @vectorize
     def light_curve_impl(time: Quantity) -> Array:
-        xos, yos, zos = system.relative_position(time)
-        n = len(xos.magnitude)
-
         if system.central_surface is None:
             central_light_curves = jnp.array([0.0])
         else:
@@ -51,26 +48,31 @@ def light_curve(
             central_phase_curve = surface_light_curve(
                 system.central_surface, theta=theta
             )
-            central_light_curves = central_bodies_lc(
-                system.central_surface,
-                (system.radius / central_radius).magnitude,
-                (xos / central_radius).magnitude,
-                (yos / central_radius).magnitude,
-                (zos / central_radius).magnitude,
-                theta,
-            )
+            if len(system.bodies) > 0:
+                xos, yos, zos = system.relative_position(time)
+                n = len(xos.magnitude)
+                central_light_curves = central_bodies_lc(
+                    system.central_surface,
+                    (system.radius / central_radius).magnitude,
+                    (xos / central_radius).magnitude,
+                    (yos / central_radius).magnitude,
+                    (zos / central_radius).magnitude,
+                    theta,
+                )
 
-            if n > 1 and central_light_curves is not None:
-                central_light_curves = central_light_curves.sum(
-                    0
-                ) - central_phase_curve * (n - 1)
-                central_light_curves = jnp.expand_dims(central_light_curves, 0)
+                if n > 1 and central_light_curves is not None:
+                    central_light_curves = central_light_curves.sum(
+                        0
+                    ) - central_phase_curve * (n - 1)
+                    central_light_curves = jnp.expand_dims(central_light_curves, 0)
 
-        body_light_curves = compute_body_light_curve(
-            system.radius, -xos, -yos, -zos, time
-        )
+                body_light_curves = compute_body_light_curve(
+                    system.radius, -xos, -yos, -zos, time
+                )
 
-        return jnp.hstack([central_light_curves, body_light_curves])
+                return jnp.hstack([central_light_curves, body_light_curves])
+            else:
+                return jnp.array([central_phase_curve])
 
     return light_curve_impl
 
