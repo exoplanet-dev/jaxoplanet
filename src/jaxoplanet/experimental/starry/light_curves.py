@@ -6,7 +6,7 @@ import jax.numpy as jnp
 import numpy as np
 import scipy
 
-from jaxoplanet.experimental.starry.basis import A1, U0, A2_inv
+from jaxoplanet.experimental.starry.basis import A1, U, A2_inv
 from jaxoplanet.experimental.starry.orbit import SurfaceSystem
 from jaxoplanet.experimental.starry.pijk import Pijk
 from jaxoplanet.experimental.starry.rotation import left_project
@@ -138,10 +138,10 @@ def surface_light_curve(
         )
 
     # limb darkening
-    U = jnp.array([1, *surface.u])
+    u = jnp.array([1, *surface.u])
     A1_val = jax.experimental.sparse.BCOO.from_scipy_sparse(A1(surface.ydeg))
     p_y = Pijk.from_dense(A1_val @ rotated_y, degree=surface.ydeg)
-    p_u = Pijk.from_dense(U @ U0(surface.udeg), degree=surface.udeg)
+    p_u = Pijk.from_dense(u @ U(surface.udeg), degree=surface.udeg)
     p_y = p_y * p_u
 
     norm = np.pi / (p_u.tosparse() @ rT(surface.udeg))
