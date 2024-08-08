@@ -109,7 +109,7 @@ class Surface(eqx.Module):
 
     @property
     def ydeg(self):
-        return self.y.ell_max
+        return self.y.deg
 
     @property
     def deg(self):
