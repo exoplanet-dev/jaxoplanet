@@ -119,10 +119,9 @@ def surface_light_curve(
         b_rot = jnp.logical_or(jnp.greater_equal(b, 1.0 + r), jnp.less_equal(z, 0.0))
         b_occ = jnp.logical_not(b_rot)
         theta_z = jnp.arctan2(x, y)
+
         sT = solution_vector(surface.deg)(b, r)
 
-        # scipy.sparse.linalg.inv of a sparse matrix[[1]] is a non-sparse [[1]], hence
-        # `from_scipy_sparse`` raises an error (case deg=0)
         if surface.deg > 0:
             A2 = scipy.sparse.linalg.inv(A2_inv(surface.deg))
             A2 = jax.experimental.sparse.BCOO.from_scipy_sparse(A2)
@@ -131,12 +130,16 @@ def surface_light_curve(
 
         design_matrix_p = jnp.where(b_occ, sT @ A2, rT_deg)
 
-    # TODO(lgrcia): Is this the right behavior when map.y is None?
-    if surface.y is None:
-        rotated_y = jnp.zeros(surface.ydeg)
+    if surface.ydeg == 0:
+        rotated_y = surface.y.todense()
     else:
         rotated_y = left_project(
-            surface.ydeg, surface.inc, surface.obl, theta, theta_z, surface.y.todense()
+            surface.ydeg,
+            surface.inc,
+            surface.obl,
+            theta + surface.phase,
+            theta_z,
+            surface.y.todense(),
         )
 
     # limb darkening
