@@ -107,6 +107,10 @@ def surface_light_curve(
     """
     rT_deg = rT(surface.deg)
 
+    x = 0.0 if x is None else x
+    y = 0.0 if y is None else y
+    z = 0.0 if z is None else z
+
     # no occulting body
     if r is None:
         b_rot = True
@@ -120,13 +124,17 @@ def surface_light_curve(
         b_occ = jnp.logical_not(b_rot)
         theta_z = jnp.arctan2(x, y)
 
+        # trick to avoid nan `x=jnp.where...` grad caused by nan sT
+        r = jnp.where(b_rot, 0.0, r)
+        b = jnp.where(b_rot, 0.0, b)
+
         sT = solution_vector(surface.deg)(b, r)
 
         if surface.deg > 0:
             A2 = scipy.sparse.linalg.inv(A2_inv(surface.deg))
             A2 = jax.experimental.sparse.BCOO.from_scipy_sparse(A2)
         else:
-            A2 = jnp.array([1])
+            A2 = jnp.array([[1]])
 
         design_matrix_p = jnp.where(b_occ, sT @ A2, rT_deg)
 
@@ -143,12 +151,17 @@ def surface_light_curve(
         )
 
     # limb darkening
-    u = jnp.array([1, *surface.u])
+    if surface.udeg == 0:
+        p_u = Pijk.from_dense(jnp.array([1]))
+    else:
+        u = jnp.array([1, *surface.u])
+        p_u = Pijk.from_dense(u @ U(surface.udeg), degree=surface.udeg)
+
+    # surface map * limb darkening map
     A1_val = jax.experimental.sparse.BCOO.from_scipy_sparse(A1(surface.ydeg))
     p_y = Pijk.from_dense(A1_val @ rotated_y, degree=surface.ydeg)
-    p_u = Pijk.from_dense(u @ U(surface.udeg), degree=surface.udeg)
     p_y = p_y * p_u
 
     norm = np.pi / (p_u.tosparse() @ rT(surface.udeg))
 
-    return (p_y.tosparse() @ design_matrix_p) * norm
+    return surface.amplitude * (p_y.tosparse() @ design_matrix_p) * norm
