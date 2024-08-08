@@ -28,7 +28,7 @@ class Ylm(eqx.Module):
     data: dict[tuple[int, int], Array]
 
     # maximum degree of the spherical harmonic expansion
-    ell_max: int = eqx.field(static=True)
+    deg: int = eqx.field(static=True)
 
     # whether the spherical harmonic expansion is diagonal (all m=0)
     diagonal: bool = eqx.field(static=True)
@@ -41,23 +41,23 @@ class Ylm(eqx.Module):
             data = {(0, 0): 1.0}
 
         self.data = dict(data)
-        self.ell_max = max(ell for ell, _ in data.keys())
+        self.deg = max(ell for ell, _ in data.keys())
         self.diagonal = all(m == 0 for _, m in data.keys())
 
     @property
     def shape(self) -> tuple[int, ...]:
         """The number of coefficients in the expansion. This sets the shape of
         the output of `todense`."""
-        return (self.ell_max**2 + 2 * self.ell_max + 1,)
+        return (self.deg**2 + 2 * self.deg + 1,)
 
     @property
     def indices(self) -> list[tuple[int, int]]:
         return list(self.data.keys())
 
-    def index(self, ell: Array, m: Array) -> Array:
+    def index(self, l: Array, m: Array) -> Array:
         """Convert the degree and order of the spherical harmonic to the
         corresponding index in the coefficient array."""
-        return ell * (ell + 1) + m
+        return l * (l + 1) + m
 
     def normalize(self) -> "Ylm":
         """Return a new Ylm instance with normalized coefficients.
@@ -77,7 +77,7 @@ class Ylm(eqx.Module):
 
     def tosparse(self) -> BCOO:
         indices, values = zip(*self.data.items(), strict=False)
-        idx = jnp.array([self.index(ell, m) for ell, m in indices])[:, None]
+        idx = jnp.array([self.index(l, m) for l, m in indices])[:, None]
         return BCOO((jnp.asarray(values), idx), shape=self.shape)
 
     def todense(self) -> Array:
@@ -87,9 +87,9 @@ class Ylm(eqx.Module):
     def from_dense(cls, y: Array, normalize: bool = True) -> "Ylm":
         data = {}
         for i, ylm in enumerate(y):
-            ell = int(np.floor(np.sqrt(i)))
-            m = i - ell * (ell + 1)
-            data[(ell, m)] = ylm
+            l = int(np.floor(np.sqrt(i)))
+            m = i - l * (l + 1)
+            data[(l, m)] = ylm
         ylm = cls(data)
         if normalize:
             return ylm.normalize()
@@ -117,8 +117,8 @@ def _mul(f: Ylm, g: Ylm) -> Ylm:
 
     https://github.com/moble/spherical/blob/0aa81c309cac70b90f8dfb743ce35d2cc9ae6dee/spherical/multiplication.py
     """
-    ellmax_f = f.ell_max
-    ellmax_g = g.ell_max
+    ellmax_f = f.deg
+    ellmax_g = g.deg
     ellmax_fg = ellmax_f + ellmax_g
     fg = defaultdict(lambda *_: 0.0)
     m_calculator = Wigner3jCalculator(ellmax_f, ellmax_g)
