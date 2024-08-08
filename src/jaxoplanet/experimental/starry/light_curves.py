@@ -6,7 +6,7 @@ import jax.numpy as jnp
 import numpy as np
 import scipy
 
-from jaxoplanet.experimental.starry.basis import A1, U, A2_inv
+from jaxoplanet.experimental.starry.basis import A1, A2_inv, U
 from jaxoplanet.experimental.starry.orbit import SurfaceSystem
 from jaxoplanet.experimental.starry.surface import Surface
 from jaxoplanet.experimental.starry.pijk import Pijk
