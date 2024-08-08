@@ -8,6 +8,7 @@ import scipy
 
 from jaxoplanet.experimental.starry.basis import A1, U, A2_inv
 from jaxoplanet.experimental.starry.orbit import SurfaceSystem
+from jaxoplanet.experimental.starry.surface import Surface
 from jaxoplanet.experimental.starry.pijk import Pijk
 from jaxoplanet.experimental.starry.rotation import left_project
 from jaxoplanet.experimental.starry.solution import solution_vector
@@ -79,26 +80,26 @@ def light_curve(
 
 # TODO: figure out the sparse matrices (and Pijk) to avoid todense()
 def surface_light_curve(
-    surface,
-    r: float = None,
-    x: float = None,
-    y: float = None,
-    z: float = None,
+    surface: Surface,
+    r: float | None = None,
+    x: float | None = None,
+    y: float | None = None,
+    z: float | None = None,
     theta: float = 0.0,
 ):
-    """Light curve of an occulted map.
-
+    """Light curve of an occulted surface.
     Args:
-        map (Map): map object
+        surface (Surface): surface object
         r (float or None): radius of the occulting body, relative to the current map
            body
-        xo (float or None): x position of the occulting body, relative to the current
-           map body
-        yo (float or None): y position of the occulting body, relative to the current
-           map body
-        zo (float or None): z position of the occulting body, relative to the current
-           map body
-        theta (float): rotation angle of the map
+        x (float or None): x position of the occulting body, relative to the current
+           map body. By default (None) 0.0
+        y (float or None): y position of the occulting body, relative to the current
+           map body. By default (None) 0.0
+        z (float or None): z position of the occulting body, relative to the current
+           map body. By default (None) 0.0
+        theta (float):
+            rotation angle of the map, in radians. By default 0.0
 
     Returns:
         ArrayLike: flux
