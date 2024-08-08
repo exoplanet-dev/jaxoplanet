@@ -10,7 +10,7 @@ from jaxoplanet.experimental.starry.basis import A1, A2_inv, U
 from jaxoplanet.experimental.starry.orbit import SurfaceSystem
 from jaxoplanet.experimental.starry.pijk import Pijk
 from jaxoplanet.experimental.starry.rotation import left_project
-from jaxoplanet.experimental.starry.solution import solution_vector, rT
+from jaxoplanet.experimental.starry.solution import rT, solution_vector
 from jaxoplanet.experimental.starry.surface import Surface
 from jaxoplanet.light_curves.utils import vectorize
 from jaxoplanet.types import Array, Quantity
