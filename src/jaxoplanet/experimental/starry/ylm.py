@@ -65,7 +65,7 @@ class Ylm(eqx.Module):
     `{(l, m): coefficient}`"""
 
     deg: int = eqx.field(static=True)
-     """The maximum degree of the spherical harmonic coefficients."""
+    """The maximum degree of the spherical harmonic coefficients."""
 
     diagonal: bool = eqx.field(static=True)
     """Whether are orders m of the spherical harmonic coefficients are zero.
