@@ -51,16 +51,13 @@ def light_curve(
             central_phase_curve = surface_light_curve(
                 system.central_surface, theta=theta
             )
-            central_light_curves = (
-                central_bodies_lc(
-                    system.central_surface,
-                    (system.radius / central_radius).magnitude,
-                    (xos / central_radius).magnitude,
-                    (yos / central_radius).magnitude,
-                    (zos / central_radius).magnitude,
-                    theta,
-                )
-                * system.central_surface.amplitude
+            central_light_curves = central_bodies_lc(
+                system.central_surface,
+                (system.radius / central_radius).magnitude,
+                (xos / central_radius).magnitude,
+                (yos / central_radius).magnitude,
+                (zos / central_radius).magnitude,
+                theta,
             )
 
             if n > 1 and central_light_curves is not None:
