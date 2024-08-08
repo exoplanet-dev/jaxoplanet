@@ -5,20 +5,21 @@ import pytest
 from jaxoplanet.experimental.starry import Surface, Ylm
 from jaxoplanet.experimental.starry.light_curves import light_curve, surface_light_curve
 from jaxoplanet.experimental.starry.orbit import SurfaceSystem
+from jaxoplanet.light_curves import limb_dark_light_curve
 from jaxoplanet.orbits import keplerian
 from jaxoplanet.test_utils import assert_allclose
 
 
 @pytest.mark.parametrize("deg", [2, 5, 10])
 @pytest.mark.parametrize("u", [[], [0.1], [0.2, 0.1]])
-def test_compare_starry(deg, u):
+def test_compare_starry_limb_dark(deg, u):
     starry = pytest.importorskip("starry")
     starry.config.lazy = False
 
     # map
     inc = np.pi / 2
     np.random.seed(deg)
-    y = Ylm.from_dense(np.random.randn((deg + 1) ** 2))
+    y = Ylm.from_dense(np.random.randn((deg + 1) ** 2), normalize=True)
     map = Surface(y=y, u=u, inc=inc)
 
     # occultor
@@ -255,7 +256,7 @@ def test_compare_starry_rot(deg):
     # map
     inc = np.pi / 2
     np.random.seed(deg)
-    y = Ylm.from_dense(np.random.randn((deg + 1) ** 2))
+    y = Ylm.from_dense(np.random.randn((deg + 1) ** 2), normalize=True)
     map = Surface(y=y, inc=inc)
 
     # phase
@@ -270,3 +271,157 @@ def test_compare_starry_rot(deg):
     )
 
     assert_allclose(calc, expected)
+
+
+def test_EB():
+
+    from jaxoplanet.units import unit_registry as ureg
+
+    params = {
+        "primary_mass": 2.0,
+        "secondary_mass": 1.0,
+        "primary_radius": 2.0,
+        "secondary_radius": 1.0,
+        "inclination": np.pi / 2,
+        "period": 1.0,
+        "t0": 0.0,
+        "s": 0.35,
+    }
+
+    primary = keplerian.Central(
+        radius=params["primary_radius"] * ureg.R_sun,
+        mass=params["primary_mass"] * ureg.M_sun,
+    )
+
+    primary_amplitude = 1.1
+    primary_surface = Surface(amplitude=primary_amplitude, normalize=False)
+
+    secondary = keplerian.Body(
+        radius=params["secondary_radius"] * ureg.R_sun,
+        mass=params["secondary_mass"] * ureg.M_sun,
+        period=params["period"] * ureg.day,
+        time_transit=params["t0"] * ureg.day,
+        inclination=params["inclination"] * ureg.rad,
+    )
+
+    secondary_amplitude = params["s"]
+    secondary_surface = Surface(amplitude=secondary_amplitude, normalize=False)
+
+    system = SurfaceSystem(primary, primary_surface).add_body(
+        secondary, secondary_surface
+    )
+
+    def flux_function(time):
+        light_curve(system)(time)
+
+    # no occultation
+    assert_allclose(
+        flux_function(params["period"] / 4), [primary_amplitude, secondary_amplitude]
+    )
+
+    # primary occultation
+    assert_allclose(flux_function(params["period"] / 2), [primary_amplitude, 0.0])
+
+    # secondary occultation
+    depth = (params["secondary_radius"] / params["primary_radius"]) ** 2
+    assert_allclose(
+        flux_function(0.0), [primary_amplitude * (1 - depth), secondary_amplitude]
+    )
+
+
+def test_compare_limb_dark_light_curve():
+    time = np.linspace(-0.1, 0.1, 200)
+
+    params = {
+        "stellar_mass": 0.3,
+        "stellar_radius": 0.3,
+        "planet_radius": 0.1,
+        "u": (0.1, 0.1),
+        "planet_period": 15.0,
+    }
+
+    system = keplerian.System(
+        keplerian.Central(mass=params["stellar_mass"], radius=params["stellar_radius"]),
+    )
+
+    system = system.add_body(
+        radius=params["planet_radius"], period=params["planet_period"]
+    )
+
+    expected = limb_dark_light_curve(system, params["u"])(time)[:, 0] + 1.0
+
+    surface_system = SurfaceSystem(
+        keplerian.Central(mass=params["stellar_mass"], radius=params["stellar_radius"]),
+        Surface(u=params["u"]),
+    )
+    surface_system = surface_system.add_body(
+        radius=params["planet_radius"], period=params["planet_period"]
+    )
+
+    calc = light_curve(surface_system)(time)[:, 0]
+
+    assert_allclose(calc, expected)
+
+
+def test_EB_interchanged():
+
+    from jaxoplanet.units import unit_registry as ureg
+
+    params = {
+        "primary_mass": 2.0,
+        "secondary_mass": 1.0,
+        "primary_radius": 2.0,
+        "secondary_radius": 1.0,
+        "inclination": np.pi / 2,
+        "primary_amplitude": 1.1,
+        "secondary_amplitude": 0.35,
+        "period": 1.0,
+        "t0": 0.0,
+        "s": 0.35,
+    }
+
+    system_1 = SurfaceSystem(
+        keplerian.Central(
+            radius=params["primary_radius"] * ureg.R_sun,
+            mass=params["primary_mass"] * ureg.M_sun,
+        ),
+        Surface(amplitude=params["primary_amplitude"], normalize=False),
+    ).add_body(
+        keplerian.Body(
+            radius=params["secondary_radius"] * ureg.R_sun,
+            mass=params["secondary_mass"] * ureg.M_sun,
+            period=params["period"] * ureg.day,
+            time_transit=params["t0"] * ureg.day,
+            inclination=params["inclination"] * ureg.rad,
+        ),
+        Surface(amplitude=params["secondary_amplitude"], normalize=False),
+    )
+
+    system_2 = SurfaceSystem(
+        keplerian.Central(
+            radius=params["secondary_radius"] * ureg.R_sun,
+            mass=params["secondary_mass"] * ureg.M_sun,
+        ),
+        Surface(amplitude=params["secondary_amplitude"], normalize=False),
+    ).add_body(
+        keplerian.Body(
+            radius=params["primary_radius"] * ureg.R_sun,
+            mass=params["primary_mass"] * ureg.M_sun,
+            period=params["period"] * ureg.day,
+            time_transit=params["t0"] * ureg.day,
+            inclination=params["inclination"] * ureg.rad,
+        ),
+        Surface(amplitude=params["primary_amplitude"], normalize=False),
+    )
+
+    # switching primary and secondary
+    time = np.linspace(0, params["period"], 200)
+    flux_ordered = light_curve(system_1)(time).sum(1)
+    flux_reversed = light_curve(system_2)(time + params["period"] / 2).sum(1)
+
+    # for some reason the assert_allclose wasn't catching error here
+    np.testing.assert_allclose(
+        flux_ordered,
+        flux_reversed,
+        atol=1e-6 if flux_ordered.dtype.name == "float32" else 1e-12,
+    )

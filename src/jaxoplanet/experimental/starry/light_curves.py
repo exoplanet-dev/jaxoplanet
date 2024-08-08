@@ -51,16 +51,13 @@ def light_curve(
             central_phase_curve = surface_light_curve(
                 system.central_surface, theta=theta
             )
-            central_light_curves = (
-                central_bodies_lc(
-                    system.central_surface,
-                    (system.radius / central_radius).magnitude,
-                    (xos / central_radius).magnitude,
-                    (yos / central_radius).magnitude,
-                    (zos / central_radius).magnitude,
-                    theta,
-                )
-                * system.central_surface.amplitude
+            central_light_curves = central_bodies_lc(
+                system.central_surface,
+                (system.radius / central_radius).magnitude,
+                (xos / central_radius).magnitude,
+                (yos / central_radius).magnitude,
+                (zos / central_radius).magnitude,
+                theta,
             )
 
             if n > 1 and central_light_curves is not None:
@@ -93,12 +90,12 @@ def surface_light_curve(
         map (Map): Surface object
         r (float or None): radius of the occulting body, relative to the current map
            body
-        x (float or None): x position of the occulting body, relative to the current
-           map body. By default (None) 0.0
-        y (float or None): y position of the occulting body, relative to the current
-           map body. By default (None) 0.0
-        z (float or None): z position of the occulting body, relative to the current
-           map body. By default (None) 0.0
+        x (float or None): x coordinate of the occulting body relative to the surface
+           center. By default (None) 0.0
+        y (float or None): y coordinate of the occulting body relative to the surface
+           center. By default (None) 0.0
+        z (float or None): z coordinate of the occulting body relative to the surface
+           center. By default (None) 0.0
         theta (float):
             rotation angle of the map, in radians. By default 0.0
 
@@ -106,6 +103,10 @@ def surface_light_curve(
         ArrayLike: flux
     """
     rT_deg = rT(surface.deg)
+
+    x = 0.0 if x is None else x
+    y = 0.0 if y is None else y
+    z = 0.0 if z is None else z
 
     # no occulting body
     if r is None:
@@ -119,33 +120,45 @@ def surface_light_curve(
         b_rot = jnp.logical_or(jnp.greater_equal(b, 1.0 + r), jnp.less_equal(z, 0.0))
         b_occ = jnp.logical_not(b_rot)
         theta_z = jnp.arctan2(x, y)
+
+        # trick to avoid nan `x=jnp.where...` grad caused by nan sT
+        r = jnp.where(b_rot, 0.0, r)
+        b = jnp.where(b_rot, 0.0, b)
+
         sT = solution_vector(surface.deg)(b, r)
 
-        # scipy.sparse.linalg.inv of a sparse matrix[[1]] is a non-sparse [[1]], hence
-        # `from_scipy_sparse`` raises an error (case deg=0)
         if surface.deg > 0:
             A2 = scipy.sparse.linalg.inv(A2_inv(surface.deg))
             A2 = jax.experimental.sparse.BCOO.from_scipy_sparse(A2)
         else:
-            A2 = jnp.array([1])
+            A2 = jnp.array([[1]])
 
         design_matrix_p = jnp.where(b_occ, sT @ A2, rT_deg)
 
-    # TODO(lgrcia): Is this the right behavior when map.y is None?
-    if surface.y is None:
-        rotated_y = jnp.zeros(surface.ydeg)
+    if surface.ydeg == 0:
+        rotated_y = surface.y.todense()
     else:
         rotated_y = left_project(
-            surface.ydeg, surface.inc, surface.obl, theta, theta_z, surface.y.todense()
+            surface.ydeg,
+            surface.inc,
+            surface.obl,
+            theta + surface.phase,
+            theta_z,
+            surface.y.todense(),
         )
 
     # limb darkening
-    u = jnp.array([1, *surface.u])
+    if surface.udeg == 0:
+        p_u = Pijk.from_dense(jnp.array([1]))
+    else:
+        u = jnp.array([1, *surface.u])
+        p_u = Pijk.from_dense(u @ U(surface.udeg), degree=surface.udeg)
+
+    # surface map * limb darkening map
     A1_val = jax.experimental.sparse.BCOO.from_scipy_sparse(A1(surface.ydeg))
     p_y = Pijk.from_dense(A1_val @ rotated_y, degree=surface.ydeg)
-    p_u = Pijk.from_dense(u @ U(surface.udeg), degree=surface.udeg)
     p_y = p_y * p_u
 
     norm = np.pi / (p_u.tosparse() @ rT(surface.udeg))
 
-    return (p_y.tosparse() @ design_matrix_p) * norm
+    return surface.amplitude * (p_y.tosparse() @ design_matrix_p) * norm

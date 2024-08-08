@@ -72,6 +72,9 @@ class Surface(eqx.Module):
     normalize: bool
     """Boolean to specify whether the Ylm coefficients should be normalized"""
 
+    phase: Array
+    """Initial phase of the map rotation around polar axis"""
+
     def __init__(
         self,
         *,
@@ -82,13 +85,14 @@ class Surface(eqx.Module):
         period: Array | None = None,
         amplitude: Array = 1.0,
         normalize: bool = True,
+        phase: Array = 0.0,
     ):
 
         if y is None:
             y = Ylm()
 
         if normalize:
-            amplitude = float(y[(0, 0)])
+            amplitude = jnp.array(y[(0, 0)], float)
             y = Ylm(data=y.data).normalize()
 
         self.y = y
@@ -98,6 +102,7 @@ class Surface(eqx.Module):
         self.period = period
         self.amplitude = amplitude
         self.normalize = normalize
+        self.phase = phase
 
     @property
     def _poly_basis(self):
@@ -119,7 +124,9 @@ class Surface(eqx.Module):
 
     def _intensity(self, x, y, z, theta=0.0):
         pT = self._poly_basis(x, y, z)
-        Ry = left_project(self.ydeg, self.inc, self.obl, theta, 0.0, self.y.todense())
+        Ry = left_project(
+            self.ydeg, self.inc, self.obl, theta + self.phase, 0.0, self.y.todense()
+        )
         A1Ry = A1(self.ydeg).todense() @ Ry
         p_y = Pijk.from_dense(A1Ry, degree=self.ydeg)
         u = jnp.array([1, *self.u])
@@ -140,7 +147,7 @@ class Surface(eqx.Module):
             (with nans outside the map disk).
         """
         _, xyz = ortho_grid(res)
-        intensity = self._intensity(*xyz, theta=theta)
+        intensity = self._intensity(*xyz, theta=theta + self.phase)
         return jnp.reshape(intensity, (res, res))
 
     def intensity(self, lat: float, lon: float):
