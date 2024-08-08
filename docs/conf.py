@@ -19,7 +19,7 @@ extensions = [
 ]
 
 autoapi_dirs = ["../src"]
-autoapi_ignore = ["*/experimental/*", "*_version*", "*/types*"]
+autoapi_ignore = ["*_version*", "*/types*"]
 autoapi_options = [
     "members",
     "undoc-members",
@@ -29,6 +29,9 @@ autoapi_options = [
     "special-members",
     # "imported-members",
 ]
+# autoapi_add_toctree_entry = False
+autoapi_template_dir = "_autoapi_templates"
+
 suppress_warnings = ["autoapi.python_import_resolution"]
 
 myst_enable_extensions = ["dollarmath", "colon_fence"]
@@ -44,7 +47,7 @@ copyright = "2021-2024 Simons Foundation, Inc."
 version = jaxoplanet.__version__
 release = jaxoplanet.__version__
 
-exclude_patterns = ["_build"]
+exclude_patterns = ["_build", "_autoapi_templates"]
 html_theme = "sphinx_book_theme"
 html_title = "jaxoplanet documentation"
 html_logo = "_static/logo.png"

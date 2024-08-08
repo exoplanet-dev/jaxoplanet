@@ -87,7 +87,7 @@ def map_light_curve(
     """Light curve of an occulted map.
 
     Args:
-        map (Map): map object
+        map (Map): Surface object
         r (float or None): radius of the occulting body, relative to the current map
            body
         xo (float or None): x position of the occulting body, relative to the current

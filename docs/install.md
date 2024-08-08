@@ -1,6 +1,6 @@
 (install)=
 
-# Installation Guide
+# Installation
 
 `jaxoplanet` is built on top of [`jax`](https://github.com/google/jax) so that's the
 primary dependency that you'll need. All of the methods below will install any
