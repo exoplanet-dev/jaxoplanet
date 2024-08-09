@@ -18,9 +18,11 @@ from jaxoplanet.units import quantity_input, unit_registry as ureg
 
 
 def light_curve(
-    system: SurfaceSystem,
+    system: SurfaceSystem, order: int = 20
 ) -> Callable[[Quantity], tuple[Array | None, Array | None]]:
-    central_bodies_lc = jax.vmap(surface_light_curve, in_axes=(None, 0, 0, 0, 0, None))
+    central_bodies_lc = jax.vmap(
+        surface_light_curve, in_axes=(None, 0, 0, 0, 0, None, None)
+    )
 
     @partial(system.surface_vmap, in_axes=(0, 0, 0, 0, None))
     def compute_body_light_curve(surface, radius, x, y, z, time):
@@ -35,6 +37,7 @@ def light_curve(
                 (y / radius).magnitude,
                 (z / radius).magnitude,
                 theta,
+                order,
             )
 
     @quantity_input(time=ureg.day)
@@ -46,7 +49,7 @@ def light_curve(
             theta = system.central_surface.rotational_phase(time.magnitude)
             central_radius = system.central.radius
             central_phase_curve = surface_light_curve(
-                system.central_surface, theta=theta
+                system.central_surface, theta=theta, order=order
             )
             if len(system.bodies) > 0:
                 xos, yos, zos = system.relative_position(time)
@@ -58,6 +61,7 @@ def light_curve(
                     (yos / central_radius).magnitude,
                     (zos / central_radius).magnitude,
                     theta,
+                    order,
                 )
 
                 if n > 1 and central_light_curves is not None:
@@ -85,6 +89,7 @@ def surface_light_curve(
     y: float | None = None,
     z: float | None = None,
     theta: float = 0.0,
+    order: int = 20,
 ):
     """Light curve of an occulted surface.
 
@@ -100,6 +105,8 @@ def surface_light_curve(
            center. By default (None) 0.0
         theta (float):
             rotation angle of the map, in radians. By default 0.0
+        order (int):
+            order of the P integral Gauss-Legendre approximation. By default 20
 
     Returns:
         ArrayLike: flux
@@ -127,7 +134,7 @@ def surface_light_curve(
         r = jnp.where(b_rot, 0.0, r)
         b = jnp.where(b_rot, 0.0, b)
 
-        sT = solution_vector(surface.deg)(b, r)
+        sT = solution_vector(surface.deg, order=order)(b, r)
 
         if surface.deg > 0:
             A2 = scipy.sparse.linalg.inv(A2_inv(surface.deg))
