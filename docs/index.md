@@ -4,11 +4,11 @@
 ## Table of contents
 
 ```{toctree}
-:caption: User guide
+:caption: Getting Started
 
 install
-troubleshooting
-tutorials/getting-started.ipynb
+commonissues
+tutorials/quickstart.ipynb
 ```
 
 ```{toctree}
