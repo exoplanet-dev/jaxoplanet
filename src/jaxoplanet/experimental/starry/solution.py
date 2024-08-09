@@ -146,3 +146,43 @@ def p_integral(order: int, l_max: int, b: Array, r: Array, kappa0: Array) -> Arr
     inds = np.stack(ind)
 
     return P.at[inds].set(P0)
+
+
+def rT(lmax: int) -> Array:
+    rt = [0.0 for _ in range((lmax + 1) * (lmax + 1))]
+    amp0 = jnp.pi
+    lfac1 = 1.0
+    lfac2 = 2.0 / 3.0
+    for ell in range(0, lmax + 1, 4):
+        amp = amp0
+        for m in range(0, ell + 1, 4):
+            mu = ell - m
+            nu = ell + m
+            rt[ell * ell + ell + m] = amp * lfac1
+            rt[ell * ell + ell - m] = amp * lfac1
+            if ell < lmax:
+                rt[(ell + 1) * (ell + 1) + ell + m + 1] = amp * lfac2
+                rt[(ell + 1) * (ell + 1) + ell - m + 1] = amp * lfac2
+            amp *= (nu + 2.0) / (mu - 2.0)
+        lfac1 /= (ell / 2 + 2) * (ell / 2 + 3)
+        lfac2 /= (ell / 2 + 2.5) * (ell / 2 + 3.5)
+        amp0 *= 0.0625 * (ell + 2) * (ell + 2)
+
+    amp0 = 0.5 * jnp.pi
+    lfac1 = 0.5
+    lfac2 = 4.0 / 15.0
+    for ell in range(2, lmax + 1, 4):
+        amp = amp0
+        for m in range(2, ell + 1, 4):
+            mu = ell - m
+            nu = ell + m
+            rt[ell * ell + ell + m] = amp * lfac1
+            rt[ell * ell + ell - m] = amp * lfac1
+            if ell < lmax:
+                rt[(ell + 1) * (ell + 1) + ell + m + 1] = amp * lfac2
+                rt[(ell + 1) * (ell + 1) + ell - m + 1] = amp * lfac2
+            amp *= (nu + 2.0) / (mu - 2.0)
+        lfac1 /= (ell / 2 + 2) * (ell / 2 + 3)
+        lfac2 /= (ell / 2 + 2.5) * (ell / 2 + 3.5)
+        amp0 *= 0.0625 * ell * (ell + 4)
+    return np.array(rt)

@@ -57,7 +57,7 @@ class ObjectStack(eqx.Module, Generic[Obj]):
         in_axes: int | None | Sequence[Any] = 0,
         out_axes: Any = 0,
     ) -> Callable:
-        """Map a function over the objects in this stac
+        """Map a function over the objects in this stack
 
         If possible, this method will apply the appropriate ``jax.vmap`` to the input
         function, but if the Pytree structure of the objects don't match, this requires
