@@ -37,3 +37,54 @@ source directory, run:
 python -m pip install nox
 python -m nox -s test
 ```
+
+## Installation issues on ARM Macs
+
+Follow these steps to install `jax` and `jaxoplanet` on your system, with
+special instructions for Mac M1 chip or newer.
+
+### Step 1: Check Your Python Architecture
+
+First, verify your Python architecture to determine if you're on an ARM or
+Intel-based chip.
+
+```bash
+import platform
+platform.machine()
+```
+
+- If the output is "arm64", proceed with the following steps.
+- If the output is "x86-64", you're running an Intel emulator on an Apple
+  silicon chip and need to switch to arm64.
+
+For the best performance of `jax`, it will be better to install Python under
+the arm64 architecture.
+
+**Install Miniforge for ARM64.**
+
+Download Miniforge from the official Conda Forge page (https://conda-forge.org/miniforge/).
+Run the installer script:
+
+```bash
+bash Mambaforge-23.11.0-0-MacOSX-arm64.sh
+```
+
+Restart the terminal.
+
+### Step 2: Install `jax` and `jaxoplanet`
+
+Create a New Environment (Optional) in miniforge.
+
+It's a good practice to create a new environment for your projects:
+
+```bash
+conda create --name jaxoplanet
+conda activate jaxoplanet
+conda install pip
+
+conda install jax
+# or
+python -m pip install "jax[cpu]"
+```
+
+Then install `jaxoplanet` using the instructions in {ref}`install`.
