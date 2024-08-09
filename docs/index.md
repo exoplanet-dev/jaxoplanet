@@ -13,19 +13,20 @@ tutorials/quickstart.ipynb
 
 ```{toctree}
 :caption: Tutorials
-
 tutorials/about.ipynb
 tutorials/transit.ipynb
 tutorials/rv.ipynb
 ```
 
 ```{toctree}
-:caption: Reference
-
-api
-tutorials/autodiff.ipynb
+:caption: Additional Tutorials
 tutorials/introduction-to-jax.ipynb
+tutorials/autodiff.ipynb
 tutorials/core-from-scratch.ipynb
+
+```{toctree}
+:caption: Developer Documentation
+api
 contributing
 
 ```
