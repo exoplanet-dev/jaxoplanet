@@ -17,7 +17,6 @@ tutorials/quickstart.ipynb
 tutorials/about.ipynb
 tutorials/transit.ipynb
 tutorials/rv.ipynb
-tutorials/starry.ipynb
 ```
 
 ```{toctree}

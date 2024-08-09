@@ -69,6 +69,7 @@ def lon_lat_lines(n: int = 6, pts: int = 100, radius: float = 1.0):
 
 
 def rotation(inc, obl, theta):
+    obl = np.array(obl)
     u = [np.cos(obl), np.sin(obl), 0]
     u /= np.linalg.norm(u)
     u *= -(inc - np.pi / 2)
@@ -81,6 +82,9 @@ def rotation(inc, obl, theta):
 
 
 def rotate_lines(lines, inc, obl, theta):
+    inc = np.array(inc)
+    obl = np.array(obl)
+    theta = np.array(theta)
     R = rotation(inc, obl, theta)
 
     rotated_lines = np.array([R.apply(l.T) for l in lines]).T
