@@ -23,6 +23,7 @@ tutorials/rv.ipynb
 tutorials/introduction-to-jax.ipynb
 tutorials/autodiff.ipynb
 tutorials/core-from-scratch.ipynb
+```
 
 ```{toctree}
 :caption: Developer Documentation
