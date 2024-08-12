@@ -29,7 +29,9 @@ def light_curve(
             Defaults to 20.
 
     Returns:
-        Callable[[Quantity], tuple[Array | None, Array | None]]: light curve function
+        Callable[[Quantity], tuple[Array | None, Array | None]]: a function that computes
+        the separate light curves for each body, starting with the central body and
+        ordered by the bodies list (from first to last inserted).
     """
     central_bodies_lc = jax.vmap(
         surface_light_curve, in_axes=(None, 0, 0, 0, 0, None, None)
