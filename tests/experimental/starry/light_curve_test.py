@@ -446,3 +446,25 @@ def test_light_curves_orders(order):
     )
 
     _ = light_curve(system, order=order)(0.0)
+
+
+@pytest.mark.parametrize("deg", [2, 5, 10])
+def test_compare_y_from_u(deg):
+    """In this test we convert the limb darkening coefficients to spherical harmonic
+    coefficients and compare the light curve providing one or the other.
+    """
+
+    u = np.ones(deg)
+    r = 0.1
+    b = np.linspace(0, 1 + r, 20)
+    surface_u = Surface(u=u)
+    surface_y = Surface(y=Ylm.from_limb_darkening(u))
+
+    light_curve_function = jax.vmap(
+        lambda surface, b: surface_light_curve(surface, r, y=b), (None, 0)
+    )
+
+    flux_u = light_curve_function(surface_u, b)
+    flux_y = light_curve_function(surface_y, b)
+
+    assert_allclose(flux_u, flux_y)
