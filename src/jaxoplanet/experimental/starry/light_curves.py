@@ -20,6 +20,17 @@ from jaxoplanet.units import quantity_input, unit_registry as ureg
 def light_curve(
     system: SurfaceSystem, order: int = 20
 ) -> Callable[[Quantity], tuple[Array | None, Array | None]]:
+    """Return a function that computes the light curve of a system made of non-uniform
+       surfaces.
+
+    Args:
+        system (SurfaceSystem): system object
+        order (int, optional): order of the P integral numerical approximation.
+            Defaults to 20.
+
+    Returns:
+        Callable[[Quantity], tuple[Array | None, Array | None]]: light curve function
+    """
     central_bodies_lc = jax.vmap(
         surface_light_curve, in_axes=(None, 0, 0, 0, 0, None, None)
     )
@@ -106,7 +117,7 @@ def surface_light_curve(
         theta (float):
             rotation angle of the map, in radians. By default 0.0
         order (int):
-            order of the P integral Gauss-Legendre approximation. By default 20
+            order of the P integral numerical approximation. By default 20
 
     Returns:
         ArrayLike: flux
