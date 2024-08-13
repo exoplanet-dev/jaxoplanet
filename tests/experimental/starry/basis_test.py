@@ -282,15 +282,15 @@ def A2_inv_symbolic(lmax):
             C = [(mu - 3) // 2, -(mu - 3) // 2, -(mu + 3) // 2]
 
         res = 0
-        for i, j, k, c in zip(I, J, K, C):
+        for i, j, k, c in zip(I, J, K, C, strict=False):
             res += c * x**i * y**j * sm.sqrt(1 - x**2 - y**2) ** k
         return res
 
     def p_G(n, lmax):
         g = gtilde(n, x, y)
         res = [g.subs(sm.sqrt(1 - x**2 - y**2), 0).subs(x, 0).subs(y, 0)]
-        for n in range(1, (lmax + 1) ** 2):
-            res.append(Coefficient(g, ptilde(n, x, y)))
+        for i in range(1, (lmax + 1) ** 2):
+            res.append(Coefficient(g, ptilde(i, x, y)))
         return res
 
     def A2_inv(lmax):

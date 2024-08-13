@@ -1,6 +1,9 @@
+__all__ = ["quantity_input"]
+
 import inspect
+from collections.abc import Callable
 from functools import partial, wraps
-from typing import Any, Callable, Optional
+from typing import Any
 
 import jax
 from pint import DimensionalityError
@@ -9,7 +12,7 @@ from jaxoplanet.units.registry import unit_registry
 
 
 def quantity_input(
-    func: Optional[Callable[..., Any]] = None,
+    func: Callable[..., Any] | None = None,
     *,
     _strict: bool = False,
     **kwargs: Any,
@@ -31,8 +34,7 @@ def quantity_input(
     is instead set to ``True``, inputting a non-``Quantity`` will raise a
     ``ValueError``.
 
-    Examples
-    --------
+    **Examples**
 
     The following function expects a length in meters and a time in seconds, and
     it returns a speed in meters per second:
@@ -69,8 +71,7 @@ def quantity_input(
             else:
                 return 0.0 * x
 
-    JAX Pytree support
-    ------------------
+    **JAX Pytree support**
 
     This decorator also supports JAX Pytrees, so you can use it to wrap
     functions with structured inputs. For example, we could rewrite the
@@ -176,7 +177,7 @@ class QuantityInput:
 
 
 def _apply_units(
-    value: Any, units: Any, strict: bool = False, name: Optional[str] = None
+    value: Any, units: Any, strict: bool = False, name: str | None = None
 ) -> Any:
     if units is None:
         return value

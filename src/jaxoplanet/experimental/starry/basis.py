@@ -19,14 +19,8 @@ except ImportError:
 def basis(lmax):
     """Full change of basis matrix from spherical harmonics to Green's basis
 
-    Parameters
-    ----------
-    lmax : int
-        maximum degree of the spherical harmonic basis
-
-    Returns
-    -------
-    TODO
+    Args:
+        lmax (int): maximum degree of the spherical harmonic basis
     """
     matrix = scipy.sparse.linalg.spsolve(A2_inv(lmax), A1(lmax))
     if lmax > 0:
@@ -282,7 +276,7 @@ def gtilde(n):
         K = [1, 1, 1]
         C = [(mu - 3) // 2, -(mu - 3) // 2, -(mu + 3) // 2]
     res = {}
-    for i, j, k, c in zip(I, J, K, C):
+    for i, j, k, c in zip(I, J, K, C, strict=False):
         res[(i, j, k)] = c
     return res
 
@@ -416,7 +410,7 @@ def u_p(p, l, m, n):
     return indices[idx], data[idx]
 
 
-def U0(udeg: int):
+def U(udeg: int):
     """Change of basis matrix from limb darkening basis to polynomial basis.
 
     Args:
@@ -430,7 +424,7 @@ def U0(udeg: int):
     P = np.zeros((udeg + 1, n))
     for i in range(udeg + 1):
         idxs, values = u_p(p, None, None, i)
-        for j, v in zip(idxs, values):
+        for j, v in zip(idxs, values, strict=False):
             P[i, j] += v
 
     return P

@@ -1,7 +1,44 @@
+r"""A module to manipulate vectors in the spherical harmonic basis.
+
+The spherical harmonics basis is a set of orthogonal functions defined on the
+unit sphere. In jaxoplanet, this basis is used to represent the intensity at the surface
+of a spherical body, such as a star or a planet. We say that :math:`y` represents the
+intensity of a surface in the spherical harmonics basis if the specific intensity at the
+:math:`(x,y)` on the surface can be written as:
+
+.. math::
+
+    I(x, y) = \mathbf{\tilde{y}_n^\mathsf{T}} (x, y) \, \mathbf{y}
+    \quad,
+
+where :math:`\tilde{y}_n` is the **spherical harmonic basis**,
+arranged in increasing degree and order:
+
+.. math::
+
+    \mathbf{\tilde{y}_n} =
+    \begin{pmatrix}
+        Y_{0, 0} &
+        Y_{1, -1} & Y_{1, 0} & Y_{1, 1} &
+        Y_{2, -2} & Y_{2, -1} & Y_{2, 0} & Y_{2, 1} & Y_{2, 2} &
+        \cdot\cdot\cdot
+    \end{pmatrix}^\mathsf{T}
+    \quad,
+
+where :math:`Y_{l, m} = Y_{l, m}(x, y)` is the spherical harmonic of degree :math:`l`
+and order :math:`m`. For reference, in this basis the coefficient of the spherical
+harmonic :math:`Y_{l, m}` is located at the index
+
+.. math::
+
+    n = l^2 + l + m
+
+"""
+
 import math
 from collections import defaultdict
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
 import equinox as eqx
 import jax
@@ -16,77 +53,98 @@ from jaxoplanet.types import Array
 
 
 class Ylm(eqx.Module):
-    data: Optional[dict[tuple[int, int], Array]] = None
+    """Ylm object containing the spherical harmonic coefficients.
+
+    Args:
+        data (Mapping[tuple[int, int], Array], optional): dictionary of
+            spherical harmonic coefficients. Defaults to {(0, 0): 1.0}.
+    """
+
+    data: dict[tuple[int, int], Array]
     """coefficients of the spherical harmonic expansion of the map in the form
-    {(l, m): coefficient}"""
-    ell_max: int = eqx.field(static=True)
-    """maximum degree of the spherical harmonic expansion"""
+    `{(l, m): coefficient}`"""
+
+    deg: int = eqx.field(static=True)
+    """The maximum degree of the spherical harmonic coefficients."""
+
     diagonal: bool = eqx.field(static=True)
-    """whether the spherical harmonic expansion is diagonal (all m=0)"""
+    """Whether are orders m of the spherical harmonic coefficients are zero.
+    Diagonal if only the degrees "l" are non-zero."""
 
     def __init__(
         self,
-        data: Optional[Mapping[tuple[int, int], Array]] = None,
-        normalize: bool = True,
+        data: Mapping[tuple[int, int], Array] | None = None,
     ):
-        """Ylm object containing the spherical harmonic coefficients.
-
-        Args:
-            data (Mapping[tuple[int, int], Array], optional): dictionary of
-            spherical harmonic coefficients. Defaults to {(0, 0): 1.0}.
-            relative (bool, optional): Whether to normalize the coefficients by the
-            value of the (0, 0) coefficient. Defaults to True.
-
-        Raises:
-            ValueError: if relative is True and the (0, 0) coefficient is zero.
-        """
         if data is None:
             data = {(0, 0): 1.0}
 
-        if normalize:
-            assert data[(0, 0)] != 0.0, ValueError(
-                "The (0, 0) coefficient must be non-zero if relative=True"
-            )
-            data = {k: v / data[(0, 0)] for k, v in data.items()}
         self.data = dict(data)
-        self.ell_max = max(ell for ell, _ in data.keys())
+        self.deg = max(ell for ell, _ in data.keys())
         self.diagonal = all(m == 0 for _, m in data.keys())
 
     @property
-    def shape(self):
-        """The number of coefficients in the expansion. This sets the shape of
+    def shape(self) -> tuple[int, ...]:
+        """The number of coefficients in the basis. This sets the shape of
         the output of `todense`."""
-        return self.ell_max**2 + 2 * self.ell_max + 1
+        return (self.deg**2 + 2 * self.deg + 1,)
 
     @property
-    def indices(self):
-        return self.data.keys()
+    def indices(self) -> list[tuple[int, int]]:
+        """List of (l,m) indices of the spherical harmonic coefficients."""
+        return list(self.data.keys())
 
-    def index(self, ell: Array, m: Array) -> Array:
+    def index(self, l: Array, m: Array) -> Array:
         """Convert the degree and order of the spherical harmonic to the
         corresponding index in the coefficient array."""
-        if np.any(np.abs(m) > ell):
-            raise ValueError(
-                "All spherical harmonic orders 'm' must be in the range [-ell, ell]"
-            )
-        return ell * (ell + 1) + m
+        return l * (l + 1) + m
+
+    def normalize(self) -> "Ylm":
+        """Return a new Ylm instance with coefficients normalized to :math:`Y_{0,0}`.
+
+        Returns:
+            Ylm instance with normalized coefficients.
+
+        Raises:
+            ValueError: if the (0, 0) coefficient is zero.
+        """
+
+        assert self.data[(0, 0)] != 0.0, ValueError(
+            "The (0, 0) coefficient must be non-zero to normalize"
+        )
+        data = {k: v / self.data[(0, 0)] for k, v in self.data.items()}
+        return Ylm(data=data)
 
     def tosparse(self) -> BCOO:
-        indices, values = zip(*self.data.items())
-        idx = np.array([self.index(ell, m) for ell, m in indices])[:, None]
-        return BCOO((jnp.asarray(values), idx), shape=(self.shape,))
+        """Return a sparse (jax.experimental.sparse.BCOO) spherical harmonic
+        coefficients vector where the spherical harmonic :math:`Y_{l, m}` is located at
+        the index :math:`n = l^2 + l + m`.
+        """
+        indices, values = zip(*self.data.items(), strict=False)
+        idx = jnp.array([self.index(l, m) for l, m in indices])[:, None]
+        return BCOO((jnp.asarray(values), idx), shape=self.shape)
 
     def todense(self) -> Array:
+        """Return a dense spherical harmonic coefficients vector where the spherical
+        harmonic :math:`Y_{l, m}` is located at the index :math:`n = l^2 + l + m`.
+        """
         return self.tosparse().todense()
 
     @classmethod
     def from_dense(cls, y: Array, normalize: bool = True) -> "Ylm":
+        """Create a Ylm object from a dense array of spherical harmonic coefficients
+        where the spherical harmonic :math:`Y_{l, m}` is located at the index
+        :math:`n = l^2 + l + m`.
+        """
         data = {}
         for i, ylm in enumerate(y):
-            ell = int(np.floor(np.sqrt(i)))
-            m = i - ell * (ell + 1)
-            data[(ell, m)] = ylm
-        return cls(data, normalize=normalize)
+            l = int(np.floor(np.sqrt(i)))
+            m = i - l * (l + 1)
+            data[(l, m)] = ylm
+        ylm = cls(data)
+        if normalize:
+            return ylm.normalize()
+        else:
+            return ylm
 
     def __mul__(self, other: Any) -> "Ylm":
         if isinstance(other, Ylm):
@@ -107,10 +165,11 @@ def _mul(f: Ylm, g: Ylm) -> Ylm:
     """
     Based closely on the implementation from the MIT-licensed spherical package:
 
-    https://github.com/moble/spherical/blob/0aa81c309cac70b90f8dfb743ce35d2cc9ae6dee/spherical/multiplication.py
+    https://github.com/moble/spherical/blob/0aa81c309cac70b90f8dfb743ce35d2cc9ae6dee/
+    spherical/multiplication.py
     """
-    ellmax_f = f.ell_max
-    ellmax_g = g.ell_max
+    ellmax_f = f.deg
+    ellmax_g = g.deg
     ellmax_fg = ellmax_f + ellmax_g
     fg = defaultdict(lambda *_: 0.0)
     m_calculator = Wigner3jCalculator(ellmax_f, ellmax_g)
@@ -200,8 +259,8 @@ def ylm_spot(ydeg: int) -> callable:
         """spot expansion in the spherical harmonics basis.
 
         Args:
-            contrast (float): spot contrast, defined as (1-c) where c is the intensity of
-            the center of the spot relative to the unspotted surface. A contrast of 1.
+            contrast (float): spot contrast, defined as (1-c) where c is the intensity
+            of the center of the spot relative to the unspotted surface. A contrast of 1.
             means that the spot intensity drops to zero at the center, 0. means that
             the intensity at the center of the spot is the same as the intensity of the
             unspotted surface.

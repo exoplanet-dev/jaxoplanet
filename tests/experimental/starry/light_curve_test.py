@@ -2,23 +2,25 @@ import jax
 import numpy as np
 import pytest
 
-from jaxoplanet.experimental.starry import Map, Ylm
-from jaxoplanet.experimental.starry.light_curves import light_curve, map_light_curve
+from jaxoplanet.experimental.starry import Surface, Ylm
+from jaxoplanet.experimental.starry.light_curves import light_curve, surface_light_curve
+from jaxoplanet.experimental.starry.orbit import SurfaceSystem
+from jaxoplanet.light_curves import limb_dark_light_curve
 from jaxoplanet.orbits import keplerian
 from jaxoplanet.test_utils import assert_allclose
 
 
 @pytest.mark.parametrize("deg", [2, 5, 10])
 @pytest.mark.parametrize("u", [[], [0.1], [0.2, 0.1]])
-def test_compare_starry(deg, u):
+def test_compare_starry_limb_dark(deg, u):
     starry = pytest.importorskip("starry")
     starry.config.lazy = False
 
     # map
     inc = np.pi / 2
     np.random.seed(deg)
-    y = Ylm.from_dense(np.random.randn((deg + 1) ** 2))
-    map = Map(y=y, u=u, inc=inc)
+    y = Ylm.from_dense(np.random.randn((deg + 1) ** 2), normalize=True)
+    map = Surface(y=y, u=u, inc=inc)
 
     # occultor
     yo = np.linspace(-3, 3, 1000)
@@ -34,7 +36,7 @@ def test_compare_starry(deg, u):
     expected = ms.flux(xo=xo, yo=yo, ro=ro, zo=zo)
 
     # jaxoplanet
-    calc = jax.vmap(map_light_curve, in_axes=(None, None, None, 0, None, None))(
+    calc = jax.vmap(surface_light_curve, in_axes=(None, None, None, 0, None, None))(
         map, ro, xo, yo, zo, 0.0
     )
 
@@ -47,116 +49,379 @@ def test_compare_starry(deg, u):
             "central": keplerian.Central(
                 mass=1.3,
                 radius=1.1,
-                map=Map(
-                    y=Ylm.from_dense(
-                        [1, 0.005, 0.05, 0.09, 0.0, 0.1, 0.03, 0.04, 0.4, 0.2, 0.1]
-                    ),
-                    inc=0.9,
-                    obl=0.3,
-                    period=1.2,
-                    u=[0.1, 0.1],
-                ),
             ),
-            "body": {
-                "radius": 0.5,
-                "mass": 0.1,
-                "period": 1.5,
-                "map": Map(
-                    y=Ylm.from_dense([1, 0.005, 0.05, 0.09, 0.0, 0.1, 0.03]),
-                    inc=-0.3,
-                    period=0.8,
-                    u=[0.2, 0.3],
-                ),
-            },
+            "bodies": [{"radius": 0.5, "mass": 0.1, "period": 1.5}],
         },
         {
             "central": keplerian.Central(
                 mass=1.3,
                 radius=1.1,
-                map=Map(
-                    y=Ylm.from_dense(np.hstack([1, 0.005, 0.05, 0.09, 0.0, 0.1, 0.03])),
-                    period=1.2,
-                    u=[0.1, 0.1],
-                ),
             ),
-            "body": {
-                "radius": 0.5,
-                "mass": 0.1,
-                "period": 1.5,
-            },
+            "central_surface": Surface(
+                y=Ylm.from_dense(
+                    [1, 0.005, 0.05, 0.09, 0.0, 0.1, 0.03, 0.04, 0.4, 0.2, 0.1]
+                ),
+                inc=0.9,
+                obl=0.3,
+                period=1.2,
+                u=(0.1, 0.1),
+            ),
+            "bodies": [
+                {
+                    "radius": 0.5,
+                    "mass": 0.1,
+                    "period": 1.5,
+                    "surface": Surface(
+                        y=Ylm.from_dense([1, 0.005, 0.05, 0.09, 0.0, 0.1, 0.03]),
+                        inc=-0.3,
+                        period=0.8,
+                        u=(0.2, 0.3),
+                    ),
+                }
+            ],
+        },
+        {
+            "central": keplerian.Central(
+                mass=1.3,
+                radius=1.1,
+            ),
+            "central_surface": Surface(
+                y=Ylm.from_dense(
+                    [1, 0.005, 0.05, 0.09, 0.0, 0.1, 0.03, 0.04, 0.4, 0.2, 0.1]
+                ),
+                inc=0.9,
+                obl=0.3,
+                period=1.2,
+                u=(0.1, 0.1),
+            ),
+            "bodies": [
+                {
+                    "radius": 0.5,
+                    "mass": 0.1,
+                    "period": 1.5,
+                },
+                {
+                    "radius": 0.2,
+                    "mass": 0.3,
+                    "period": 0.4,
+                },
+            ],
+        },
+        {
+            "central": keplerian.Central(
+                mass=1.3,
+                radius=1.1,
+            ),
+            "central_surface": Surface(
+                y=Ylm.from_dense(np.hstack([1, 0.005, 0.05, 0.09, 0.0, 0.1, 0.03])),
+                period=1.2,
+                u=(0.1, 0.1),
+            ),
+            "bodies": [
+                {
+                    "radius": 0.5,
+                    "mass": 0.1,
+                    "period": 1.5,
+                }
+            ],
         },
         {
             "central": keplerian.Central(
                 mass=0.3,
                 radius=0.1,
             ),
-            "body": {
-                "radius": 1.5,
-                "mass": 1.1,
-                "period": 1.5,
-                "map": Map(
-                    y=Ylm.from_dense([1, 0.005, 0.05, 0.09, 0.0, 0.1, 0.03]),
-                    period=1.2,
-                    u=[0.1, 0.1],
-                ),
-            },
+            "bodies": [
+                {
+                    "radius": 1.5,
+                    "mass": 1.1,
+                    "period": 1.5,
+                    "surface": Surface(
+                        y=Ylm.from_dense([1, 0.005, 0.05, 0.09, 0.0, 0.1, 0.03]),
+                        period=1.2,
+                        u=(0.1, 0.1),
+                    ),
+                }
+            ],
         },
     ]
 )
 def keplerian_system(request):
-    return keplerian.System(request.param["central"]).add_body(**request.param["body"])
+    system = SurfaceSystem(
+        request.param["central"],
+        central_surface=request.param.get("central_surface", None),
+    )
+    for body in request.param["bodies"]:
+        system = system.add_body(**body)
+
+    return system
 
 
 def test_compare_starry_system(keplerian_system):
     starry = pytest.importorskip("starry")
     starry.config.lazy = False
 
-    # jaxoplanet system
-    central = keplerian_system.central
-    body = keplerian_system.bodies[0]
+    def jaxoplanet2starry(body, surface_map=None):
+        cls = (
+            starry.Primary if isinstance(body, keplerian.Central) else starry.Secondary
+        )
+        if surface_map is None or surface_map.period is None:
+            prot = 1e15
+        else:
+            prot = surface_map.period
 
-    system = keplerian.System(central, bodies=[body])
+        if surface_map is None:
+            map_kwargs = dict(ydeg=0, rv=False, reflected=False)
+        else:
+            map_kwargs = dict(
+                ydeg=surface_map.ydeg,
+                udeg=surface_map.udeg,
+                inc=np.rad2deg(surface_map.inc),
+                obl=np.rad2deg(surface_map.obl),
+                amp=surface_map.amplitude,
+            )
+
+        body_kwargs = dict(
+            r=body.radius.magnitude,
+            m=body.mass.magnitude,
+            prot=prot,
+        )
+
+        if isinstance(body, keplerian.OrbitalBody):
+            body_kwargs["porb"] = body.period.magnitude
+            map_kwargs["amp"] = surface_map.amplitude if surface_map else 0.0
+
+        starry_body = cls(starry.Map(**map_kwargs), **body_kwargs)
+
+        if surface_map and surface_map.u:
+            starry_body.map[1:] = surface_map.u
+        if surface_map and surface_map.deg > 0:
+            starry_body.map[1:, :] = np.asarray(surface_map.y.todense())[1:]
+
+        return starry_body
 
     time = np.linspace(-1.5, 1.0, 300)
-    jaxoplanet_flux = light_curve(system, time)
 
-    # starry system
-    pri = starry.Primary(
-        starry.Map(
-            ydeg=central.map.ydeg,
-            udeg=central.map.udeg,
-            inc=np.rad2deg(central.map.inc),
-            obl=np.rad2deg(central.map.obl),
-            amp=central.map.amplitude,
-        ),
-        r=central.radius.magnitude,
-        m=central.mass.magnitude,
-        prot=central.map.period,
+    # jaxoplanet
+    jaxoplanet_flux = light_curve(keplerian_system)(time)
+
+    # starry
+    primary = jaxoplanet2starry(
+        keplerian_system.central, keplerian_system.central_surface
     )
-    if central.map.u:
-        pri.map[1:] = central.map.u
-    if central.map.deg > 0:
-        pri.map[1:, :] = np.asarray(central.map.y.todense())[1:]
+    secondaries = [
+        jaxoplanet2starry(body, surface_map)
+        for body, surface_map in zip(
+            keplerian_system.bodies, keplerian_system.body_surfaces, strict=False
+        )
+    ]
 
-    sec = starry.Secondary(
-        starry.Map(
-            ydeg=body.map.ydeg,
-            udeg=body.map.udeg,
-            inc=np.rad2deg(body.map.inc),
-            obl=np.rad2deg(body.map.obl),
-            amp=body.map.amplitude,
-        ),
-        r=body.radius.magnitude,
-        m=body.mass.magnitude,
-        porb=body.period.magnitude,
-        prot=body.map.period,
-    )
-    if body.map.u:
-        sec.map[1:] = body.map.u
-
-    if body.map.deg > 0:
-        sec.map[1:, :] = np.asarray(body.map.y.todense())[1:]
-
-    starry_system = starry.System(pri, sec)
+    starry_system = starry.System(primary, *secondaries)
     starry_flux = starry_system.flux(time, total=False)
-    assert_allclose(jaxoplanet_flux, starry_flux)
+
+    assert_allclose(jaxoplanet_flux.T, np.array(starry_flux))
+
+    # # compare summed jaxponet fluxes with the corresponding starry fluxes
+    # if body_map is None:
+    #     assert_allclose(jax.numpy.squeeze(jaxoplanet_flux), starry_flux[0])
+    # elif central_map is None:
+    #     assert_allclose(jax.numpy.squeeze(jaxoplanet_flux), starry_flux[1])
+    # else:
+    #     assert_allclose(jax.numpy.squeeze(jaxoplanet_flux),
+    # np.sum(starry_flux, axis=0))
+
+    # # compare individual jaxpolanet fluxes with the corresponding starry fluxes
+    # for jaxoplanet_flux_item, starry_flux_item in zip(jaxoplanet_flux, starry_flux):
+    #     if jaxoplanet_flux_item is not None:
+    #         assert_allclose(jax.numpy.squeeze(jaxoplanet_flux_item), starry_flux_item)
+
+
+def test_map_light_curves_none_occultor():
+    surface = Surface(
+        y=Ylm.from_dense(np.hstack([1, 0.005, 0.05, 0.09, 0.0, 0.1, 0.03])),
+        period=1.2,
+        u=(0.1, 0.1),
+    )
+
+    expected = surface_light_curve(surface, theta=0.5)
+    calc = surface_light_curve(surface, 0.0, 2.0, 2.0, 2.0, theta=0.5)
+
+    assert_allclose(calc, expected)
+
+
+@pytest.mark.parametrize("deg", [2, 5, 10])
+def test_compare_starry_rot(deg):
+    starry = pytest.importorskip("starry")
+    starry.config.lazy = False
+
+    # map
+    inc = np.pi / 2
+    np.random.seed(deg)
+    y = Ylm.from_dense(np.random.randn((deg + 1) ** 2), normalize=True)
+    map = Surface(y=y, inc=inc)
+
+    # phase
+    theta = np.linspace(0, 2 * np.pi, 200)
+
+    # starry
+    ms = starry.Map(ydeg=deg, inc=np.rad2deg(inc))
+    ms[:, :] = y.todense()
+    expected = ms.flux(theta=np.rad2deg(theta))
+    calc = jax.vmap(surface_light_curve, in_axes=(None, None, None, None, None, 0))(
+        map, None, None, None, None, theta
+    )
+
+    assert_allclose(calc, expected)
+
+
+def test_EB():
+
+    from jaxoplanet.units import unit_registry as ureg
+
+    params = {
+        "primary_mass": 2.0,
+        "secondary_mass": 1.0,
+        "primary_radius": 2.0,
+        "secondary_radius": 1.0,
+        "inclination": np.pi / 2,
+        "period": 1.0,
+        "t0": 0.0,
+        "s": 0.35,
+    }
+
+    primary = keplerian.Central(
+        radius=params["primary_radius"] * ureg.R_sun,
+        mass=params["primary_mass"] * ureg.M_sun,
+    )
+
+    primary_amplitude = 1.1
+    primary_surface = Surface(amplitude=primary_amplitude, normalize=False)
+
+    secondary = keplerian.Body(
+        radius=params["secondary_radius"] * ureg.R_sun,
+        mass=params["secondary_mass"] * ureg.M_sun,
+        period=params["period"] * ureg.day,
+        time_transit=params["t0"] * ureg.day,
+        inclination=params["inclination"] * ureg.rad,
+    )
+
+    secondary_amplitude = params["s"]
+    secondary_surface = Surface(amplitude=secondary_amplitude, normalize=False)
+
+    system = SurfaceSystem(primary, primary_surface).add_body(
+        secondary, secondary_surface
+    )
+
+    def flux_function(time):
+        light_curve(system)(time)
+
+    # no occultation
+    assert_allclose(
+        flux_function(params["period"] / 4), [primary_amplitude, secondary_amplitude]
+    )
+
+    # primary occultation
+    assert_allclose(flux_function(params["period"] / 2), [primary_amplitude, 0.0])
+
+    # secondary occultation
+    depth = (params["secondary_radius"] / params["primary_radius"]) ** 2
+    assert_allclose(
+        flux_function(0.0), [primary_amplitude * (1 - depth), secondary_amplitude]
+    )
+
+
+def test_compare_limb_dark_light_curve():
+    time = np.linspace(-0.1, 0.1, 200)
+
+    params = {
+        "stellar_mass": 0.3,
+        "stellar_radius": 0.3,
+        "planet_radius": 0.1,
+        "u": (0.1, 0.1),
+        "planet_period": 15.0,
+    }
+
+    system = keplerian.System(
+        keplerian.Central(mass=params["stellar_mass"], radius=params["stellar_radius"]),
+    )
+
+    system = system.add_body(
+        radius=params["planet_radius"], period=params["planet_period"]
+    )
+
+    expected = limb_dark_light_curve(system, params["u"])(time)[:, 0] + 1.0
+
+    surface_system = SurfaceSystem(
+        keplerian.Central(mass=params["stellar_mass"], radius=params["stellar_radius"]),
+        Surface(u=params["u"]),
+    )
+    surface_system = surface_system.add_body(
+        radius=params["planet_radius"], period=params["planet_period"]
+    )
+
+    calc = light_curve(surface_system)(time)[:, 0]
+
+    assert_allclose(calc, expected)
+
+
+def test_EB_interchanged():
+
+    from jaxoplanet.units import unit_registry as ureg
+
+    params = {
+        "primary_mass": 2.0,
+        "secondary_mass": 1.0,
+        "primary_radius": 2.0,
+        "secondary_radius": 1.0,
+        "inclination": np.pi / 2,
+        "primary_amplitude": 1.1,
+        "secondary_amplitude": 0.35,
+        "period": 1.0,
+        "t0": 0.0,
+        "s": 0.35,
+    }
+
+    system_1 = SurfaceSystem(
+        keplerian.Central(
+            radius=params["primary_radius"] * ureg.R_sun,
+            mass=params["primary_mass"] * ureg.M_sun,
+        ),
+        Surface(amplitude=params["primary_amplitude"], normalize=False),
+    ).add_body(
+        keplerian.Body(
+            radius=params["secondary_radius"] * ureg.R_sun,
+            mass=params["secondary_mass"] * ureg.M_sun,
+            period=params["period"] * ureg.day,
+            time_transit=params["t0"] * ureg.day,
+            inclination=params["inclination"] * ureg.rad,
+        ),
+        Surface(amplitude=params["secondary_amplitude"], normalize=False),
+    )
+
+    system_2 = SurfaceSystem(
+        keplerian.Central(
+            radius=params["secondary_radius"] * ureg.R_sun,
+            mass=params["secondary_mass"] * ureg.M_sun,
+        ),
+        Surface(amplitude=params["secondary_amplitude"], normalize=False),
+    ).add_body(
+        keplerian.Body(
+            radius=params["primary_radius"] * ureg.R_sun,
+            mass=params["primary_mass"] * ureg.M_sun,
+            period=params["period"] * ureg.day,
+            time_transit=params["t0"] * ureg.day,
+            inclination=params["inclination"] * ureg.rad,
+        ),
+        Surface(amplitude=params["primary_amplitude"], normalize=False),
+    )
+
+    # switching primary and secondary
+    time = np.linspace(0, params["period"], 200)
+    flux_ordered = light_curve(system_1)(time).sum(1)
+    flux_reversed = light_curve(system_2)(time + params["period"] / 2).sum(1)
+
+    # for some reason the assert_allclose wasn't catching error here
+    np.testing.assert_allclose(
+        flux_ordered,
+        flux_reversed,
+        atol=1e-6 if flux_ordered.dtype.name == "float32" else 1e-12,
+    )

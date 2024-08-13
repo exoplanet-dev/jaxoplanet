@@ -4,6 +4,7 @@ from functools import partial
 import jax
 import jax.numpy as jnp
 
+from jaxoplanet.types import Array
 from jaxoplanet.utils import get_dtype_eps
 
 
@@ -67,7 +68,19 @@ def dot_rotation_matrix(ydeg, x, y, z, theta):
     return do_dot
 
 
-def right_project_axis_angle(inc, obl, theta, theta_z):
+def full_rotation_axis_angle(inc: float, obl: float, theta: float, theta_z: float):
+    """Return the axis-angle representation of the full rotation of the
+       spherical harmonic map
+
+    Args:
+        inc (float): map inclination
+        obl (float): map obliquity
+        theta (float): rotation angle about the map z-axis
+        theta_z (float): rotation angle about the sky y-axis
+
+    Returns:
+        tuple: x, y, z, angle
+    """
     f = 0.5 * math.sqrt(2)
     si = jnp.sin(inc / 2)
     ci = jnp.cos(inc / 2)
@@ -86,30 +99,102 @@ def right_project_axis_angle(inc, obl, theta, theta_z):
 
     # this is mostly useful for the float32 case, where
     # (1 - 0.5 * arg**2) in denominator can be negative due to numerical error
-    axis_x = jnp.where(angle != 0.0, numerator1 / denominator, 1.0)
-    axis_y = jnp.where(angle != 0.0, numerator2 / denominator, 0.0)
-    axis_z = jnp.where(angle != 0.0, numerator3 / denominator, 0.0)
+    positive_arg = arg**2 < 2.0
+    axis_x = jnp.where(positive_arg, numerator1 / denominator, 1.0)
+    axis_y = jnp.where(positive_arg, numerator2 / denominator, 0.0)
+    axis_z = jnp.where(positive_arg, numerator3 / denominator, 0.0)
 
     return axis_x, axis_y, axis_z, angle
 
 
-def right_project(ydeg, inc, obl, theta, theta_z, x):
-    axis_x, axis_y, axis_z, angle = right_project_axis_angle(inc, obl, theta, theta_z)
-    return dot_rotation_matrix(ydeg, axis_x, axis_y, axis_z, angle)(x)
+def sky_projection_axis_angle(inc: float, obl: float):
+    """Return the axis-angle representation of the partial rotation of the
+       map due to inclination and obliquity
+
+    Args:
+        inc (float): map inclination
+        obl (float): map obliquity
+
+    Returns:
+        tuple: x, y, z, angle
+    """
+    co = jnp.cos(obl / 2)
+    so = jnp.sin(obl / 2)
+    ci = jnp.cos(inc / 2)
+    si = jnp.sin(inc / 2)
+
+    denominator = jnp.sqrt(1 - ci**2 * co**2)
+
+    axis_x = si * co
+    axis_y = si * so
+    axis_z = -so * ci
+
+    angle = 2 * jnp.arccos(ci * co)
+
+    arg = jnp.linalg.norm(jnp.array([axis_x, axis_y, axis_z]))
+    axis_x = jnp.where(arg > 0, axis_x / denominator, 1.0)
+    axis_y = jnp.where(arg > 0, axis_y / denominator, 0.0)
+    axis_z = jnp.where(arg > 0, axis_z / denominator, 0.0)
+
+    return axis_x, axis_y, axis_z, angle
 
 
-def left_project(ydeg, inc, obl, theta, theta_z, x):
-    axis_x, axis_y, axis_z, angle = right_project_axis_angle(inc, obl, theta, theta_z)
-    return dot_rotation_matrix(ydeg, -axis_x, -axis_y, -axis_z, angle)(x)
+def left_project(
+    ydeg: int, inc: float, obl: float, theta: float, theta_z: float, y: Array
+):
+    """R @ y
+
+    Args:
+        ydeg (int): degree of the spherical harmonic map
+        inc (float): map inclination
+        obl (float): map obliquity
+        theta (float): rotation angle about the map z-axis
+        theta_z (float): rotation angle about the sky y-axis
+        x (Array): spherical harmonic map coefficients
+
+    Returns:
+        Array: rotated spherical harmonic map coefficients
+    """
+    axis_x, axis_y, axis_z, angle = sky_projection_axis_angle(inc, obl)
+    y = dot_rotation_matrix(ydeg, 1.0, None, None, -0.5 * jnp.pi)(y)
+    y = dot_rotation_matrix(ydeg, None, None, 1.0, -theta)(y)
+    y = dot_rotation_matrix(ydeg, axis_x, axis_y, axis_z, angle)(y)
+    y = dot_rotation_matrix(ydeg, None, None, 1.0, -theta_z)(y)
+    return y
+
+
+def right_project(
+    ydeg: int, inc: float, obl: float, theta: float, theta_z: float, y: Array
+):
+    """y @ R
+
+    Args:
+        ydeg (int): degree of the spherical harmonic map
+        inc (float): map inclination
+        obl (float): map obliquity
+        theta (float): rotation angle about the map z-axis
+        theta_z (float): rotation angle about the sky y-axis
+        x (Array): spherical harmonic map coefficients
+
+    Returns:
+        Array: rotated spherical harmonic map coefficients
+    """
+    axis_x, axis_y, axis_z, angle = sky_projection_axis_angle(inc, obl)
+    y = dot_rotation_matrix(ydeg, None, None, 1.0, theta_z)(y)
+    y = dot_rotation_matrix(ydeg, -axis_x, -axis_y, -axis_z, angle)(y)
+    y = dot_rotation_matrix(ydeg, None, None, 1.0, theta)(y)
+    y = dot_rotation_matrix(ydeg, 1.0, None, None, 0.5 * jnp.pi)(y)
+    return y
 
 
 @partial(jax.jit, static_argnums=(0,))
 def compute_rotation_matrices(ydeg, x, y, z, theta):
-    # We need the axis to be a unit vector - enforce that here
+    # we need the axis to be a unit vector - enforce that here
     norm = jnp.sqrt(x * x + y * y + z * z)
-    x = x / norm
-    y = y / norm
-    z = z / norm
+    # handle the case where axis is (0, 0, 0)
+    x = jnp.where(norm == 0.0, 0.0, x / norm)
+    y = jnp.where(norm == 0.0, 0.0, y / norm)
+    z = jnp.where(norm == 0.0, 0.0, z / norm)
 
     s = jnp.sin(theta)
     c = jnp.cos(theta)
