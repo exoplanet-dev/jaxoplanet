@@ -1,5 +1,16 @@
 from jaxoplanet.experimental.starry.mpcore import mp
-from jaxoplanet.experimental.starry.mpcore.utils import fac, kron_delta
+from jaxoplanet.experimental.starry.mpcore.utils import kron_delta, fac as fac_function
+
+
+global FAC_CACHE
+FAC_CACHE = {}
+
+
+def fac(n):
+    if n not in FAC_CACHE:
+        FAC_CACHE[n] = fac_function(n)
+
+    return FAC_CACHE[n]
 
 
 def A(l, m):
