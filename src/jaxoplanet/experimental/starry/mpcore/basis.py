@@ -27,6 +27,15 @@ from collections import defaultdict
 
 def Y(l, m):
     """Return the spherical harmonic of degree `l` and order `m`."""
+    coeffs = defaultdict(lambda: {})
+
+    def get(function, *indices):
+        fun_name = function.__name__
+        if indices not in coeffs[fun_name]:
+            coeffs[fun_name][indices] = function(*indices)
+
+        return coeffs[fun_name][indices]
+
     res = defaultdict(lambda: 0)
     if m >= 0:
         for j in range(0, m + 1, 2):
@@ -35,9 +44,9 @@ def Y(l, m):
                     for q in range(0, p + 1, 2):
                         coeff = (
                             (-1) ** ((j + p) // 2)
-                            * A(l, m)
-                            * B(l, m, j, k)
-                            * C(p, q, k)
+                            * get(A, l, m)
+                            * get(B, l, m, j, k)
+                            * get(C, p, q, k)
                         )
                         x_order = m - j + p - q
                         y_order = j + q
@@ -48,9 +57,9 @@ def Y(l, m):
                     for q in range(0, p + 1, 2):
                         coeff = (
                             (-1) ** ((j + p) // 2)
-                            * A(l, m)
-                            * B(l, m, j, k)
-                            * C(p, q, k - 1)
+                            * get(A, l, m)
+                            * get(B, l, m, j, k)
+                            * get(C, p, q, k - 1)
                         )
                         x_order = m - j + p - q
                         y_order = j + q
@@ -63,9 +72,9 @@ def Y(l, m):
                     for q in range(0, p + 1, 2):
                         coeff = (
                             (-1) ** ((j + p - 1) // 2)
-                            * A(l, abs(m))
-                            * B(l, abs(m), j, k)
-                            * C(p, q, k)
+                            * get(A, l, abs(m))
+                            * get(B, l, abs(m), j, k)
+                            * get(C, p, q, k)
                         )
                         x_order = abs(m) - j + p - q
                         y_order = j + q
@@ -76,9 +85,9 @@ def Y(l, m):
                     for q in range(0, p + 1, 2):
                         coeff = (
                             (-1) ** ((j + p - 1) // 2)
-                            * A(l, abs(m))
-                            * B(l, abs(m), j, k)
-                            * C(p, q, k - 1)
+                            * get(A, l, abs(m))
+                            * get(B, l, abs(m), j, k)
+                            * get(C, p, q, k - 1)
                         )
                         x_order = abs(m) - j + p - q
                         y_order = j + q
@@ -102,22 +111,6 @@ def p_coeffs(n):
         j = (nu - 1) // 2
         k = 1
     return (i, j, k)
-
-
-def make_A(l_max, coeff_fun):
-    n = (l_max + 1) ** 2
-    p = {m: coeff_fun(m) for m in range(n)}
-    res = mp.zeros(n, n)
-
-    k = 0
-    for l in range(l_max + 1):
-        for m in range(-l, l + 1):
-            y = Y(l, m)
-            res[:, k] = mp.matrix([y[p[i]] for i in range(n)])
-            k += 1
-
-    res = res * 2 / mp.sqrt(mp.pi)
-    return res
 
 
 def A1(l_max):
