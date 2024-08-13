@@ -8,6 +8,7 @@ from jaxoplanet.experimental.starry.orbit import SurfaceSystem
 from jaxoplanet.light_curves import limb_dark_light_curve
 from jaxoplanet.orbits import keplerian
 from jaxoplanet.test_utils import assert_allclose
+from jaxoplanet.units import unit_registry as ureg
 
 
 @pytest.mark.parametrize("deg", [2, 5, 10])
@@ -365,8 +366,6 @@ def test_compare_limb_dark_light_curve():
 
 def test_EB_interchanged():
 
-    from jaxoplanet.units import unit_registry as ureg
-
     params = {
         "primary_mass": 2.0,
         "secondary_mass": 1.0,
@@ -425,3 +424,47 @@ def test_EB_interchanged():
         flux_reversed,
         atol=1e-6 if flux_ordered.dtype.name == "float32" else 1e-12,
     )
+
+
+@pytest.mark.parametrize("order", [20, 100, 500])
+def test_light_curves_orders(order):
+
+    central = keplerian.Central(
+        radius=1.0 * ureg.R_sun,
+        mass=1.0 * ureg.M_sun,
+    )
+
+    np.random.seed(42)
+    y = Ylm.from_dense([1.00, *np.random.normal(0.0, 2e-2, size=15)])
+    surface = Surface(inc=1.0, obl=0.2, period=27.0, u=(0.1, 0.1), y=y)
+
+    system = SurfaceSystem(central, surface).add_body(
+        semimajor=40.0 * ureg.au,
+        radius=20.0 * ureg.R_earth,
+        mass=1.0 * ureg.M_earth,
+        impact_param=0.2,
+    )
+
+    _ = light_curve(system, order=order)(0.0)
+
+
+@pytest.mark.parametrize("deg", [2, 5, 10])
+def test_compare_y_from_u(deg):
+    """In this test we convert the limb darkening coefficients to spherical harmonic
+    coefficients and compare the light curve providing one or the other.
+    """
+
+    u = np.ones(deg)
+    r = 0.1
+    b = np.linspace(0, 1 + r, 20)
+    surface_u = Surface(u=u)
+    surface_y = Surface(y=Ylm.from_limb_darkening(u))
+
+    light_curve_function = jax.vmap(
+        lambda surface, b: surface_light_curve(surface, r, y=b), (None, 0)
+    )
+
+    flux_u = light_curve_function(surface_u, b)
+    flux_y = light_curve_function(surface_y, b)
+
+    assert_allclose(flux_u, flux_y)
