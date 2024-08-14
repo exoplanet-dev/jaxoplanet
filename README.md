@@ -50,7 +50,7 @@ installation instructions](https://jax.exoplanet.codes/en/latest/install).
 
 ⚡ In the [Tutorials](tutorials) section we've added a few tutorials showcasing some common astronomy problems where `jaxoplanet` might come in handy!
 
-🖥️ Take a look [here](api) to see a user-friendly API reference for commonly used objects. The full API reference is also available
+🖥️ Take a look [here](api) to see a user-friendly API reference for commonly used objects. The full API reference is also available!
 
 ```
 
