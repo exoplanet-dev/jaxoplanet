@@ -7,8 +7,8 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from jax.experimental.sparse import BCOO
-from jaxoplanet.experimental.starry import basis
 
+from jaxoplanet.experimental.starry import basis
 from jaxoplanet.types import Array
 
 
@@ -50,7 +50,7 @@ class Pijk(eqx.Module):
         dense_data = jnp.asarray(
             [data[Pijk.n2ijk(n)] for n in range((self.degree + 1) ** 2)]
         )
-        u = jnp.asarray((basis.U(self.degree)[-1] == 0)).astype(int)
+        u = jnp.asarray(basis.U(self.degree)[-1] == 0).astype(int)
         self.diagonal = jnp.sum(dense_data * u) == 0
 
     @staticmethod
