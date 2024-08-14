@@ -67,7 +67,8 @@ class Pijk(eqx.Module):
 
     @staticmethod
     def ijk2lm(i: int, j: int, k: int):
-        """Converts the polynomial indices (i, j, k) to the spherical harmonic indices (l, m).
+        """Converts the polynomial indices (i, j, k) to the spherical harmonic indices
+           (l, m).
 
         Args:
             i (int): degree on x
@@ -136,7 +137,8 @@ class Pijk(eqx.Module):
 
     @staticmethod
     def index(i: int, j: int, k: int):
-        """Converts the polynomial indices (i, j, k) to the index n of the flattened SH basis.
+        """Converts the polynomial indices (i, j, k) to the index n of the flattened
+           SH basis.
 
         Args:
             i (int): degree on x
