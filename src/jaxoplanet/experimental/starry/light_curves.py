@@ -84,7 +84,6 @@ def light_curve(
     return light_curve_impl
 
 
-# TODO: figure out the sparse matrices (and Pijk) to avoid todense()
 def surface_light_curve(
     surface: Surface,
     r: float | None = None,
@@ -115,6 +114,7 @@ def surface_light_curve(
         ArrayLike: flux
     """
     rT_deg = rT(surface.deg)
+    only_u = surface.ydeg == 0
 
     x = 0.0 if x is None else x
     y = 0.0 if y is None else y
@@ -146,7 +146,7 @@ def surface_light_curve(
 
         design_matrix_p = jnp.where(b_occ, sT @ A2, rT_deg)
 
-    if surface.ydeg == 0:
+    if only_u:
         rotated_y = surface.y.todense()
     else:
         rotated_y = left_project(
@@ -170,6 +170,6 @@ def surface_light_curve(
     p_y = Pijk.from_dense(A1_val @ rotated_y, degree=surface.ydeg)
     p_y = p_y * p_u
 
-    norm = np.pi / (p_u.tosparse() @ rT(surface.udeg))
+    norm = np.pi / (p_u.tosparse(diagonal=only_u) @ rT(surface.udeg))
 
-    return surface.amplitude * (p_y.tosparse() @ design_matrix_p) * norm
+    return surface.amplitude * (p_y.tosparse(diagonal=only_u) @ design_matrix_p) * norm
