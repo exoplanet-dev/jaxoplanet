@@ -1,4 +1,4 @@
-(commonissues)=
+(doc:commonissues)=
 
 # Common Issues
 

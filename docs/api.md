@@ -1,4 +1,4 @@
-(api)=
+(doc:api)=
 
 # API reference
 

@@ -1,4 +1,4 @@
-(install)=
+(doc:install)=
 
 # Installation
 
@@ -87,4 +87,4 @@ conda install jax
 python -m pip install "jax[cpu]"
 ```
 
-Then install `jaxoplanet` using the instructions in {ref}`install`.
+Then install `jaxoplanet` using the instructions above.
