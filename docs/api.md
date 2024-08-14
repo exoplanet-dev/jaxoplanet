@@ -1,3 +1,5 @@
+(api)=
+
 # API reference
 
 These pages contain the API reference for the `jaxoplanet` package.

@@ -44,13 +44,13 @@ installation instructions](https://jax.exoplanet.codes/en/latest/install).
 ```{admonition} Navigating the docs
 :class: tip
 
-💽 After [installing](https://jax.exoplanet.codes/en/latest/install) `jaxoplanet`, head over to the [Quickstart](https://jax.exoplanet.codes/en/latest/tutorials/quickstart) page to see some of its features.
+💽 After [installing](install) `jaxoplanet`, head over to the [Quickstart](quickstart) page to see some of its features.
 
-🚩 If you're running into some problems with `jaxoplanet`, check out the [common issues](https://jax.exoplanet.codes/en/latest/commonissues) page for some general tips and tricks.
+🚩 If you're running into some problems with `jaxoplanet`, check out the [common issues](commonissues) page for some general tips and tricks.
 
-⚡ In the [Tutorials](https://jax.exoplanet.codes/en/latest/tutorials/about) section we've added a few tutorials showcasing some common astronomy problems where `jaxoplanet` might come in handy!
+⚡ In the [Tutorials](tutorials) section we've added a few tutorials showcasing some common astronomy problems where `jaxoplanet` might come in handy!
 
-🖥️ Take a look [here](https://jax.exoplanet.codes/en/latest/api) to see a user-friendly API reference for commonly used objects. The full API reference is available [here](https://jax.exoplanet.codes/en/latest/autoapi)
+🖥️ Take a look [here](api) to see a user-friendly API reference for commonly used objects. The full API reference is also available
 
 ```
 

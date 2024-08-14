@@ -32,6 +32,8 @@ tutorials/core-from-scratch.ipynb
 
 ```{toctree}
 :caption: Developer Documentation
+:maxdepth: 1
+
 api
 contributing
 
