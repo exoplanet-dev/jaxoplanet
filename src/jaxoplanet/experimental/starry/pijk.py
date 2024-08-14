@@ -7,6 +7,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from jax.experimental.sparse import BCOO
+from jaxoplanet.experimental.starry import basis
 
 from jaxoplanet.types import Array
 
@@ -46,7 +47,15 @@ class Pijk(eqx.Module):
             if degree is None
             else degree
         )
-        self.diagonal = all(self.ijk2lm(*ijk)[1] == 0.0 for ijk in data.keys())
+        dense_data = jnp.asarray(
+            [data[Pijk.n2ijk(n)] for n in range((self.degree + 1) ** 2)]
+        )
+        u = jnp.asarray((basis.U(self.degree)[-1] == 0)).astype(int)
+        self.diagonal = jnp.sum(dense_data * u) == 0
+
+    @staticmethod
+    def diagonal_ijk(degree: int):
+        return [Pijk.n2ijk(i) for i in np.flatnonzero(basis.U(degree)[-1])]
 
     @property
     def shape(self):
@@ -57,7 +66,17 @@ class Pijk(eqx.Module):
         return self.data.keys()
 
     @staticmethod
-    def ijk2lm(i, j, k):
+    def ijk2lm(i: int, j: int, k: int):
+        """Converts the polynomial indices (i, j, k) to the spherical harmonic indices (l, m).
+
+        Args:
+            i (int): degree on x
+            j (int): degree on y
+            k (int): degree on z
+
+        Returns:
+            tuple: (l: int, m: int)
+        """
         assert k in (0, 1)
 
         if k == 0:
@@ -83,7 +102,17 @@ class Pijk(eqx.Module):
         return l**2 + l + m
 
     @staticmethod
-    def lm2ijk(l, m):
+    def lm2ijk(l: int, m: int):
+        """Converts the spherical harmonic indices (l, m) to the polynomial indices
+           (i, j, k).
+
+        Args:
+            l (int): degree of the spherical harmonic
+            m (int): order of the spherical harmonic
+
+        Returns:
+            tuple: (i: int, j: int, k: int)
+        """
         mu = l - m
         nu = l + m
 
@@ -93,16 +122,42 @@ class Pijk(eqx.Module):
             return (mu - 1) // 2, (nu - 1) // 2, 1
 
     @staticmethod
-    def n2ijk(n):
+    def n2ijk(n: int):
+        """Converts the index n of the flattened SH basis to the
+           polynomial indices (i, j, k).
+
+        Args:
+            n (int): index of the flattened SH basis
+
+        Returns:
+            tuple: (i: int, j: int, k: int)
+        """
         return Pijk.lm2ijk(*Pijk.n2lm(n))
 
-    def index(self, i, j, k):
-        l, m = self.ijk2lm(i, j, k)
+    @staticmethod
+    def index(i: int, j: int, k: int):
+        """Converts the polynomial indices (i, j, k) to the index n of the flattened SH basis.
+
+        Args:
+            i (int): degree on x
+            j (int): degree on y
+            k (int): degree on z
+
+        Returns:
+            int: index n of the flattened SH basis
+        """
+        l, m = Pijk.ijk2lm(i, j, k)
         return int((l + 1) * l + m)
 
-    def tosparse(self) -> BCOO:
-        indices, values = zip(*self.data.items(), strict=False)
+    def tosparse(self, diagonal: bool = False) -> BCOO:
+        if diagonal:
+            indices = self.diagonal_ijk(self.degree)
+            values = [self.data[ijk] for ijk in indices]
+        else:
+            indices, values = zip(*self.data.items(), strict=False)
+
         idx = np.array([self.index(i, j, k) for i, j, k in indices])[:, None]
+
         return BCOO((jnp.asarray(values), idx), shape=(self.shape,))
 
     def todense(self) -> Array:
