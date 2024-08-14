@@ -47,6 +47,8 @@ import numpy as np
 from jax.experimental.sparse import BCOO
 from scipy.special import legendre as LegendreP
 
+from jaxoplanet.experimental.starry import basis, solution
+from jaxoplanet.experimental.starry.pijk import Pijk
 from jaxoplanet.experimental.starry.rotation import dot_rotation_matrix
 from jaxoplanet.experimental.starry.wigner3j import Wigner3jCalculator
 from jaxoplanet.types import Array
@@ -159,6 +161,19 @@ class Ylm(eqx.Module):
     def __getitem__(self, key) -> Array:
         assert isinstance(key, tuple)
         return self.todense()[self.index(*key)]
+
+    @classmethod
+    def from_limb_darkening(cls, u: Array) -> "Ylm":
+        """
+        Spherical harmonics coefficients from limb darkening coefficients.
+        """
+        deg = len(u)
+        _u = np.array([1, *u])
+        pu = _u @ basis.U(deg)
+        yu = np.array(np.linalg.inv(basis.A1(deg).todense()) @ pu)
+        yu = Ylm.from_dense(yu.flatten(), normalize=False)
+        norm = 1 / (Pijk.from_dense(pu, degree=deg).tosparse() @ solution.rT(deg))
+        return yu * norm
 
 
 def _mul(f: Ylm, g: Ylm) -> Ylm:

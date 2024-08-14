@@ -5,6 +5,7 @@
 
 ```{toctree}
 :caption: Getting Started
+:maxdepth: 1
 
 install
 commonissues
@@ -13,6 +14,8 @@ tutorials/quickstart.ipynb
 
 ```{toctree}
 :caption: Tutorials
+:maxdepth: 1
+
 tutorials/about.ipynb
 tutorials/transit.ipynb
 tutorials/rv.ipynb
@@ -20,6 +23,8 @@ tutorials/rv.ipynb
 
 ```{toctree}
 :caption: Additional Tutorials
+:maxdepth: 1
+
 tutorials/introduction-to-jax.ipynb
 tutorials/autodiff.ipynb
 tutorials/core-from-scratch.ipynb
