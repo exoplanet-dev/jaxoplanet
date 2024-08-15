@@ -4,12 +4,12 @@
 ## Table of contents
 
 ```{toctree}
-:caption: User guide
+:caption: Getting Started
 :maxdepth: 1
 
 install
-troubleshooting
-tutorials/getting-started.ipynb
+commonissues
+tutorials/quickstart.ipynb
 ```
 
 ```{toctree}
@@ -22,13 +22,19 @@ tutorials/rv.ipynb
 ```
 
 ```{toctree}
-:caption: Reference
+:caption: Additional Tutorials
+:maxdepth: 1
+
+tutorials/introduction-to-jax.ipynb
+tutorials/autodiff.ipynb
+tutorials/core-from-scratch.ipynb
+```
+
+```{toctree}
+:caption: Developer Documentation
 :maxdepth: 1
 
 api
-tutorials/autodiff.ipynb
-tutorials/introduction-to-jax.ipynb
-tutorials/core-from-scratch.ipynb
 contributing
 
 ```
