@@ -1,4 +1,6 @@
 import jax
+
+
 import numpy as np
 import pytest
 
@@ -361,12 +363,6 @@ def test_compare_limb_dark_light_curve(deg):
     )
 
     calc = light_curve(surface_system)(time)[:, 0]
-
-    if True:
-        import matplotlib.pyplot as plt
-
-        plt.plot(time, expected, label="expected")
-        plt.plot(time, calc, label="calc")
 
     assert_allclose(calc, expected)
 
