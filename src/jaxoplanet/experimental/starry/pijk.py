@@ -1,5 +1,6 @@
 from collections import defaultdict
 from collections.abc import Mapping
+from functools import reduce
 from typing import Any
 
 import equinox as eqx
@@ -8,9 +9,7 @@ import jax.numpy as jnp
 import numpy as np
 from jax.experimental.sparse import BCOO
 
-from jaxoplanet.experimental.starry import basis
 from jaxoplanet.types import Array
-from functools import reduce
 
 
 class Pijk(eqx.Module):
