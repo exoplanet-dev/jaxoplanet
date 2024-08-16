@@ -10,7 +10,9 @@ from jaxoplanet.core.limb_dark import kite_area
 from jaxoplanet.types import Array
 
 
-def solution_vector(l_max: int, order: int = 20) -> Callable[[Array, Array], Array]:
+def solution_vector(
+    l_max: int, order: int = 20, diagonal: bool = False
+) -> Callable[[Array, Array], Array]:
     n_max = l_max**2 + 2 * l_max + 1
 
     @jax.jit
@@ -19,8 +21,8 @@ def solution_vector(l_max: int, order: int = 20) -> Callable[[Array, Array], Arr
         b = jnp.abs(b)
         r = jnp.abs(r)
         kappa0, kappa1 = kappas(b, r)
-        P = p_integral(order, l_max, b, r, kappa0)
-        Q = q_integral(l_max, 0.5 * jnp.pi - kappa1)
+        P = p_integral(order, l_max, b, r, kappa0, diagonal=diagonal)
+        Q = q_integral(l_max, 0.5 * jnp.pi - kappa1, diagonal=diagonal)
         return Q - P
 
     return impl
@@ -35,7 +37,7 @@ def kappas(b: Array, r: Array) -> tuple[Array, Array]:
     return jnp.arctan2(area, b2 + factor), jnp.arctan2(area, b2 - factor)
 
 
-def q_integral(l_max: int, lam: Array) -> Array:
+def q_integral(l_max: int, lam: Array, diagonal: bool = False) -> Array:
     zero = jnp.zeros_like(lam)
     c = jnp.cos(lam)
     s = jnp.sin(lam)
@@ -59,6 +61,10 @@ def q_integral(l_max: int, lam: Array) -> Array:
     U = []
     for l in range(l_max + 1):  # noqa
         for m in range(-l, l + 1):
+            if diagonal and m != 0:
+                U.append(zero)
+                continue
+
             if l == 1 and m == 0:
                 U.append((np.pi + 2 * lam) / 3)
                 continue
@@ -75,7 +81,9 @@ def q_integral(l_max: int, lam: Array) -> Array:
     return jnp.stack(U)
 
 
-def p_integral(order: int, l_max: int, b: Array, r: Array, kappa0: Array) -> Array:
+def p_integral(
+    order: int, l_max: int, b: Array, r: Array, kappa0: Array, diagonal: bool = False
+) -> Array:
     b2 = jnp.square(b)
     r2 = jnp.square(r)
 
@@ -104,9 +112,13 @@ def p_integral(order: int, l_max: int, b: Array, r: Array, kappa0: Array) -> Arr
     ind = []
     arg = []
     n = 0
+
     for l in range(l_max + 1):  # noqa
         fa3 = (2 * r) ** (l - 1) * f0
         for m in range(-l, l + 1):
+            if diagonal and m != 0:
+                continue
+
             mu = l - m
             nu = l + m
 

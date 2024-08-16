@@ -147,7 +147,7 @@ def surface_light_curve(
         r = jnp.where(b_rot, 0.0, r)
         b = jnp.where(b_rot, 0.0, b)
 
-        sT = solution_vector(surface.deg, order=order)(b, r)
+        sT = solution_vector(surface.deg, order=order, diagonal=only_u)(b, r)
 
         if surface.deg > 0:
             A2 = scipy.sparse.linalg.inv(A2_inv(surface.deg))
