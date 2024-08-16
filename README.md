@@ -4,16 +4,16 @@ _Astronomical time series analysis with JAX_
 
 ---
 
-_jaxoplanet_ is a
+`jaxoplanet` is a
 [functional-programming](https://en.wikipedia.org/wiki/Functional_programming)-forward
 implementation of many features from the
 [exoplanet](https://docs.exoplanet.codes/en/latest/) and
 [starry](https://starry.readthedocs.io/en/latest/) packages built on top of
 [JAX](https://jax.readthedocs.io/en/latest/).
 
-*jaxoplanet* includes fast and robust implementations of many exoplanet-specific
+`jaxoplanet` includes fast and robust implementations of many exoplanet-specific
 operations, including solving Kepler's equation, and computing limb-darkened
-light curves. Since *jaxoplanet* is built on top of JAX it has first-class
+light curves. Since `jaxoplanet` is built on top of JAX it has first-class
 support for hardware acceleration using GPUs and TPUs, and it also integrates
 seamlessly with modeling tools like
 [NumPyro](https://numpyro.readthedocs.io/en/latest/), and
@@ -32,21 +32,31 @@ install the CPU version of JAX, you can run:
 python -m pip install "jax[cpu]"
 ```
 
-Then install _jaxoplanet_ with:
+Then install `jaxoplanet` with:
 
 ```bash
 python -m pip install jaxoplanet
 ```
 
-If you run into issues with installing *jaxoplanet*, take a look at [the
+If you run into issues with installing `jaxoplanet`, specifically on ARM (i.e., M series chips) Macs, take a look at [the
 installation instructions](https://jax.exoplanet.codes/en/latest/install).
 
-## Quick start
+```{admonition} Navigating the docs
+:class: tip
 
+💽 After [installing](doc:install) `jaxoplanet`, head over to the [Quickstart](quickstart) page to see some of its features.
+
+🚩 If you're running into some problems with `jaxoplanet`, check out the [common issues](doc:commonissues) page for some general tips and tricks.
+
+⚡ In the [Tutorials](tutorials) section we've added a few tutorials showcasing some common astronomy problems where `jaxoplanet` might come in handy!
+
+🖥️ Take a look [here](doc:api) to see a user-friendly API reference for commonly used objects. The full API reference is also available!
+
+```
 
 ## Attribution
 
-While we don't yet have a citation for *jaxoplanet*, please reference the GitHub
+While we don't yet have a citation for `jaxoplanet`, please reference the GitHub
 repository if you find this code useful in your research. The BibTeX entry for
 the repo is:
 
@@ -72,5 +82,5 @@ the repo is:
 ## License
 Copyright (c) 2021-2024 Simons Foundation, Inc.
 
-*jaxoplanet* is free software made available under the MIT License. For details
-see the LICENSE file.
+`jaxoplanet` is free software made available under the MIT License. For details
+see the `LICENSE` file.
