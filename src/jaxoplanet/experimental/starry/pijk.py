@@ -10,6 +10,7 @@ from jax.experimental.sparse import BCOO
 
 from jaxoplanet.experimental.starry import basis
 from jaxoplanet.types import Array
+from functools import reduce
 
 
 class Pijk(eqx.Module):
@@ -47,15 +48,42 @@ class Pijk(eqx.Module):
             if degree is None
             else degree
         )
-        dense_data = jnp.asarray(
-            [data[Pijk.n2ijk(n)] for n in range((self.degree + 1) ** 2)]
+
+        dense_data = jnp.array(
+            [data.get(Pijk.index_to_ijk(i), 0.0) for i in range((self.degree + 1) ** 2)]
         )
-        u = jnp.asarray(basis.U(self.degree)[-1] == 0).astype(int)
-        self.diagonal = jnp.sum(dense_data * u) == 0
+        all_ijk = set(map(Pijk.index_to_ijk, range((self.degree + 1) ** 2)))
+        non_radially_symmetric = all_ijk.difference(Pijk.diagonal_ijk(self.degree))
+        non_radially_symmetric_indices = jnp.array(
+            [Pijk.ijk_to_index(*ijk) for ijk in non_radially_symmetric]
+        ).astype(int)
+        self.diagonal = jnp.allclose(dense_data[non_radially_symmetric_indices], 0.0)
+
+    @staticmethod
+    def z_to_ijk(n: int):
+        """Converts the degree z to the polynomial indices (i, j, k).
+
+        Args:
+            n (int): degree of z
+
+        Returns:
+            set: set of polynomial indices (i, j, k)
+        """
+        if n == 0:
+            res = [(0, 0, 0)]
+        elif n == 1:
+            res = [(0, 0, 1)]
+        elif n % 2 == 0:
+            res = [(2 * i, 2 * (n // 2 - i), 0) for i in range(n // 2 + 1)]
+        else:
+            res = [(2 * i, 2 * (n // 2 - i), 1) for i in range(n // 2 + 1)]
+
+        return set(res)
 
     @staticmethod
     def diagonal_ijk(degree: int):
-        return [Pijk.n2ijk(i) for i in np.flatnonzero(basis.U(degree)[-1])]
+        ijk = reduce(set.union, [Pijk.z_to_ijk(z) for z in range(degree + 1)])
+        return ijk
 
     @property
     def shape(self):
@@ -93,17 +121,7 @@ class Pijk(eqx.Module):
         return l, m
 
     @staticmethod
-    def n2lm(n):
-        l = int(np.floor(np.sqrt(n)))
-        m = n - l**2 - l
-        return l, m
-
-    @staticmethod
-    def lm2n(l, m):
-        return l**2 + l + m
-
-    @staticmethod
-    def lm2ijk(l: int, m: int):
+    def lm_to_ijk(l: int, m: int):
         """Converts the spherical harmonic indices (l, m) to the polynomial indices
            (i, j, k).
 
@@ -123,7 +141,22 @@ class Pijk(eqx.Module):
             return (mu - 1) // 2, (nu - 1) // 2, 1
 
     @staticmethod
-    def n2ijk(n: int):
+    def index_to_lm(n: int):
+        """Converts the index n of the flattened SH basis to the spherical harmonic
+           indices (l, m).
+
+        Args:
+            n (int): index of the flattened SH basis
+
+        Returns:
+            tuple: (l: int, m: int)
+        """
+        l = int(np.floor(np.sqrt(n)))
+        m = n - l * (l + 1)
+        return l, m
+
+    @staticmethod
+    def index_to_ijk(n: int):
         """Converts the index n of the flattened SH basis to the
            polynomial indices (i, j, k).
 
@@ -133,10 +166,11 @@ class Pijk(eqx.Module):
         Returns:
             tuple: (i: int, j: int, k: int)
         """
-        return Pijk.lm2ijk(*Pijk.n2lm(n))
+        l, m = Pijk.index_to_lm(n)
+        return Pijk.lm_to_ijk(l, m)
 
     @staticmethod
-    def index(i: int, j: int, k: int):
+    def ijk_to_index(i: int, j: int, k: int):
         """Converts the polynomial indices (i, j, k) to the index n of the flattened
            SH basis.
 
@@ -158,7 +192,7 @@ class Pijk(eqx.Module):
         else:
             indices, values = zip(*self.data.items(), strict=False)
 
-        idx = np.array([self.index(i, j, k) for i, j, k in indices])[:, None]
+        idx = np.array([self.ijk_to_index(i, j, k) for i, j, k in indices])[:, None]
 
         return BCOO((jnp.asarray(values), idx), shape=(self.shape,))
 
@@ -168,8 +202,8 @@ class Pijk(eqx.Module):
     @classmethod
     def from_dense(cls, x: Array, degree: int = None) -> "Pijk":
         data = defaultdict(float)
-        for i in range(len(x)):
-            data[Pijk.n2ijk(i)] = x[i]
+        for i in range(x.size):
+            data[Pijk.index_to_ijk(i)] = x[i]
 
         return cls(data, degree=degree)
 
@@ -185,7 +219,7 @@ class Pijk(eqx.Module):
 
     def __getitem__(self, key) -> Array:
         assert isinstance(key, tuple)
-        return self.todense()[self.index(*key)]
+        return self.todense()[self.ijk_to_index(*key)]
 
 
 def _mul(u: Pijk, v: Pijk) -> Pijk:

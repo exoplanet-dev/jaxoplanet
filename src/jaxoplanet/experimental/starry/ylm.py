@@ -82,7 +82,13 @@ class Ylm(eqx.Module):
 
         self.data = dict(data)
         self.deg = max(ell for ell, _ in data.keys())
-        self.diagonal = all(m == 0 for _, m in data.keys())
+        dense_data = jnp.array(
+            [data.get(Ylm.index_to_lm(i), 0.0) for i in range((self.deg + 1) ** 2)]
+        )
+        non_radially_symmetric = jnp.array(
+            [i for i in range((self.deg + 1) ** 2) if Ylm.index_to_lm(i)[1] != 0]
+        ).astype(int)
+        self.diagonal = jnp.allclose(dense_data[non_radially_symmetric], 0.0)
 
     @property
     def shape(self) -> tuple[int, ...]:
@@ -95,9 +101,10 @@ class Ylm(eqx.Module):
         """List of (l,m) indices of the spherical harmonic coefficients."""
         return list(self.data.keys())
 
-    def index(self, l: Array, m: Array) -> Array:
+    @staticmethod
+    def lm_to_index(l: Array, m: Array) -> Array:
         """Convert the degree and order of the spherical harmonic to the
-        corresponding index in the coefficient array."""
+        index in the flattened SH basis."""
         return l * (l + 1) + m
 
     def normalize(self) -> "Ylm":
@@ -122,7 +129,7 @@ class Ylm(eqx.Module):
         the index :math:`n = l^2 + l + m`.
         """
         indices, values = zip(*self.data.items(), strict=False)
-        idx = jnp.array([self.index(l, m) for l, m in indices])[:, None]
+        idx = jnp.array([self.lm_to_index(l, m) for l, m in indices])[:, None]
         return BCOO((jnp.asarray(values), idx), shape=self.shape)
 
     def todense(self) -> Array:
@@ -130,6 +137,21 @@ class Ylm(eqx.Module):
         harmonic :math:`Y_{l, m}` is located at the index :math:`n = l^2 + l + m`.
         """
         return self.tosparse().todense()
+
+    @staticmethod
+    def index_to_lm(n: int) -> tuple[int, int]:
+        """Convert the index n of the flattened SH basis to the degree and order of the
+        spherical harmonic.
+
+        Args:
+            n (int): index of the flattened SH basis
+
+        Returns:
+            tuple: (l: int, m: int)
+        """
+        l = int(np.floor(np.sqrt(n)))
+        m = n - l * (l + 1)
+        return l, m
 
     @classmethod
     def from_dense(cls, y: Array, normalize: bool = True) -> "Ylm":
@@ -139,8 +161,7 @@ class Ylm(eqx.Module):
         """
         data = {}
         for i, ylm in enumerate(y):
-            l = int(np.floor(np.sqrt(i)))
-            m = i - l * (l + 1)
+            l, m = cls.index_to_lm(i)
             data[(l, m)] = ylm
         ylm = cls(data)
         if normalize:
@@ -160,7 +181,7 @@ class Ylm(eqx.Module):
 
     def __getitem__(self, key) -> Array:
         assert isinstance(key, tuple)
-        return self.todense()[self.index(*key)]
+        return self.todense()[self.lm_to_index(*key)]
 
     @classmethod
     def from_limb_darkening(cls, u: Array) -> "Ylm":
