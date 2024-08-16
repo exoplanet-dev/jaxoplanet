@@ -66,7 +66,7 @@ def q_integral(l_max: int, lam: Array, diagonal: bool = False) -> Array:
     for l in range(l_max + 1):  # noqa
         for m in range(-l, l + 1):
             if diagonal and (l, m) not in diagonal_lm_poly:
-                U.append(get(u, v))
+                U.append(zero)
                 continue
 
             if l == 1 and m == 0:
