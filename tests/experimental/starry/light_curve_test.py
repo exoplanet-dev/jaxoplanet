@@ -330,14 +330,15 @@ def test_EB():
     )
 
 
-def test_compare_limb_dark_light_curve():
+@pytest.mark.parametrize("deg", [2, 5, 10])
+def test_compare_limb_dark_light_curve(deg):
     time = np.linspace(-0.1, 0.1, 200)
 
     params = {
         "stellar_mass": 0.3,
         "stellar_radius": 0.3,
         "planet_radius": 0.1,
-        "u": (0.1, 0.1),
+        "u": 0.1 * np.ones(deg),
         "planet_period": 15.0,
     }
 
@@ -360,6 +361,12 @@ def test_compare_limb_dark_light_curve():
     )
 
     calc = light_curve(surface_system)(time)[:, 0]
+
+    if True:
+        import matplotlib.pyplot as plt
+
+        plt.plot(time, expected, label="expected")
+        plt.plot(time, calc, label="calc")
 
     assert_allclose(calc, expected)
 

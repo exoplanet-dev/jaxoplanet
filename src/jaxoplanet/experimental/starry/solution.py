@@ -7,6 +7,7 @@ import numpy as np
 from scipy.special import roots_legendre
 
 from jaxoplanet.core.limb_dark import kite_area
+from jaxoplanet.experimental.starry.pijk import Pijk
 from jaxoplanet.types import Array
 
 
@@ -59,10 +60,13 @@ def q_integral(l_max: int, lam: Array, diagonal: bool = False) -> Array:
         return comp
 
     U = []
+
+    diagonal_lm_poly = [Pijk.ijk2lm(*ijk) for ijk in Pijk.diagonal_ijk(l_max)]
+
     for l in range(l_max + 1):  # noqa
         for m in range(-l, l + 1):
-            if diagonal and m != 0:
-                U.append(zero)
+            if diagonal and (l, m) not in diagonal_lm_poly:
+                U.append(get(u, v))
                 continue
 
             if l == 1 and m == 0:
@@ -113,10 +117,13 @@ def p_integral(
     arg = []
     n = 0
 
+    diagonal_lm_poly = [Pijk.ijk2lm(*ijk) for ijk in Pijk.diagonal_ijk(l_max)]
+
     for l in range(l_max + 1):  # noqa
         fa3 = (2 * r) ** (l - 1) * f0
         for m in range(-l, l + 1):
-            if diagonal and m != 0:
+            if diagonal and (l, m) not in diagonal_lm_poly:
+                n += 1
                 continue
 
             mu = l - m
