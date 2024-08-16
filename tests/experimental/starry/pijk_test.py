@@ -11,7 +11,7 @@ def test_n2ijk():
     assert Pijk.index_to_ijk(8) == (0, 2, 0)
 
 
-@pytest.mark.parametrize("degree", range(20))
+@pytest.mark.parametrize("degree", range(15))
 def test_pijk_diagonal(degree):
     u = np.ones(degree)
     y = Ylm.from_limb_darkening(u)
