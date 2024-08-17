@@ -21,21 +21,67 @@ def solution_vector(
     def impl(b: Array, r: Array) -> Array:
         b = jnp.abs(b)
         r = jnp.abs(r)
-        kappa0, kappa1 = kappas(b, r)
-        P = p_integral(order, l_max, b, r, kappa0, diagonal=diagonal)
-        Q = q_integral(l_max, 0.5 * jnp.pi - kappa1, diagonal=diagonal)
-        return Q - P
+        area, kappa0, kappa1 = kappas(b, r)
+
+        no_occ = jnp.greater_equal(b, 1 + r)
+        full_occ = jnp.less_equal(1 + b, r)
+        cond = jnp.logical_or(no_occ, full_occ)
+        b_: Array = jnp.where(cond, jnp.ones_like(b), b)
+
+        b2 = jnp.square(b_)
+        r2 = jnp.square(r)
+
+        s0, s2 = s0s2(b_, r, b2, r2, area, kappa0, kappa1)
+        s0: Array = jnp.where(no_occ, jnp.pi, s0)
+        s0 = jnp.where(full_occ, jnp.zeros_like(s0), s0)
+        s2 = jnp.where(cond, jnp.zeros_like(s2), s2)
+
+        s = [s0[None]]
+        if l_max >= 1:
+            P = p_integral(order, l_max, b, r, kappa0, diagonal=diagonal)
+            Q = q_integral(l_max, 0.5 * jnp.pi - kappa1, diagonal=diagonal)
+            s.append(Q - P)
+        return jnp.concatenate(s, axis=0)
 
     return impl
 
 
-def kappas(b: Array, r: Array) -> tuple[Array, Array]:
+def kappas(b: Array, r: Array) -> tuple[Array, Array, Array]:
     b2 = jnp.square(b)
     factor = (r - 1) * (r + 1)
-    b_cond = jnp.logical_and(jnp.greater(b, jnp.abs(1 - r)), jnp.less(b, 1 + r))
-    b_ = jnp.where(b_cond, b, 1)
-    area = jnp.where(b_cond, kite_area(r, b_, 1), 0)
-    return jnp.arctan2(area, b2 + factor), jnp.arctan2(area, b2 - factor)
+    cond = jnp.logical_and(jnp.greater(b, jnp.abs(1 - r)), jnp.less(b, 1 + r))
+    b_ = jnp.where(cond, b, jnp.ones_like(b))
+    area: Array = jnp.where(cond, kite_area(r, b_, jnp.ones_like(r)), jnp.zeros_like(r))
+    return area, jnp.arctan2(area, b2 + factor), jnp.arctan2(area, b2 - factor)
+
+
+def s0s2(
+    b: Array,
+    r: Array,
+    b2: Array,
+    r2: Array,
+    area: Array,
+    kappa0: Array,
+    kappa1: Array,
+) -> tuple[Array, Array]:
+    bpr = b + r
+    onembpr2 = (1 + bpr) * (1 - bpr)
+    eta2 = 0.5 * r2 * (r2 + 2 * b2)
+
+    # Large k
+    s0_lrg = jnp.pi * (1 - r2)
+    s2_lrg = 2 * s0_lrg + 4 * jnp.pi * (eta2 - 0.5)
+
+    # Small k
+    Alens = kappa1 + r2 * kappa0 - area * 0.5
+    s0_sml = jnp.pi - Alens
+    s2_sml = 2 * s0_sml + 2 * (
+        -(jnp.pi - kappa1) + 2 * eta2 * kappa0 - 0.25 * area * (1 + 5 * r2 + b2)
+    )
+
+    delta = 4 * b * r
+    cond = jnp.greater(onembpr2 + delta, delta)
+    return jnp.where(cond, s0_lrg, s0_sml), jnp.where(cond, s2_lrg, s2_sml)
 
 
 def q_integral(l_max: int, lam: Array, diagonal: bool = False) -> Array:
@@ -63,10 +109,9 @@ def q_integral(l_max: int, lam: Array, diagonal: bool = False) -> Array:
 
     diagonal_lm_poly = [Pijk.ijk2lm(*ijk) for ijk in Pijk.diagonal_ijk(l_max)]
 
-    for l in range(l_max + 1):  # noqa
+    for l in range(1, l_max + 1):  # noqa
         for m in range(-l, l + 1):
             if diagonal and (l, m) not in diagonal_lm_poly:
-                U.append(zero)
                 continue
 
             if l == 1 and m == 0:
@@ -119,11 +164,10 @@ def p_integral(
 
     diagonal_lm_poly = [Pijk.ijk2lm(*ijk) for ijk in Pijk.diagonal_ijk(l_max)]
 
-    for l in range(l_max + 1):  # noqa
+    for l in range(1, l_max + 1):  # noqa
         fa3 = (2 * r) ** (l - 1) * f0
         for m in range(-l, l + 1):
             if diagonal and (l, m) not in diagonal_lm_poly:
-                n += 1
                 continue
 
             mu = l - m
@@ -152,6 +196,8 @@ def p_integral(
                 arg.append(2 * fa3 * a1 ** ((mu - 1) // 4) * a2 ** (0.5 * (nu - 1)))
 
             else:
+                # We shouldn't ever hit this on the diagonal, I think.
+                assert not diagonal
                 n += 1
                 continue
 
@@ -159,12 +205,13 @@ def p_integral(
             n += 1
 
     P0 = rng * jnp.sum(jnp.stack(arg) * weights[None, :], axis=1)
-    P = jnp.zeros(l_max**2 + 2 * l_max + 1)
 
-    # Yes, using np not jnp here: 'ind' is always static.
-    inds = np.stack(ind)
-
-    return P.at[inds].set(P0)
+    if diagonal:
+        return P0
+    else:
+        P = jnp.zeros(l_max**2 + 2 * l_max)
+        inds = np.stack(ind)
+        return P.at[inds].set(P0)
 
 
 def rT(lmax: int) -> Array:
