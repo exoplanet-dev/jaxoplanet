@@ -76,6 +76,35 @@ def q_integral(l_max: int, lam: Array) -> Array:
 
 
 def p_integral(order: int, l_max: int, b: Array, r: Array, kappa0: Array) -> Array:
+    """Numerical integration of the P integral using the Gauss-Legendre quadrature.
+
+    As described in Equation D32 of Luger et al. (2019), there are 6 cases to consider.
+    Empirically, we notice that the numerical integration of the first case (mu/2 even)
+    is precise at very low order. Hence ``low_order=30``is used for the first case. For
+    the other cases, we use the order specified by the user, renamed in the function
+    ``high_order``. We also note that outside the linear limb-darkening case (i.e.
+    (l,m)=(1, 0), or n=2) the integrand is symmetrical in phi, so we can evaluate the
+    integral over half the range and multiply by 2.
+
+
+    Parameters
+    ----------
+    order : int
+        The order of the Gauss-Legendre quadrature.
+    l_max : int
+        The maximum degree of the spherical harmonic expansion.
+    b : Array
+        Impact parameter.
+    r : Array
+        Occultor radius.
+    kappa0 : Array
+        k0 angle.
+
+    Returns
+    -------
+    Array
+        The integral of the P function over the occultor surface.
+    """
     b2 = jnp.square(b)
     r2 = jnp.square(r)
 
@@ -84,68 +113,97 @@ def p_integral(order: int, l_max: int, b: Array, r: Array, kappa0: Array) -> Arr
     k2_cond = jnp.less(factor, 10 * jnp.finfo(factor.dtype).eps)
     factor = jnp.where(k2_cond, 1, factor)
     k2 = jnp.maximum(0, (1 - r2 - b2 + 2 * b * r) / factor)
-
     # And for when r -> 0
     r_cond = jnp.less(r, 10 * jnp.finfo(r.dtype).eps)
     delta = (b - r) / (2 * jnp.where(r_cond, 1, r))
+    rng = 0.25 * kappa0
 
-    roots, weights = roots_legendre(order)
-    rng = 0.5 * kappa0
-    phi = rng * roots
-    c = jnp.cos(phi + 0.5 * kappa0)
-    s = jnp.sin(phi)
-    s2 = jnp.square(s)
+    # low order variables
+    low_order = 20
+    zeros = jnp.zeros(order - low_order)
+    roots, low_weights = roots_legendre(low_order)
+    low_weights = jnp.hstack((low_weights, zeros))
+    phi = rng * (roots + 1)
+    low_s2 = jnp.square(jnp.sin(phi))
+    low_a1 = low_s2 - jnp.square(low_s2)
+    low_a2 = jnp.where(r_cond, 0, delta + low_s2)
 
-    f0 = jnp.maximum(0, jnp.where(k2_cond, 1 - r2, factor * (k2 - s2))) ** 1.5
-    a1 = s2 - jnp.square(s2)
-    a2 = jnp.where(r_cond, 0, delta + s2)
-    a4 = 1 - 2 * s2
+    # high order variables
+    high_order = order
+    high_roots, high_weights = roots_legendre(high_order)
+    phi = rng * (high_roots + 1)
+    high_s2 = jnp.square(jnp.sin(phi))
+    high_f0 = jnp.maximum(0, jnp.where(k2_cond, 1 - r2, factor * (k2 - high_s2))) ** 1.5
+    high_a1 = high_s2 - jnp.square(high_s2)
+    high_a2 = jnp.where(r_cond, 0, delta + high_s2)
+    high_a4 = 1 - 2 * high_s2
 
-    ind = []
-    arg = []
+    indices = []
+    weights = []
+    integrand = []
     n = 0
+
     for l in range(l_max + 1):  # noqa
-        fa3 = (2 * r) ** (l - 1) * f0
+        high_fa3 = (2 * r) ** (l - 1) * high_f0
         for m in range(-l, l + 1):
             mu = l - m
             nu = l + m
 
             if mu == 1 and l == 1:
+                phi = 2 * rng * high_roots
+                c = jnp.cos(phi + 0.5 * kappa0)
                 omz2 = r2 + b2 - 2 * b * r * c
                 cond = jnp.less(omz2, 10 * jnp.finfo(omz2.dtype).eps)
                 omz2 = jnp.where(cond, 1, omz2)
                 z2 = jnp.maximum(0, 1 - omz2)
                 result = 2 * r * (r - b * c) * (1 - z2 * jnp.sqrt(z2)) / (3 * omz2)
-                arg.append(jnp.where(cond, 0, result))
+                integrand.append(jnp.where(cond, 0, 2 * result))
+                weights.append(high_weights)
 
             elif mu % 2 == 0 and (mu // 2) % 2 == 0:
-                arg.append(
-                    2 * (2 * r) ** (l + 2) * a1 ** (0.25 * (mu + 4)) * a2 ** (0.5 * nu)
+                f = (
+                    2
+                    * (2 * r) ** (l + 2)
+                    * low_a1 ** (0.25 * (mu + 4))
+                    * low_a2 ** (0.5 * nu)
                 )
+                integrand.append(2 * jnp.hstack((f, zeros)))
+                weights.append(low_weights)
 
             elif mu == 1 and l % 2 == 0:
-                arg.append(fa3 * a1 ** (l // 2 - 1) * a4)
+                f = high_fa3 * high_a1 ** (l // 2 - 1) * high_a4
+                integrand.append(2 * f)
+                weights.append(high_weights)
 
             elif mu == 1:
-                arg.append(fa3 * a1 ** ((l - 3) // 2) * a2 * a4)
+                f = high_fa3 * high_a1 ** ((l - 3) // 2) * high_a2 * high_a4
+                integrand.append(2 * f)
+                weights.append(high_weights)
 
             elif (mu - 1) % 2 == 0 and ((mu - 1) // 2) % 2 == 0:
-                arg.append(2 * fa3 * a1 ** ((mu - 1) // 4) * a2 ** (0.5 * (nu - 1)))
+                f = (
+                    2
+                    * high_fa3
+                    * high_a1 ** ((mu - 1) // 4)
+                    * high_a2 ** (0.5 * (nu - 1))
+                )
+                integrand.append(2 * f)
+                weights.append(high_weights)
 
             else:
                 n += 1
                 continue
 
-            ind.append(n)
+            indices.append(n)
             n += 1
 
-    P0 = rng * jnp.sum(jnp.stack(arg) * weights[None, :], axis=1)
+    indices = np.stack(indices)
+    weights = jnp.stack(weights)
+
+    P0 = rng * jnp.sum(jnp.stack(integrand) * weights, axis=1)
     P = jnp.zeros(l_max**2 + 2 * l_max + 1)
 
-    # Yes, using np not jnp here: 'ind' is always static.
-    inds = np.stack(ind)
-
-    return P.at[inds].set(P0)
+    return P.at[indices].set(P0)
 
 
 def rT(lmax: int) -> Array:
