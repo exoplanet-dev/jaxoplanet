@@ -81,7 +81,10 @@ class Pijk(eqx.Module):
 
     @staticmethod
     def diagonal_ijk(degree: int):
-        ijk = reduce(set.union, [Pijk.z_to_ijk(z) for z in range(degree + 1)])
+        ijk = list(reduce(set.union, [Pijk.z_to_ijk(z) for z in range(degree + 1)]))
+        # order them
+        idx = np.argsort(([Pijk.ijk_to_index(*i) for i in ijk]))
+        ijk = [ijk[i] for i in idx]
         return ijk
 
     @property
@@ -187,13 +190,12 @@ class Pijk(eqx.Module):
     def tosparse(self, diagonal: bool = False) -> BCOO:
         if diagonal:
             indices = self.diagonal_ijk(self.degree)
-            values = [self.data[ijk] for ijk in indices]
+            values = [self.data[i] for i in indices]
+            return jnp.asarray(values)
         else:
             indices, values = zip(*self.data.items(), strict=False)
-
-        idx = np.array([self.ijk_to_index(i, j, k) for i, j, k in indices])[:, None]
-
-        return BCOO((jnp.asarray(values), idx), shape=(self.shape,))
+            idx = np.array([self.ijk_to_index(i, j, k) for i, j, k in indices])[:, None]
+            return BCOO((jnp.asarray(values), idx), shape=(self.shape,))
 
     def todense(self) -> Array:
         return self.tosparse().todense()
