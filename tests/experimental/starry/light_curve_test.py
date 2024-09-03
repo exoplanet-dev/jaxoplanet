@@ -1,4 +1,5 @@
 import jax
+
 import numpy as np
 import pytest
 
@@ -330,7 +331,7 @@ def test_EB():
     )
 
 
-@pytest.mark.parametrize("deg", [2, 5, 10])
+@pytest.mark.parametrize("deg", [2, 3, 5, 10, 15])
 def test_compare_limb_dark_light_curve(deg):
     time = np.linspace(-0.1, 0.1, 200)
 
@@ -350,7 +351,7 @@ def test_compare_limb_dark_light_curve(deg):
         radius=params["planet_radius"], period=params["planet_period"]
     )
 
-    expected = limb_dark_light_curve(system, params["u"])(time)[:, 0] + 1.0
+    expected = limb_dark_light_curve(system, params["u"], order=500)(time)[:, 0] + 1.0
 
     surface_system = SurfaceSystem(
         keplerian.Central(mass=params["stellar_mass"], radius=params["stellar_radius"]),
@@ -360,7 +361,7 @@ def test_compare_limb_dark_light_curve(deg):
         radius=params["planet_radius"], period=params["planet_period"]
     )
 
-    calc = light_curve(surface_system)(time)[:, 0]
+    calc = light_curve(surface_system, order=500)(time)[:, 0]
 
     assert_allclose(calc, expected)
 
