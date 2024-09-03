@@ -6,11 +6,12 @@ import jax.numpy as jnp
 import numpy as np
 import scipy
 
-from jaxoplanet.experimental.starry.basis import A1, A2_inv, U
+from jaxoplanet.experimental.starry.basis import A1, A2_inv, U, B2_inv
 from jaxoplanet.experimental.starry.orbit import SurfaceSystem
 from jaxoplanet.experimental.starry.pijk import Pijk
 from jaxoplanet.experimental.starry.rotation import left_project
 from jaxoplanet.experimental.starry.solution import rT, solution_vector
+from jaxoplanet.core.limb_dark import solution_vector as limbdark_solution_vector
 from jaxoplanet.experimental.starry.surface import Surface
 from jaxoplanet.light_curves.utils import vectorize
 from jaxoplanet.types import Array, Quantity
@@ -125,10 +126,19 @@ def surface_light_curve(
         ArrayLike: flux
     """
     rT_deg = rT(surface.deg)
-    only_u = surface.ydeg == 0
+    rT_udeg = rT(surface.udeg)
+    diagonal = surface.ydeg == 0
     x = 0.0 if x is None else x
     y = 0.0 if y is None else y
     z = 0.0 if z is None else z
+
+    if diagonal:
+        diag_indices = np.array(
+            sorted([Pijk.ijk_to_index(*i) for i in Pijk.diagonal_ijk(surface.udeg)])
+        )  # polynomial basis indices corresponding to m=0 terms in the SH basis)
+
+        rT_udeg = rT_udeg[diag_indices]
+        rT_deg = rT_udeg
 
     # no occulting body
     if r is None:
@@ -147,17 +157,25 @@ def surface_light_curve(
         r = jnp.where(b_rot, 0.0, r)
         b = jnp.where(b_rot, 0.0, b)
 
-        sT = solution_vector(surface.deg, order=order, diagonal=only_u)(b, r)
+        if diagonal:
+            sT = limbdark_solution_vector(surface.deg, order=order)(b, r)
+        else:
+            sT = solution_vector(surface.deg, order=order)(b, r)
 
         if surface.deg > 0:
-            A2 = scipy.sparse.linalg.inv(A2_inv(surface.deg))
-            A2 = jax.experimental.sparse.BCOO.from_scipy_sparse(A2)
+            if diagonal:
+                A2 = np.linalg.pinv(B2_inv(surface.udeg).todense())
+                sTA2 = (sT @ A2)[diag_indices]
+            else:
+                A2 = scipy.sparse.linalg.inv(A2_inv(surface.deg))
+                A2 = jax.experimental.sparse.BCOO.from_scipy_sparse(A2)
+                sTA2 = sT @ A2
         else:
-            A2 = jnp.array([[1]])
+            sTA2 = sT @ jnp.array([[1]])
 
-        design_matrix_p = jnp.where(b_occ, sT @ A2, rT_deg)
+        design_matrix_p = jnp.where(b_occ, sTA2, rT_deg)
 
-    if only_u:
+    if diagonal:
         rotated_y = surface.y.todense()
     else:
         rotated_y = left_project(
@@ -181,6 +199,8 @@ def surface_light_curve(
     p_y = Pijk.from_dense(A1_val @ rotated_y, degree=surface.ydeg)
     p_y = p_y * p_u
 
-    norm = np.pi / (p_u.tosparse(diagonal=only_u) @ rT(surface.udeg))
+    norm = np.pi / (p_u.tosparse(diagonal=diagonal) @ rT_udeg)
 
-    return surface.amplitude * (p_y.tosparse(diagonal=only_u) @ design_matrix_p) * norm
+    return (
+        surface.amplitude * (p_y.tosparse(diagonal=diagonal) @ design_matrix_p) * norm
+    )

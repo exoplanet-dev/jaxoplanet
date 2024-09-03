@@ -84,39 +84,6 @@ def _A_impl(lmax, func):
     return csc_array((np.array(data), (row_ind, col_ind)), shape=(n, n))
 
 
-def ptilde(n):
-    """Compute the x, y, and z powers of the n-th polynomial basis term.
-
-    If the n-th term is x^i y^j z^k, return (i, j, k).
-
-    Args:
-        n (int): Index of the polynomial basis term.
-
-    Returns:
-        tuple: (i, j, k)
-
-    Example:
-        >>> ptilde(2) # z
-        (0, 0, 1)
-
-        >>> ptilde(3) # x + y
-        (1, 1, 0)
-    """
-    l = math.floor(math.sqrt(n))
-    m = n - l * l - l
-    mu = l - m
-    nu = l + m
-    if nu % 2 == 0:
-        i = mu // 2
-        j = nu // 2
-        k = 0
-    else:
-        i = (mu - 1) // 2
-        j = (nu - 1) // 2
-        k = 1
-    return (i, j, k)
-
-
 def Alm(l, m):
     return math.sqrt(
         (2 - int(m == 0))
@@ -155,7 +122,8 @@ def Cpqk(p, q, k):
 
 
 def Ylm(l, m):
-    """Compute the coefficients of the spherical harmonic Y_{l,m}.
+    """Compute the coefficients of the spherical harmonic Y_{l,m} (Luger et al 2019
+       Eq. A9).
 
     Args:
         l (int): Degree of the spherical harmonic.
@@ -166,9 +134,11 @@ def Ylm(l, m):
 
     Example:
         >>> Ylm(2, 0)
-        {(0, 0, 0): 0.6307831305050402,
+        {
+            (0, 0, 0): 0.6307831305050402,
             (2, 0, 0): -0.9461746957575603,
-            (0, 2, 0): -0.9461746957575603}
+            (0, 2, 0): -0.9461746957575603
+        }
     """
     res = defaultdict(lambda: 0)
     A = Alm(l, abs(m))
@@ -197,6 +167,39 @@ def Ylm(l, m):
                     )
 
     return dict(res)
+
+
+def ptilde(n):
+    """Compute the x, y, and z powers of the n-th polynomial basis term.
+
+    If the n-th term is x^i y^j z^k, return (i, j, k).
+
+    Args:
+        n (int): Index of the polynomial basis term.
+
+    Returns:
+        tuple: (i, j, k)
+
+    Example:
+        >>> ptilde(2) # z
+        (0, 0, 1)
+
+        >>> ptilde(3) # x + y
+        (1, 1, 0)
+    """
+    l = math.floor(math.sqrt(n))
+    m = n - l * l - l
+    mu = l - m
+    nu = l + m
+    if nu % 2 == 0:
+        i = mu // 2
+        j = nu // 2
+        k = 0
+    else:
+        i = (mu - 1) // 2
+        j = (nu - 1) // 2
+        k = 1
+    return (i, j, k)
 
 
 def p_Y(p, l, m, n):
@@ -428,3 +431,59 @@ def U(udeg: int):
             P[i, j] += v
 
     return P
+
+
+def btilde(n):
+    res = defaultdict(float)
+
+    def z_n(n):
+        res = defaultdict(float)
+        include_z = n % 2 != 0
+        for k in range(n // 2 + 1):
+            c1 = comb(n // 2, k) * (-1) ** k
+            for l in range(k + 1):
+                c2 = comb(k, l)
+                res[(2 * (k - l), 2 * l, include_z)] += c1 * c2
+
+        return res
+
+    if n == 0:
+        res[(0, 0, 0)] = 1.0
+    elif n == 1:
+        res[(0, 0, 1)] = 1.0
+    elif n >= 2:
+        zn = z_n(n)
+        znm2 = z_n(n - 2)
+
+        for key in set(zn) | set(znm2):
+            res[key] = (n + 2) * zn[key] - n * znm2[key]
+
+    return dict(res)
+
+
+def p_B(p, n):
+    indices = []
+    data = []
+    for k, v in btilde(n).items():
+        if k not in p:
+            continue
+        indices.append(p[k])
+        data.append(v)
+    indices = np.array(indices, dtype=int)
+    data = np.array(data, dtype=float)
+    idx = np.argsort(indices)
+    return indices[idx], data[idx]
+
+
+def B2_inv(lmax):
+    n = (lmax + 1) ** 2
+    data = []
+    row_ind = []
+    col_ind = []
+    p = {ptilde(m): m for m in range(n)}
+    for l in range(lmax + 1):
+        idx, val = p_B(p, l)
+        data.extend(val)
+        row_ind.extend(idx)
+        col_ind.extend([l] * len(idx))
+    return csc_array((np.array(data), (row_ind, col_ind)), shape=(n, lmax + 1))
