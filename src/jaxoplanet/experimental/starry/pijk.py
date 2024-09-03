@@ -83,7 +83,7 @@ class Pijk(eqx.Module):
     def diagonal_ijk(degree: int):
         ijk = list(reduce(set.union, [Pijk.z_to_ijk(z) for z in range(degree + 1)]))
         # order them
-        idx = np.argsort(([Pijk.ijk_to_index(*i) for i in ijk]))
+        idx = np.argsort([Pijk.ijk_to_index(*i) for i in ijk])
         ijk = [ijk[i] for i in idx]
         return ijk
 

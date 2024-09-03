@@ -6,12 +6,12 @@ import jax.numpy as jnp
 import numpy as np
 import scipy
 
-from jaxoplanet.experimental.starry.basis import A1, A2_inv, U, B2_inv
+from jaxoplanet.core.limb_dark import solution_vector as limbdark_solution_vector
+from jaxoplanet.experimental.starry.basis import A1, A2_inv, B2_inv, U
 from jaxoplanet.experimental.starry.orbit import SurfaceSystem
 from jaxoplanet.experimental.starry.pijk import Pijk
 from jaxoplanet.experimental.starry.rotation import left_project
 from jaxoplanet.experimental.starry.solution import rT, solution_vector
-from jaxoplanet.core.limb_dark import solution_vector as limbdark_solution_vector
 from jaxoplanet.experimental.starry.surface import Surface
 from jaxoplanet.light_curves.utils import vectorize
 from jaxoplanet.types import Array, Quantity
