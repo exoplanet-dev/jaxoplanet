@@ -433,7 +433,15 @@ def U(udeg: int):
     return P
 
 
-def btilde(n):
+def btilde(n: int):
+    """Compute the n-th term of Agol's green basis in the polynomial basis.
+
+    Args:
+        n (int): Index of the Green basis term.
+
+    Returns:
+        dict: {(i, j, k): coeff} where i, j, k are the powers of x, y, z (see `ptilde`).
+    """
     res = defaultdict(float)
 
     def z_n(n):
@@ -461,7 +469,18 @@ def btilde(n):
     return dict(res)
 
 
-def p_B(p, n):
+def p_B(p: dict, n: int):
+    """Return a representation of Agol's green basis n-th term in the polynomial basis.
+
+    Args:
+        p (dict): Powers of xyz as returned by `ptilde`.
+        n (int): Index of the Green basis term.
+
+    Returns:
+        list, list: indices, data where indices is a list of indices of the polynomial
+            basis terms and data is a list of the coefficients of the polynomial
+            basis terms.
+    """
     indices = []
     data = []
     for k, v in btilde(n).items():
@@ -475,7 +494,15 @@ def p_B(p, n):
     return indices[idx], data[idx]
 
 
-def B2_inv(lmax):
+def B2_inv(lmax: int):
+    """Change of basis matrix from polynomial basis to Agol's Green basis.
+
+    Args:
+        lmax (int): Maximum degree of the spherical harmonic basis.
+
+    Returns:
+        scipy.sparse.csc_matrix: Change of basis matrix.
+    """
     n = (lmax + 1) ** 2
     data = []
     row_ind = []
