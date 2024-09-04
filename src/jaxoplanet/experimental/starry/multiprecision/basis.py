@@ -1,8 +1,8 @@
 from jaxoplanet.experimental.starry.multiprecision import mp
 from collections import defaultdict
 from jaxoplanet.experimental.starry.multiprecision.utils import (
-    kron_delta,
     fac as fac_function,
+    kron_delta,
 )
 
 FAC_CACHE = {}
