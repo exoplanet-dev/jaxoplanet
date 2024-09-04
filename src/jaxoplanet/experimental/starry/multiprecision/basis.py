@@ -1,9 +1,8 @@
 from jaxoplanet.experimental.starry.multiprecision import mp
 from jaxoplanet.experimental.starry.multiprecision.utils import (
-    kron_delta,
     fac as fac_function,
+    kron_delta,
 )
-
 
 global FAC_CACHE
 FAC_CACHE = {}
