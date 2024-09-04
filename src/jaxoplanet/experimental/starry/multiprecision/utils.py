@@ -33,9 +33,9 @@ def diff_mp(M1: np.ndarray | mpmath.matrix, M2: np.ndarray | mpmath.matrix):
     if isinstance(M1, np.ndarray) and isinstance(M2, np.ndarray):
         d = M1 - M2
     else:
-        if (M1, np.ndarray):
+        if isinstance(M1, np.ndarray):
             _M1 = to_mp(M1)
-        if (M2, np.ndarray):
+        if isinstance(M2, np.ndarray):
             _M2 = to_mp(M2)
         d = to_numpy(_M1 - _M2).astype(np.float64)
     return d

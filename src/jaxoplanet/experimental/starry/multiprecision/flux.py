@@ -35,7 +35,6 @@ def flux_function(l_max, inc, obl):
         y = mp.matrix(y.tolist())
         xo = 0.0
         yo = b
-        zo = 10
         theta_z = mp.atan2(xo, yo)
         _sT = sT(l_max, b, r)
         x = _sT.T @ _A2

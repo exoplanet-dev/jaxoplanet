@@ -1,11 +1,10 @@
 from jaxoplanet.experimental.starry.multiprecision import mp
+from collections import defaultdict
 from jaxoplanet.experimental.starry.multiprecision.utils import (
     kron_delta,
     fac as fac_function,
 )
 
-
-global FAC_CACHE
 FAC_CACHE = {}
 
 
@@ -34,9 +33,6 @@ def B(l, m, j, k):
 def C(p, q, k):
     """Return the binomial theorem coefficient `C`."""
     return fac(k / 2) / (fac(q / 2) * fac((k - p) / 2) * fac((p - q) / 2))
-
-
-from collections import defaultdict
 
 
 def Y(l, m):
