@@ -4,6 +4,12 @@ from jaxoplanet.experimental.starry.multiprecision.utils import (
     fac as fac_function,
     kron_delta,
 )
+import numpy as np
+from jaxoplanet.experimental.starry import basis
+from functools import reduce
+from jaxoplanet.experimental.starry.multiprecision import mp, utils
+
+lmax = 20
 
 FAC_CACHE = {}
 
@@ -188,3 +194,52 @@ def A2_inv(l_max):
             k += 1
 
     return res
+
+
+def A2(lmax):
+    """Compute the A2 matrix directly
+
+    A2_inv is way faster to compute but then computing the inverse with mpmath is very
+    slow (~4 min for lmax=20). This function makes the computation by solving the change
+    basis matrix for each column of the A2_inv matrix.
+
+    The way it works is to formalize the problem by building the A matrix which
+    encapsulate the linear system. The tricky part is to find all possible powers to
+    use, which is done recursively in the all_subsets_indices function.
+    """
+    n = (lmax + 1) ** 2
+    A2 = mp.zeros(n, n)
+    gs = [basis.gtilde(i) for i in range(n)]
+
+    def all_subsets_indices(s, sets, indices=None):
+        if indices is None:
+            indices = []
+        for si in s:
+            for i, set_ in enumerate(sets):
+                if si in set_ and i not in indices:
+                    indices.append(i)
+                    all_subsets_indices(sets[i], sets, indices)
+        return indices
+
+    for k in range(n):
+        available_sets = gs[0 : int((np.floor(np.sqrt(k)) + 1) ** 2)]
+        target_set = [basis.ptilde(k)]
+        indices = np.array(all_subsets_indices(target_set, available_sets))
+
+        powers = list(reduce(set.union, [set(gs[i].keys()) for i in indices]))
+
+        A = mp.zeros(len(powers), len(indices))
+
+        for i, ijk in enumerate(powers):
+            for j, index in enumerate(indices):
+                A[i, j] = gs[index].get(ijk, 0)
+
+        b = np.array([target_set[0] == p for p in powers]).astype(int)
+
+        # in multi-precision
+        x = mp.lu_solve(A, utils.to_mp(b))
+
+        for i, _x in zip(indices, x):
+            A2[k, i] += _x
+
+    return A2.T
