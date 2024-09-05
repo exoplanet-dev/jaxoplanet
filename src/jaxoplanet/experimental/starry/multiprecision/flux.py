@@ -17,14 +17,20 @@ CACHED_MATRICES = defaultdict(
 )
 
 
-def get_A(A, l_max):
+def get_A(A, l_max, cache=None):
+    if cache is None:
+        cache = CACHED_MATRICES
+
     name = A.__name__
-    if name not in CACHED_MATRICES[l_max]:
-        CACHED_MATRICES[l_max][name] = A(l_max)
-    return CACHED_MATRICES[l_max][name]
+    if name not in cache[l_max]:
+        cache[l_max][name] = A(l_max)
+    return cache[l_max][name]
 
 
-def get_R(name, l_max, obl=None, inc=None):
+def get_R(name, l_max, obl=None, inc=None, cache=None):
+    if cache is None:
+        cache = CACHED_MATRICES
+
     if obl is not None and inc is not None:
         if name == "R_obl":
             if obl not in CACHED_MATRICES[l_max][name]:
@@ -46,22 +52,28 @@ def get_R(name, l_max, obl=None, inc=None):
         return CACHED_MATRICES[l_max][name]
 
 
-def get_sT(l_max, b, r):
+def get_sT(l_max, b, r, cache=None):
+    if cache is None:
+        cache = CACHED_MATRICES
+
     br = (b, r)
     if br not in CACHED_MATRICES[l_max]:
         CACHED_MATRICES[l_max][br] = sT(l_max, b, r)
     return CACHED_MATRICES[l_max][br]
 
 
-def flux_function(l_max, inc, obl):
-    _rT = rT(l_max)
-    _A1 = get_A(A1, l_max)
-    _A2 = get_A(A2, l_max)
+def flux_function(l_max, inc, obl, cache=None):
+    if cache is None:
+        cache = CACHED_MATRICES
 
-    R_px = get_R("R_px", l_max)
-    R_mx = get_R("R_mx", l_max)
-    R_obl = get_R("R_obl", l_max, obl=obl, inc=inc)
-    R_inc = get_R("R_inc", l_max, obl=obl, inc=inc)
+    _rT = rT(l_max)
+    _A1 = get_A(A1, l_max, cache=cache)
+    _A2 = get_A(A2, l_max, cache=cache)
+
+    R_px = get_R("R_px", l_max, cache=cache)
+    R_mx = get_R("R_mx", l_max, cache=cache)
+    R_obl = get_R("R_obl", l_max, obl=obl, inc=inc, cache=cache)
+    R_inc = get_R("R_inc", l_max, obl=obl, inc=inc, cache=cache)
 
     def rotate_y(y, phi):
         y_rotated = dot_rotation_matrix(l_max, None, None, R_px)(y)
@@ -76,24 +88,27 @@ def flux_function(l_max, inc, obl):
         y_rotated = rotate_y(y, phi)
         return ((_A1 @ y_rotated).T @ _rT)[0]
 
-    def occ_flux(y, b, r, phi):
+    def occ_flux(y, b, r, phi, rotate=True):
         y = mp.matrix(y.tolist())
         xo = 0.0
         yo = b
         theta_z = mp.atan2(xo, yo)
         _sT = get_sT(l_max, b, r)
         x = _sT.T @ _A2
-        y_rotated = rotate_y(y, phi)
-        y_rotated = dot_rz(l_max, theta_z)(y_rotated)
+        if rotate:
+            y_rotated = rotate_y(y, phi)
+            y_rotated = dot_rz(l_max, theta_z)(y_rotated)
+        else:
+            y_rotated = y
         py = (_A1 @ y_rotated).T
         return py @ x.T
 
-    def impl(y, b, r, phi):
+    def impl(y, b, r, phi, rotate=True):
         if abs(b) >= (r + 1):
             return rot_flux(y, phi)
         elif r > 1 and abs(b) <= (r - 1):
             return mp.mpf(0.0)
         else:
-            return occ_flux(y, b, r, phi)[0]
+            return occ_flux(y, b, r, phi, rotate=rotate)[0]
 
     return impl
