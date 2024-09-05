@@ -1,22 +1,66 @@
 from jaxoplanet.experimental.starry.multiprecision import mp
-from jaxoplanet.experimental.starry.multiprecision.basis import A1, A2inv
+from jaxoplanet.experimental.starry.multiprecision.basis import A1, A2
 from jaxoplanet.experimental.starry.multiprecision.rotation import (
     R,
     dot_rotation_matrix,
     dot_rz,
 )
 from jaxoplanet.experimental.starry.multiprecision.solution import rT, sT
+from collections import defaultdict
+
+CACHED_MATRICES = defaultdict(
+    lambda: {
+        "R_obl": {},
+        "R_inc": {},
+    }
+)
+
+
+def get_A(A, l_max):
+    name = A.__name__
+    if name not in CACHED_MATRICES[l_max]:
+        CACHED_MATRICES[l_max][name] = A(l_max)
+    return CACHED_MATRICES[l_max][name]
+
+
+def get_R(name, l_max, obl=None, inc=None):
+    if obl is not None and inc is not None:
+        if name == "R_obl":
+            if obl not in CACHED_MATRICES[l_max][name]:
+                CACHED_MATRICES[l_max][name][obl] = R(l_max, (0.0, 0.0, 1.0), -obl)
+            return CACHED_MATRICES[l_max][name][obl]
+        elif name == "R_inc":
+            if (inc, obl) not in CACHED_MATRICES[l_max][name]:
+                CACHED_MATRICES[l_max][name][(inc, obl)] = R(
+                    l_max, (-mp.cos(obl), -mp.sin(obl), 0.0), (0.5 * mp.pi - inc)
+                )
+            return CACHED_MATRICES[l_max][name][(inc, obl)]
+    else:
+        if name not in CACHED_MATRICES[l_max]:
+            if name == "R_px":
+                CACHED_MATRICES[l_max][name] = R(l_max, (1.0, 0.0, 0.0), -0.5 * mp.pi)
+            elif name == "R_mx":
+                CACHED_MATRICES[l_max][name] = R(l_max, (1.0, 0.0, 0.0), 0.5 * mp.pi)
+
+        return CACHED_MATRICES[l_max][name]
+
+
+def get_sT(l_max, b, r):
+    br = (b, r)
+    if br not in CACHED_MATRICES[l_max]:
+        CACHED_MATRICES[l_max][br] = sT(l_max, b, r)
+    return CACHED_MATRICES[l_max][br]
 
 
 def flux_function(l_max, inc, obl):
     _rT = rT(l_max)
-    _A1 = A1(l_max)
-    _A2 = A2inv(l_max) ** -1
+    _A1 = get_A(A1, l_max)
+    _A2 = get_A(A2, l_max)
 
-    R_px = R(l_max, (1.0, 0.0, 0.0), -0.5 * mp.pi)
-    R_mx = R(l_max, (1.0, 0.0, 0.0), 0.5 * mp.pi)
-    R_obl = R(l_max, (0.0, 0.0, 1.0), -obl)
-    R_inc = R(l_max, (-mp.cos(obl), -mp.sin(obl), 0.0), (0.5 * mp.pi - inc))
+    R_px = get_R("R_px", l_max)
+    R_mx = get_R("R_mx", l_max)
+    R_obl = get_R("R_obl", l_max, obl=obl, inc=inc)
+    R_inc = get_R("R_inc", l_max, obl=obl, inc=inc)
 
     def rotate_y(y, phi):
         y_rotated = dot_rotation_matrix(l_max, None, None, R_px)(y)
@@ -36,7 +80,7 @@ def flux_function(l_max, inc, obl):
         xo = 0.0
         yo = b
         theta_z = mp.atan2(xo, yo)
-        _sT = sT(l_max, b, r)
+        _sT = get_sT(l_max, b, r)
         x = _sT.T @ _A2
         y_rotated = rotate_y(y, phi)
         y_rotated = dot_rz(l_max, theta_z)(y_rotated)
