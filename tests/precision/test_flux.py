@@ -1,17 +1,16 @@
+
 import jax
-import os
 
 jax.config.update("jax_enable_x64", True)
 
-import pytest
 import numpy as np
-from jaxoplanet.test_utils import assert_allclose
-from jaxoplanet.experimental.starry.multiprecision import mp
-from jaxoplanet.experimental.starry.multiprecision import utils
-from jaxoplanet.experimental.starry.multiprecision import flux as mp_flux
+import pytest
+
 from jaxoplanet.experimental.starry import light_curves
+from jaxoplanet.experimental.starry.multiprecision import flux as mp_flux, mp, utils
 from jaxoplanet.experimental.starry.surface import Surface
 from jaxoplanet.experimental.starry.ylm import Ylm
+from jaxoplanet.test_utils import assert_allclose
 
 TOLERANCE = 1e-15
 
@@ -23,8 +22,8 @@ def test_flux(r, l_max=5, order=500):
     b = 1 - r if r < 1 else r
 
     n = (l_max + 1) ** 2
-    expect = np.zeros((n))
-    calc = np.zeros((n))
+    expect = np.zeros(n)
+    calc = np.zeros(n)
     ys = np.eye(n, dtype=np.float64)
     ys[:, 0] = 1.0
 
@@ -66,9 +65,10 @@ def test_flux(r, l_max=5, order=500):
 
 def plot_flux_precision(l_max=5):
     from collections import defaultdict
+    from functools import partial
+
     import matplotlib.pyplot as plt
     from tqdm import tqdm
-    from functools import partial
 
     radii = [0.01, 0.1, 1.0, 10.0, 100.0]
     orders = [20, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500]

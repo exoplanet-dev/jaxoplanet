@@ -1,14 +1,14 @@
 from collections import defaultdict
+from functools import reduce
 
-from jaxoplanet.experimental.starry.multiprecision import mp
+import numpy as np
+
+from jaxoplanet.experimental.starry import basis
+from jaxoplanet.experimental.starry.multiprecision import mp, utils
 from jaxoplanet.experimental.starry.multiprecision.utils import (
     fac as fac_function,
     kron_delta,
 )
-import numpy as np
-from jaxoplanet.experimental.starry import basis
-from functools import reduce
-from jaxoplanet.experimental.starry.multiprecision import mp, utils
 
 lmax = 20
 
@@ -219,7 +219,7 @@ def A2(lmax):
             for i, set_ in enumerate(sets):
                 if si in set_ and i not in indices:
                     indices.append(i)
-                    all_subsets_indices(sets[i], sets, indices)
+                    all_subsets_indices(set_, sets, indices)
         return indices
 
     for k in range(n):
@@ -240,7 +240,7 @@ def A2(lmax):
         # in multi-precision
         x = mp.lu_solve(A, utils.to_mp(b))
 
-        for i, _x in zip(indices, x):
+        for i, _x in zip(indices, x, strict=False):
             A2[k, i] += _x
 
     return A2.T
