@@ -152,9 +152,10 @@ def test_left_project(deg, angles):
 @pytest.mark.parametrize("theta", [0.1])
 def test_R_symbolic_mpcore(l_max, u, theta):
     pytest.importorskip("sympy")
-    from jaxoplanet.experimental.starry.multiprecision.rotation import R
-    from jaxoplanet.experimental.starry.multiprecision import utils
     from scipy.linalg import block_diag
+
+    from jaxoplanet.experimental.starry.multiprecision import utils
+    from jaxoplanet.experimental.starry.multiprecision.rotation import R
 
     expected = np.array(R_symbolic(l_max, u, theta)).astype(float)
     calc = block_diag(

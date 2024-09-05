@@ -1,8 +1,8 @@
-import pytest
 import numpy as np
-from jaxoplanet.experimental.starry.multiprecision import utils
-from jaxoplanet.experimental.starry.multiprecision import basis as mp_basis
+import pytest
+
 from jaxoplanet.experimental.starry import basis
+from jaxoplanet.experimental.starry.multiprecision import basis as mp_basis, utils
 
 TOLERANCE = 1e-15
 

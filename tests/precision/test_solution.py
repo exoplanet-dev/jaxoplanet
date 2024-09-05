@@ -1,9 +1,8 @@
 import pytest
 import numpy as np
-from jaxoplanet.test_utils import assert_allclose
-from jaxoplanet.experimental.starry.multiprecision import utils
-from jaxoplanet.experimental.starry.multiprecision import solution as mp_solution
 from jaxoplanet.experimental.starry import solution
+from jaxoplanet.experimental.starry.multiprecision import solution as mp_solution, utils
+from jaxoplanet.test_utils import assert_allclose
 
 TOLERANCE = 1e-15
 
@@ -46,6 +45,7 @@ def test_sT(r, l_max=5, order=500):
 
 def plot_sT_precision(lmax=20):
     from collections import defaultdict
+
     import matplotlib.pyplot as plt
     from tqdm import tqdm
 

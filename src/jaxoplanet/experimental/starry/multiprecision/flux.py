@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from jaxoplanet.experimental.starry.multiprecision import mp
 from jaxoplanet.experimental.starry.multiprecision.basis import A1, A2
 from jaxoplanet.experimental.starry.multiprecision.rotation import (
@@ -6,7 +8,6 @@ from jaxoplanet.experimental.starry.multiprecision.rotation import (
     dot_rz,
 )
 from jaxoplanet.experimental.starry.multiprecision.solution import rT, sT
-from collections import defaultdict
 
 CACHED_MATRICES = defaultdict(
     lambda: {
