@@ -1,7 +1,3 @@
-import jax
-
-jax.config.update("jax_enable_x64", True)
-
 import pytest
 import numpy as np
 from jaxoplanet.test_utils import assert_allclose
