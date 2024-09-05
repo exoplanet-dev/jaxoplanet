@@ -1,7 +1,7 @@
 import jax
-import pytest
 import numpy as np
 import pytest
+
 from jaxoplanet.experimental.starry import light_curves
 from jaxoplanet.experimental.starry.multiprecision import flux as mp_flux, mp, utils
 from jaxoplanet.experimental.starry.surface import Surface

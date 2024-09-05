@@ -1,5 +1,6 @@
-import pytest
 import numpy as np
+import pytest
+
 from jaxoplanet.experimental.starry import solution
 from jaxoplanet.experimental.starry.multiprecision import solution as mp_solution, utils
 from jaxoplanet.test_utils import assert_allclose
