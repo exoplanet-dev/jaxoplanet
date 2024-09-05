@@ -1,5 +1,6 @@
-from jaxoplanet.experimental.starry.multiprecision import mp
 from collections import defaultdict
+
+from jaxoplanet.experimental.starry.multiprecision import mp
 from jaxoplanet.experimental.starry.multiprecision.utils import (
     fac as fac_function,
     kron_delta,
