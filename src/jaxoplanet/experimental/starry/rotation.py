@@ -4,11 +4,11 @@ from functools import partial
 import jax
 import jax.numpy as jnp
 
-from jaxoplanet.types import Array
-from jaxoplanet.utils import get_dtype_eps
 from jaxoplanet.experimental.starry.s2fft_rotation import (
     compute_rotation_matrices as compute_rotation_matrices_s2fft,
 )
+from jaxoplanet.types import Array
+from jaxoplanet.utils import get_dtype_eps
 
 
 def dot_rotation_matrix(ydeg, x, y, z, theta):
