@@ -1,5 +1,42 @@
 from jaxoplanet.experimental.starry.multiprecision import mp
 from jaxoplanet.experimental.starry.multiprecision.utils import fac, kron_delta
+from collections import defaultdict
+
+CACHED_MATRICES = defaultdict(
+    lambda: {
+        "R_obl": {},
+        "R_inc": {},
+    }
+)
+
+
+def get_R(name, l_max, obl=None, inc=None, cache=None):
+    if cache is None:
+        cache = CACHED_MATRICES
+
+    if obl is not None and inc is not None:
+        if name == "R_obl":
+            if obl not in CACHED_MATRICES[l_max][name]:
+                print(f"pre-computing {name}...")
+                CACHED_MATRICES[l_max][name][obl] = R(l_max, (0.0, 0.0, 1.0), -obl)
+            return CACHED_MATRICES[l_max][name][obl]
+        elif name == "R_inc":
+            if (inc, obl) not in CACHED_MATRICES[l_max][name]:
+                print(f"pre-computing {name}...")
+                CACHED_MATRICES[l_max][name][(inc, obl)] = R(
+                    l_max, (-mp.cos(obl), -mp.sin(obl), 0.0), (0.5 * mp.pi - inc)
+                )
+            return CACHED_MATRICES[l_max][name][(inc, obl)]
+    else:
+        if name not in CACHED_MATRICES[l_max]:
+            if name == "R_px":
+                print(f"pre-computing {name}...")
+                CACHED_MATRICES[l_max][name] = R(l_max, (1.0, 0.0, 0.0), -0.5 * mp.pi)
+            elif name == "R_mx":
+                print(f"pre-computing {name}...")
+                CACHED_MATRICES[l_max][name] = R(l_max, (1.0, 0.0, 0.0), 0.5 * mp.pi)
+
+        return CACHED_MATRICES[l_max][name]
 
 
 def R(lmax, u, theta):
