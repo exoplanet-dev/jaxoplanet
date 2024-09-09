@@ -3,11 +3,11 @@ from collections import defaultdict
 from jaxoplanet.experimental.starry.multiprecision import mp
 from jaxoplanet.experimental.starry.multiprecision.basis import A1, A2
 from jaxoplanet.experimental.starry.multiprecision.rotation import (
-    get_R,
     dot_rotation_matrix,
     dot_rz,
+    get_R,
 )
-from jaxoplanet.experimental.starry.multiprecision.solution import rT, get_sT
+from jaxoplanet.experimental.starry.multiprecision.solution import get_sT, rT
 
 
 def flux_function(l_max, inc, obl, cache=None):
