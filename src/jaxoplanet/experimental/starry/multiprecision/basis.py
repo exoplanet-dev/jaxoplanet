@@ -13,6 +13,18 @@ from jaxoplanet.experimental.starry.multiprecision.utils import (
 lmax = 20
 
 FAC_CACHE = {}
+CACHED_MATRICES = defaultdict(lambda: {})
+
+
+def get_A(A, l_max, cache=None):
+    if cache is None:
+        cache = CACHED_MATRICES
+
+    name = A.__name__.replace("_", "")
+    if name not in cache[l_max]:
+        print(f"pre-computing {name}...")
+        cache[l_max][name] = A(l_max)
+    return cache[l_max][name]
 
 
 def fac(n):
@@ -130,7 +142,7 @@ def p_coeffs(n):
     return (i, j, k)
 
 
-def A1(l_max):
+def _A1(l_max):
     n = (l_max + 1) ** 2
     p = {m: p_coeffs(m) for m in range(n)}
     res = mp.zeros(n, n)
@@ -144,6 +156,12 @@ def A1(l_max):
 
     res = res * 2 / mp.sqrt(mp.pi)
     return res
+
+
+def A1(l_max, cache=None):
+    if cache is None:
+        cache = CACHED_MATRICES
+    return get_A(_A1, l_max, cache=cache)
 
 
 def gtilde(n):
@@ -197,7 +215,7 @@ def A2_inv(l_max):
     return res
 
 
-def A2(lmax):
+def _A2(lmax):
     """Compute the A2 matrix directly
 
     A2_inv is way faster to compute but then computing the inverse with mpmath is very
@@ -244,3 +262,9 @@ def A2(lmax):
             A2[k, i] += _x
 
     return A2.T
+
+
+def A2(lmax, cache=None):
+    if cache is None:
+        cache = CACHED_MATRICES
+    return get_A(_A2, lmax, cache=cache)
