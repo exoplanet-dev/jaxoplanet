@@ -1,6 +1,7 @@
+from collections import defaultdict
+
 from jaxoplanet.experimental.starry.multiprecision import mp
 from jaxoplanet.experimental.starry.multiprecision.utils import fac, kron_delta
-from collections import defaultdict
 
 CACHED_MATRICES = defaultdict(
     lambda: {
