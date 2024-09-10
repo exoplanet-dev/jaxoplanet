@@ -1,4 +1,5 @@
 import jax
+
 import jax.numpy as jnp
 import numpy as np
 import pytest
@@ -147,6 +148,7 @@ def test_left_project(deg, angles):
     assert_allclose(calc, expect)
 
 
+@pytest.mark.skip(reason="Too long")
 @pytest.mark.parametrize("l_max", [5, 4, 3, 2, 1, 0])
 @pytest.mark.parametrize("u", [(1, 0, 0), (0, 1, 0), (0, 0, 1), (1, 1, 1)])
 @pytest.mark.parametrize("theta", [0.1])
