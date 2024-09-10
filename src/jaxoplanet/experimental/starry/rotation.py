@@ -132,6 +132,9 @@ def sky_projection_axis_angle(inc: float, obl: float):
 
     denominator = jnp.sqrt(1 - ci**2 * co**2)
 
+    # to avoid nans for the case where ci * co == 1
+    denominator = jnp.where(denominator == 0.0, 1.0, denominator)
+
     axis_x = si * co
     axis_y = si * so
     axis_z = -so * ci

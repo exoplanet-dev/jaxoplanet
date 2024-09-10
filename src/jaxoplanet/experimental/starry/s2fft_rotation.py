@@ -1,9 +1,13 @@
 from functools import partial
 
 import jax
+
+jax.config.update("jax_enable_x64", True)
+
 import jax.numpy as jnp
 from jax.scipy.spatial.transform import Rotation
 from s2fft.utils.rotation import generate_rotate_dls
+import functools
 
 
 @partial(jax.jit, static_argnums=(0, 5))
@@ -42,10 +46,12 @@ def compute_rotation_matrices(deg, x, y, z, theta, homogeneous=False):
 
     def euler(x, y, z, theta):
         """axis-angle to euler angles"""
-        axis = jnp.array([x, y, z])
+        # the jnp where for theta == 0 is to avoid nans when computing grad
+        axis = jnp.array([jnp.where(theta == 0.0, 1.0, x), y, z])
+        _theta = jnp.where(theta == 0.0, 1.0, theta)
         axis = axis / jnp.linalg.norm(axis)
-        r = Rotation.from_rotvec(axis * theta)
-        return r.as_euler("zyz")
+        r = Rotation.from_rotvec(axis * _theta)
+        return jnp.where(theta == 0.0, jnp.array([0.0, 0.0, 0.0]), r.as_euler("zyz"))
 
     alpha, beta, gamma = euler(x, y, z, theta)
     dls = generate_rotate_dls(deg + 1, beta)
