@@ -93,7 +93,8 @@ class Ylm(eqx.Module):
         """List of (l,m) indices of the spherical harmonic coefficients."""
         return list(self.data.keys())
 
-    def index(self, l: Array, m: Array) -> Array:
+    @staticmethod
+    def index(l: Array, m: Array) -> Array:
         """Convert the degree and order of the spherical harmonic to the
         corresponding index in the coefficient array."""
         return l * (l + 1) + m
@@ -120,7 +121,7 @@ class Ylm(eqx.Module):
         the index :math:`n = l^2 + l + m`.
         """
         indices, values = zip(*self.data.items(), strict=False)
-        idx = jnp.array([self.index(l, m) for l, m in indices])[:, None]
+        idx = jnp.array([Ylm.index(l, m) for l, m in indices])[:, None]
         return BCOO((jnp.asarray(values), idx), shape=self.shape)
 
     def todense(self) -> Array:
@@ -158,7 +159,7 @@ class Ylm(eqx.Module):
 
     def __getitem__(self, key) -> Array:
         assert isinstance(key, tuple)
-        return self.todense()[self.index(*key)]
+        return self.todense()[Ylm.index(*key)]
 
 
 def _mul(f: Ylm, g: Ylm) -> Ylm:
