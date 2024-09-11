@@ -46,7 +46,7 @@ def flux_function(l_max, inc, obl, cache=None):
         xo = 0.0
         yo = b
         theta_z = mp.atan2(xo, yo)
-        _sT = get_sT(l_max, b, r)
+        _sT = get_sT(l_max, b, r, cache=cache)
         x = _sT.T @ _A2
         if rotate:
             y_rotated = rotate_y(y, phi)

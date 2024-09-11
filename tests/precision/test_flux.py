@@ -2,6 +2,8 @@ import jax
 import numpy as np
 import pytest
 
+jax.config.update("jax_enable_x64", True)
+
 from jaxoplanet.experimental.starry import light_curves
 from jaxoplanet.experimental.starry.multiprecision import flux as mp_flux, mp, utils
 from jaxoplanet.experimental.starry.surface import Surface
@@ -59,7 +61,7 @@ def test_flux(r, l_max=5, order=500):
         )
 
 
-def plot_flux_precision(l_max=5):
+def plot_flux_precision(l_max=20):
     from collections import defaultdict
     from functools import partial
 
@@ -73,25 +75,20 @@ def plot_flux_precision(l_max=5):
     expect = np.zeros((l_max + 1) ** 2)
     calc = np.zeros((l_max + 1) ** 2)
 
-    ys = np.eye((l_max + 1) ** 2, dtype=np.float64)
-    ys[:, 0] = 1.0
+    y = np.ones((l_max + 1) ** 2)
+    surface = Surface(y=Ylm.from_dense(y, normalize=False), normalize=False)
 
     @partial(jax.jit, static_argnames=("order",))
-    def light_curve(y, b, r, order):
-        surface = Surface(y=Ylm.from_dense(y, normalize=False), normalize=False)
+    def light_curve(b, r, order):
         return light_curves.surface_light_curve(surface, y=b, z=10.0, r=r, order=order)
 
     for r in tqdm(radii):
         b = 1 - r if r < 1 else r
-        for i, y in enumerate(ys):
-            expect[i] = float(
-                mp_flux.flux_function(l_max, mp.pi / 2, 0.0)(y, b, r, 0.0)
-            )
+        expect = float(mp_flux.flux_function(l_max, mp.pi / 2, 0.0)(y, b, r, 0.0))
         diffs = []
         for order in orders:
-            for i, y in enumerate(ys):
-                calc[i] = light_curve(y, b, r, order)
-            diff = np.abs(utils.diff_mp(expect, calc))
+            calc = light_curve(b, r, order)
+            diff = np.abs(calc - float(expect))
             diffs.append(diff)
 
         result[r] = diffs
@@ -101,7 +98,7 @@ def plot_flux_precision(l_max=5):
     cmap = plt.get_cmap("magma")
     for i, r in enumerate(radii):
         color = cmap(i / len(radii))
-        error = np.array(result[r]).max(1)
+        error = np.array(result[r])
         plt.plot(orders, error, ".-", label=f"r={r}", color=color)
     plt.yscale("log")
     plt.legend()

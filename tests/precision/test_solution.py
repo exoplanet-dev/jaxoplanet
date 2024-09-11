@@ -1,3 +1,7 @@
+import jax
+
+jax.config.update("jax_enable_x64", True)
+
 import numpy as np
 import pytest
 
@@ -5,11 +9,12 @@ from jaxoplanet.experimental.starry import solution
 from jaxoplanet.experimental.starry.multiprecision import solution as mp_solution, utils
 from jaxoplanet.test_utils import assert_allclose
 
+
 TOLERANCE = 1e-15
 
 
 @pytest.mark.parametrize("r", [0.01, 0.1, 1.0, 10.0, 100.0])
-def test_sT(r, l_max=5, order=500):
+def test_sT(r, l_max=10, order=500):
 
     # We know that these are were the errors are the highest
     b = 1 - r if r < 1 else r
@@ -59,7 +64,7 @@ def plot_sT_precision(lmax=20):
         expect = utils.to_numpy(mp_solution.sT(lmax, b, r))
         diffs = []
         for order in orders:
-            calc = solution.solution_vector(lmax, order=order)(b, r)
+            calc = np.array(solution.solution_vector(lmax, order=order)(b, r))
             diff = np.abs(utils.diff_mp(expect, calc))
             diffs.append(diff)
         result[r] = diffs
