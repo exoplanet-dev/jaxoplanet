@@ -2,17 +2,22 @@ from collections import defaultdict
 
 from jaxoplanet.experimental.starry.multiprecision import mp
 
-CACHED_MATRICES = defaultdict(lambda: {})
+CACHED_MATRICES = defaultdict(
+    lambda: {
+        "sT": {},
+    }
+)
 
 
 def get_sT(l_max, b, r, cache=None):
     if cache is None:
         cache = CACHED_MATRICES
 
+    name = "sT"
     br = (b, r)
-    if br not in CACHED_MATRICES[l_max]:
-        CACHED_MATRICES[l_max][br] = sT(l_max, b, r)
-    return CACHED_MATRICES[l_max][br]
+    if br not in cache[l_max][name]:
+        cache[l_max][name][br] = sT(l_max, b, r)
+    return cache[l_max][name][br]
 
 
 def check_occultation(b, r):
