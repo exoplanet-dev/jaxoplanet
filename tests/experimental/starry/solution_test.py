@@ -39,7 +39,7 @@ def test_kappas():
 
 
 @pytest.mark.parametrize("r", [0.1, 1.1])
-def test_solution_compare_starry(r, l_max=10, order=20):
+def test_solution_compare_starry(r, l_max=10, order=500):
     starry = pytest.importorskip("starry")
     theano = pytest.importorskip("theano")
     theano.config.gcc__cxxflags += " -fexceptions"
