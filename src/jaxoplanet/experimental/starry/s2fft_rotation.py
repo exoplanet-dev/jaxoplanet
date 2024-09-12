@@ -1,13 +1,8 @@
-from functools import partial
-
 import jax
-
-jax.config.update("jax_enable_x64", True)
-
-
 import jax.numpy as jnp
 from jax.scipy.spatial.transform import Rotation
 from s2fft.utils.rotation import generate_rotate_dls
+from functools import partial
 
 
 @partial(jax.jit, static_argnums=(0, 5))
