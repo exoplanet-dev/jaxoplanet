@@ -45,10 +45,12 @@ def flux_function(l_max, inc, obl, cache=None):
         y = mp.matrix(y.tolist())
         xo = 0.0
         yo = b
+        theta_z = mp.atan2(xo, yo)
         _sT = get_sT(l_max, b, r)
         x = _sT.T @ _A2
         if rotate:
             y_rotated = rotate_y(y, phi)
+            y_rotated = dot_rz(l_max, theta_z)(y_rotated)
         else:
             y_rotated = y
         py = (_A1 @ y_rotated).T
