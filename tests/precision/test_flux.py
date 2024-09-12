@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 
 from jaxoplanet.experimental.starry import light_curves
-from jaxoplanet.experimental.starry.multiprecision import flux as mp_flux, mp, utils
+from jaxoplanet.experimental.starry.multiprecision import flux as mp_flux, mp
 from jaxoplanet.experimental.starry.surface import Surface
 from jaxoplanet.experimental.starry.ylm import Ylm
 from jaxoplanet.test_utils import assert_allclose
