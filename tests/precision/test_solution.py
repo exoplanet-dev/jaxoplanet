@@ -9,7 +9,6 @@ from jaxoplanet.experimental.starry import solution
 from jaxoplanet.experimental.starry.multiprecision import solution as mp_solution, utils
 from jaxoplanet.test_utils import assert_allclose
 
-
 TOLERANCE = 1e-15
 
 
