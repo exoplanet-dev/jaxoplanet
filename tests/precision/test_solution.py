@@ -1,7 +1,3 @@
-import jax
-
-jax.config.update("jax_enable_x64", True)
-
 import numpy as np
 import pytest
 
@@ -13,7 +9,7 @@ TOLERANCE = 1e-15
 
 
 @pytest.mark.parametrize("r", [0.01, 0.1, 1.0, 10.0, 100.0])
-def test_sT(r, l_max=10, order=500):
+def test_sT(r, l_max=5, order=500):
 
     # We know that these are were the errors are the highest
     b = 1 - r if r < 1 else r

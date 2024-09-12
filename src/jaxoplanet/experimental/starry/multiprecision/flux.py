@@ -38,7 +38,7 @@ def flux_function(l_max, inc, obl, cache=None):
 
     def rot_flux(y, phi):
         y = mp.matrix(y.tolist())
-        y_rotated = rotate_y(y, phi)
+        y_rotated = rotate_y(y, phi, cache=cache)
         return ((_A1 @ y_rotated).T @ _rT)[0]
 
     def occ_flux(y, b, r, phi, rotate=True):
