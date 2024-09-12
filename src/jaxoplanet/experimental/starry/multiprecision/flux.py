@@ -16,6 +16,7 @@ def flux_function(l_max, inc, obl, cache=None):
             lambda: {
                 "R_obl": {},
                 "R_inc": {},
+                "sT": {},
             }
         )
 
