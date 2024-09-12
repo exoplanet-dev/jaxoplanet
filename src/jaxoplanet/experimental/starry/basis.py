@@ -277,7 +277,8 @@ def gtilde(n):
         C = [(mu - 3) // 2, -(mu - 3) // 2, -(mu + 3) // 2]
     res = {}
     for i, j, k, c in zip(I, J, K, C, strict=False):
-        res[(i, j, k)] = c
+        if c != 0.0:
+            res[(i, j, k)] = c
     return res
 
 

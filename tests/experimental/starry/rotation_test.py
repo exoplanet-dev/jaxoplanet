@@ -147,6 +147,23 @@ def test_left_project(deg, angles):
     assert_allclose(calc, expect)
 
 
+@pytest.mark.parametrize("l_max", [5, 4, 3, 2, 1, 0])
+@pytest.mark.parametrize("u", [(1, 0, 0), (0, 1, 0), (0, 0, 1), (1, 1, 1)])
+@pytest.mark.parametrize("theta", [0.1])
+def test_R_symbolic_mpcore(l_max, u, theta):
+    pytest.importorskip("sympy")
+    from scipy.linalg import block_diag
+
+    from jaxoplanet.experimental.starry.multiprecision import utils
+    from jaxoplanet.experimental.starry.multiprecision.rotation import R
+
+    expected = np.array(R_symbolic(l_max, u, theta)).astype(float)
+    calc = block_diag(
+        *[np.atleast_2d(utils.to_numpy(r)).astype(float) for r in R(l_max, u, theta)]
+    )
+    assert_allclose(calc, expected)
+
+
 def R_symbolic(lmax, u, theta):
     import sympy as sm
     from sympy.functions.special.tensor_functions import KroneckerDelta
