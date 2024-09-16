@@ -6,9 +6,9 @@ import jax
 import numpy as np
 import pytest
 
+from jaxoplanet.experimental.starry.multiprecision import solution as mp_solution, utils
 from jaxoplanet.experimental.starry.solution import kappas, solution_vector
 from jaxoplanet.test_utils import assert_allclose
-from jaxoplanet.experimental.starry.multiprecision import solution as mp_solution, utils
 
 
 def test_kappas():
