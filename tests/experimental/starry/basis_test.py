@@ -6,7 +6,6 @@ import pytest
 from jaxoplanet.experimental.starry.basis import A1, A2_inv, basis, poly_basis
 from jaxoplanet.test_utils import assert_allclose
 
-
 TOLERANCE = 1e-15
 
 
