@@ -12,10 +12,11 @@ from jaxoplanet.experimental.starry.rotation import (
 from jaxoplanet.test_utils import assert_allclose
 
 
+@pytest.mark.skip(reason="superseded by multi-precision tests")
 @pytest.mark.parametrize("l_max", [5, 4, 3, 2, 1, 0])
 @pytest.mark.parametrize("u", [(1, 0, 0), (0, 1, 0), (0, 0, 1), (1, 1, 1)])
 @pytest.mark.parametrize("theta", [0.1])
-def test_dot_rotation(l_max, u, theta):
+def test_dot_rotation_symbolic(l_max, u, theta):
     """Test full rotation matrix against symbolic one"""
     pytest.importorskip("sympy")
     ident = np.eye(l_max**2 + 2 * l_max + 1)
@@ -147,10 +148,11 @@ def test_left_project(deg, angles):
     assert_allclose(calc, expect)
 
 
+@pytest.mark.skip(reason="superseded by multi-precision tests")
 @pytest.mark.parametrize("l_max", [5, 4, 3, 2, 1, 0])
 @pytest.mark.parametrize("u", [(1, 0, 0), (0, 1, 0), (0, 0, 1), (1, 1, 1)])
 @pytest.mark.parametrize("theta", [0.1])
-def test_R_symbolic_mpcore(l_max, u, theta):
+def test_R_multiprecision_symbolic(l_max, u, theta):
     pytest.importorskip("sympy")
     from scipy.linalg import block_diag
 

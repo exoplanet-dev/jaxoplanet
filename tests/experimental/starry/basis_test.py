@@ -5,22 +5,52 @@ import pytest
 
 from jaxoplanet.experimental.starry.basis import A1, A2_inv, basis, poly_basis
 from jaxoplanet.test_utils import assert_allclose
+from jaxoplanet.experimental.starry.multiprecision import basis as mp_basis, utils
 
 
+TOLERANCE = 1e-15
+
+
+@pytest.mark.skip(reason="superseded by multi-precision tests")
 @pytest.mark.parametrize("lmax", [10, 7, 5, 4, 3, 2, 1, 0])
-def test_A1(lmax):
+def test_A1_symbolic(lmax):
     pytest.importorskip("sympy")
     expected = A1_symbolic(lmax) / (0.5 * np.sqrt(np.pi))
     calc = A1(lmax).todense()
     np.testing.assert_allclose(calc, expected, atol=5e-12)
 
 
+@pytest.mark.skip(reason="superseded by multi-precision tests")
 @pytest.mark.parametrize("lmax", [10, 7, 5, 4, 3, 2, 1, 0])
-def test_A2_inv(lmax):
+def test_A2_inv_symbolic(lmax):
     pytest.importorskip("sympy")
     expected = A2_inv_symbolic(lmax)
     calc = A2_inv(lmax).todense()
     np.testing.assert_allclose(calc, expected)
+
+
+@pytest.mark.parametrize("lmax", [5, 4, 3, 2, 1, 0])
+def test_A1(lmax):
+    pytest.importorskip("mpmath")
+    expected = np.atleast_2d(utils.to_numpy(mp_basis.A1(lmax)))
+    calc = np.atleast_2d(A1(lmax).todense())
+    np.testing.assert_allclose(calc, expected)
+
+
+@pytest.mark.parametrize("lmax", [15, 10, 7, 5, 4, 3, 2, 1, 0])
+def test_A2_inv(lmax):
+    pytest.importorskip("mpmath")
+    expected = np.atleast_2d(utils.to_numpy(mp_basis.A2_inv(lmax)))
+    calc = np.atleast_2d(A2_inv(lmax).todense())
+    np.testing.assert_allclose(calc, expected, atol=TOLERANCE)
+
+
+@pytest.mark.parametrize("lmax", [15, 10, 7, 5, 4, 3, 2, 1, 0])
+def test_direct_A2(lmax):
+    pytest.importorskip("mpmath")
+    expected = np.atleast_2d(utils.to_numpy(mp_basis.A2(lmax)))
+    calc = np.atleast_2d(np.linalg.inv(A2_inv(lmax).todense()))
+    np.testing.assert_allclose(calc, expected, atol=TOLERANCE)
 
 
 @pytest.mark.parametrize("lmax", [10, 7, 5, 4, 3, 2, 1, 0])
