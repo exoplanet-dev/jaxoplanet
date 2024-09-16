@@ -42,8 +42,8 @@ def test_kappas():
 def test_solution(r, l_max=5, order=500):
     pytest.importorskip("mpmath")
     from jaxoplanet.experimental.starry.multiprecision import (
-        utils,
         solution as mp_solution,
+        utils,
     )
 
     # We know that these are were the errors are the highest
