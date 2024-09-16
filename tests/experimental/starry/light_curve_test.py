@@ -4,6 +4,7 @@ import pytest
 
 from jaxoplanet.experimental.starry import Surface, Ylm
 from jaxoplanet.experimental.starry.light_curves import light_curve, surface_light_curve
+from jaxoplanet.experimental.starry.multiprecision import flux as mp_flux, mp
 from jaxoplanet.experimental.starry.orbit import SurfaceSystem
 from jaxoplanet.light_curves import limb_dark_light_curve
 from jaxoplanet.orbits import keplerian
