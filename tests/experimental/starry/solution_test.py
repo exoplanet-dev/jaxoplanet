@@ -8,7 +8,6 @@ import pytest
 
 from jaxoplanet.experimental.starry.solution import kappas, solution_vector
 from jaxoplanet.test_utils import assert_allclose
-from jaxoplanet.experimental.starry.multiprecision import solution as mp_solution, utils
 
 
 def test_kappas():
@@ -41,6 +40,11 @@ def test_kappas():
 
 @pytest.mark.parametrize("r", [0.01, 0.1, 1.0, 10.0, 100.0])
 def test_solution(r, l_max=5, order=500):
+    pytest.importorskip("mpmath")
+    from jaxoplanet.experimental.starry.multiprecision import (
+        solution as mp_solution,
+        utils,
+    )
 
     # We know that these are were the errors are the highest
     b = 1 - r if r < 1 else r
