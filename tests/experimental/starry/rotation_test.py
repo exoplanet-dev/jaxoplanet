@@ -12,10 +12,11 @@ from jaxoplanet.experimental.starry.rotation import (
 from jaxoplanet.test_utils import assert_allclose
 
 
+@pytest.mark.skip(reason="superseded by multi-precision tests")
 @pytest.mark.parametrize("l_max", [5, 4, 3, 2, 1, 0])
 @pytest.mark.parametrize("u", [(1, 0, 0), (0, 1, 0), (0, 0, 1), (1, 1, 1)])
 @pytest.mark.parametrize("theta", [0.1])
-def test_dot_rotation(l_max, u, theta):
+def test_dot_rotation_symbolic(l_max, u, theta):
     """Test full rotation matrix against symbolic one"""
     pytest.importorskip("sympy")
     ident = np.eye(l_max**2 + 2 * l_max + 1)
@@ -31,6 +32,22 @@ def test_dot_rotation_z(l_max, theta):
     expected = dot_rotation_matrix(l_max, 0.0, 0.0, 1.0, theta)(ident)
     calc = dot_rotation_matrix(l_max, None, None, 1.0, theta)(ident)
     assert_allclose(calc, expected)
+
+
+@pytest.mark.parametrize("l_max", [5, 4, 3, 2, 1, 0])
+@pytest.mark.parametrize("u", [(1, 0, 0), (0, 1, 0), (0, 0, 1), (1, 1, 1)])
+@pytest.mark.parametrize("theta", [0.1])
+def test_R(l_max, u, theta):
+    """Test full rotation matrix against symbolic one"""
+    pytest.importorskip("mpmath")
+    from jaxoplanet.experimental.starry.multiprecision import utils
+    from jaxoplanet.experimental.starry.multiprecision.rotation import R
+    from jaxoplanet.experimental.starry.rotation import compute_rotation_matrices
+
+    expected = R(l_max, u, theta)
+    calc = compute_rotation_matrices(l_max, u[0], u[1], u[2], theta)
+    for e, c in zip(expected, calc, strict=False):
+        assert_allclose(c, np.atleast_2d(utils.to_numpy(e)))
 
 
 def test_dot_rotation_negative():
@@ -147,11 +164,11 @@ def test_left_project(deg, angles):
     assert_allclose(calc, expect)
 
 
-@pytest.mark.skip(reason="Too long")
+@pytest.mark.skip(reason="superseded by multi-precision tests")
 @pytest.mark.parametrize("l_max", [5, 4, 3, 2, 1, 0])
 @pytest.mark.parametrize("u", [(1, 0, 0), (0, 1, 0), (0, 0, 1), (1, 1, 1)])
 @pytest.mark.parametrize("theta", [0.1])
-def test_R_symbolic_mpcore(l_max, u, theta):
+def test_R_multiprecision_symbolic(l_max, u, theta):
     pytest.importorskip("sympy")
     from scipy.linalg import block_diag
 
