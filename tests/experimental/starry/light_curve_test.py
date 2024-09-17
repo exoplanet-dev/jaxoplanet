@@ -286,6 +286,7 @@ def test_compare_starry_system(keplerian_system):
     #         assert_allclose(jax.numpy.squeeze(jaxoplanet_flux_item), starry_flux_item)
 
 
+@pytest.mark.skip(reason="Test if test is causing issues in macos-py11. TODO: revert")
 def test_map_light_curves_none_occultor():
     surface = Surface(
         y=Ylm.from_dense(np.hstack([1, 0.005, 0.05, 0.09, 0.0, 0.1, 0.03])),
@@ -498,7 +499,6 @@ def test_light_curves_orders(order):
     _ = light_curve(system, order=order)(0.0)
 
 
-@pytest.mark.skip(reason="Test if test is causing issues in macos-py11. TODO: revert")
 @pytest.mark.parametrize("deg", [2, 5, 10])
 def test_compare_y_from_u(deg):
     """In this test we convert the limb darkening coefficients to spherical harmonic
