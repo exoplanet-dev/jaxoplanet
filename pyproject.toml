@@ -23,6 +23,7 @@ dependencies = [
     "pint",
     "s2fft",
     "numpy<2.0",
+    "jax<=0.4.31",
 ]
 
 [project.urls]
