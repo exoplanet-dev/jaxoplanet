@@ -6,6 +6,7 @@ from jaxoplanet.experimental.starry import Surface, Ylm
 from jaxoplanet.experimental.starry.light_curves import light_curve, surface_light_curve
 from jaxoplanet.experimental.starry.orbit import SurfaceSystem
 from jaxoplanet.light_curves import limb_dark_light_curve
+from jaxoplanet.light_curves.emission import light_curve as emission_light_curve
 from jaxoplanet.orbits import keplerian
 from jaxoplanet.test_utils import assert_allclose
 from jaxoplanet.units import unit_registry as ureg
@@ -518,3 +519,42 @@ def test_compare_y_from_u(deg):
     flux_y = light_curve_function(surface_y, b)
 
     assert_allclose(flux_u, flux_y)
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {
+            "r": [1.0, 0.2],  # radii
+            "u": [(0.1, 0.2), ()],  # limb darkening
+            "a": [1.0, 0.2],  # amplitudes
+        },
+        {
+            "r": [0.2, 1.5],  # radii
+            "u": [(0.1, 0.2), ()],  # limb darkening
+            "a": [0.1, 0.2],  # amplitudes
+        },
+        {
+            "r": [1.0, 0.1, 0.5],  # radii
+            "u": [(0.1, 0.2), (), (0.3, 0.4)],  # limb darkening
+            "a": [1.0, 0.2, 0.5],  # amplitudes
+        },
+    ],
+)
+def test_emission_light_curve(params):
+
+    central = keplerian.Central(radius=params["r"][0], mass=0.5)
+    system = SurfaceSystem(central, Surface(u=params["u"][0], amplitude=params["a"][0]))
+
+    for r, u, a in zip(params["r"][1:], params["u"][1:], params["a"][1:]):
+        system = system.add_body(
+            radius=r, surface=Surface(u=u, amplitude=a), period=1.0
+        )
+
+    period = system.bodies[0].period.magnitude
+    time = np.linspace(-0.5 * period, 0.5 * period, 1000)
+
+    expected = light_curve(system)(time)
+    calc = emission_light_curve(system)(time)
+
+    assert_allclose(calc, expected)
