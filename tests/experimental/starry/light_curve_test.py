@@ -546,7 +546,7 @@ def test_emission_light_curve(params):
     central = keplerian.Central(radius=params["r"][0], mass=0.5)
     system = SurfaceSystem(central, Surface(u=params["u"][0], amplitude=params["a"][0]))
 
-    for r, u, a in zip(params["r"][1:], params["u"][1:], params["a"][1:]):
+    for r, u, a in zip(params["r"][1:], params["u"][1:], params["a"][1:], strict=False):
         system = system.add_body(
             radius=r, surface=Surface(u=u, amplitude=a), period=1.0
         )

@@ -6,8 +6,8 @@ import jpu.numpy as jnpu
 
 from jaxoplanet import units
 from jaxoplanet.core.limb_dark import light_curve as _limb_dark_light_curve
-from jaxoplanet.light_curves.utils import vectorize
 from jaxoplanet.experimental.starry.orbit import SurfaceSystem
+from jaxoplanet.light_curves.utils import vectorize
 from jaxoplanet.types import Array, Quantity
 from jaxoplanet.units import unit_registry as ureg
 
@@ -43,7 +43,7 @@ def light_curve(system: SurfaceSystem, order: int = 10) -> Callable[[Quantity], 
         lc = jnp.where(z > 0, lc, 0.0).sum(0) + 1
 
         bodies_lc = []
-        for body, surface in zip(system.bodies, system.body_surfaces):
+        for body, surface in zip(system.bodies, system.body_surfaces, strict=False):
             x, y, z = body.relative_position(time)
             b = jnpu.sqrt(x**2 + y**2) / body.radius
             r = r_star / body.radius
