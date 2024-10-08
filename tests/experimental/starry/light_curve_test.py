@@ -500,6 +500,7 @@ def test_light_curves_orders(order):
     _ = light_curve(system, order=order)(0.0)
 
 
+@pytest.mark.skip(reason="Test if test is causing issues in macos-py11. TODO: revert")
 @pytest.mark.parametrize("deg", [2, 5, 10])
 def test_compare_y_from_u(deg):
     """In this test we convert the limb darkening coefficients to spherical harmonic
