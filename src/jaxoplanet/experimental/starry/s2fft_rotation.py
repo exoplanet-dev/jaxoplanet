@@ -2,27 +2,8 @@ import jax.numpy as jnp
 from jax.scipy.spatial.transform import Rotation
 
 
-def compute_full(dl: jnp.ndarray, beta: float, L: int, el: int) -> jnp.ndarray:
-    r"""*from s2fft.recursions.risbo_jax*
-    Compute Wigner-d at argument :math:`\beta` for full plane using
-    Risbo recursion (JAX implementation)
-
-    The Wigner-d plane is computed by recursion over :math:`\ell` (`el`).
-    Thus, for :math:`\ell > 0` the plane must be computed already for
-    :math:`\ell - 1`. At present, for :math:`\ell = 0` the recusion is initialised.
-
-    Args:
-        dl (np.ndarray): Wigner-d plane for :math:`\ell - 1` at :math:`\beta`.
-
-        beta (float): Argument :math:`\beta` at which to compute Wigner-d plane.
-
-        L (int): Harmonic band-limit.
-
-        el (int): Spherical harmonic degree :math:`\ell`.
-
-    Returns:
-        np.ndarray: Plane of Wigner-d for `el` and `beta`, with full plane computed.
-    """
+def _compute_full(dl: jnp.ndarray, beta: float, L: int, el: int) -> jnp.ndarray:
+    """from s2fft.recursions.risbo_jax"""
 
     if el == 0:
         dl = dl.at[el + L - 1, el + L - 1].set(1.0)
@@ -114,92 +95,12 @@ def compute_full(dl: jnp.ndarray, beta: float, L: int, el: int) -> jnp.ndarray:
         return dl / ((2 * el) * (2 * el - 1))
 
 
-def rotate_flms(
-    flm: jnp.ndarray,
-    L: int,
-    rotation: tuple[float, float, float],
-    dl_array: jnp.ndarray = None,
-) -> jnp.ndarray:
-    """*from s2fft.utils*
-    Rotates an array of spherical harmonic coefficients by angle rotation.
-
-    Args:
-        flm (jnp.ndarray): Array of spherical harmonic coefficients.
-        L (int): Harmonic band-limit.
-        rotation  (Tuple[float, float, float]): Rotation on the sphere (alpha, beta,
-            gamma).
-        dl_array (jnp.ndarray, optional): Precomputed array of reduced Wigner d-function
-            coefficients, see :func:~`generate_rotate_dls`. Defaults to None.
-
-    Returns:
-        jnp.ndarray: Rotated spherical harmonic coefficients with shape [L,2L-1].
-    """
-
-    # Split out angles
-    alpha = __exp_array(L, rotation[0])
-    gamma = __exp_array(L, rotation[2])
-    beta = rotation[1]
-
-    # Create empty arrays
-    flm_rotated = jnp.zeros_like(flm)
-
-    dl = (
-        dl_array
-        if dl_array is not None
-        else jnp.zeros((2 * L - 1, 2 * L - 1)).astype(float)
-    )
-
-    # Perform rotation
-    for el in range(L):
-        if dl_array is None:
-            dl = compute_full(dl, beta, L, el)
-        n_max = min(el, L - 1)
-
-        m = jnp.arange(-el, el + 1)
-        n = jnp.arange(-n_max, n_max + 1)
-
-        flm_rotated = flm_rotated.at[el, L - 1 + m].add(
-            jnp.einsum(
-                "mn,n->m",
-                jnp.einsum(
-                    "mn,m->mn",
-                    (
-                        dl[m + L - 1][:, n + L - 1]
-                        if dl_array is None
-                        else dl[el, m + L - 1][:, n + L - 1]
-                    ),
-                    alpha[m + L - 1],
-                    optimize=True,
-                ),
-                gamma[n + L - 1] * flm[el, n + L - 1],
-            )
-        )
-    return flm_rotated
-
-
-def __exp_array(L: int, x: float) -> jnp.ndarray:
-    """*from s2fft.utils*
-    Private function to generate rotation arrays for alpha/gamma rotations"""
-    return jnp.exp(-1j * jnp.arange(-L + 1, L) * x)
-
-
-def generate_rotate_dls(L: int, beta: float) -> jnp.ndarray:
-    """*from s2fft.utils*
-    Function which recursively generates the complete plane of reduced
-        Wigner d-function coefficients at a given rotation beta.
-
-    Args:
-        L (int): Harmonic band-limit.
-        beta (float): Rotation on the sphere.
-
-    Returns:
-        jnp.ndarray: Complete array of [L, 2L-1,2L-1] Wigner d-function coefficients
-            for a fixed rotation beta.
-    """
+def _generate_rotate_dls(L: int, beta: float) -> jnp.ndarray:
+    """*from s2fft.utils*"""
     dl = jnp.zeros((L, 2 * L - 1, 2 * L - 1)).astype(float)
     dl_iter = jnp.zeros((2 * L - 1, 2 * L - 1)).astype(float)
     for el in range(L):
-        dl_iter = compute_full(dl_iter, beta, L, el)
+        dl_iter = _compute_full(dl_iter, beta, L, el)
         dl = dl.at[el].add(dl_iter)
     return dl
 
@@ -245,7 +146,7 @@ def compute_rotation_matrices(deg, x, y, z, theta, homogeneous=False):
         return jnp.where(theta == 0.0, jnp.array([0.0, 0.0, 0.0]), r.as_euler("zyz"))
 
     alpha, beta, gamma = euler(x, y, z, theta)
-    dls = generate_rotate_dls(deg + 1, beta)
+    dls = _generate_rotate_dls(deg + 1, beta)
     N = jnp.arange(-deg, deg + 1)
     m, mp = jnp.meshgrid(N, N)
     Dlm = jnp.exp(-1j * (m * alpha + mp * gamma)) * dls
