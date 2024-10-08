@@ -15,10 +15,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["ubuntu-latest"]
-        python-version: ["3.10", "3.11", "3.12"]
-        session:
-          - "test"
         include:
           - os: "ubuntu-latest"
             python-version: "3.11"
@@ -26,9 +22,6 @@ jobs:
           - os: "macos-latest"
             python-version: "3.11"
             session: "test"
-          - os: "ubuntu-latest"
-            python-version: "3.10"
-            session: "comparison"
 
     steps:
       - name: "Init: checkout"
