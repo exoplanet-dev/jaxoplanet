@@ -1,6 +1,6 @@
+
 import jax.numpy as jnp
 from jax.scipy.spatial.transform import Rotation
-from typing import Tuple
 
 
 def compute_full(dl: jnp.ndarray, beta: float, L: int, el: int) -> jnp.ndarray:
@@ -118,7 +118,7 @@ def compute_full(dl: jnp.ndarray, beta: float, L: int, el: int) -> jnp.ndarray:
 def rotate_flms(
     flm: jnp.ndarray,
     L: int,
-    rotation: Tuple[float, float, float],
+    rotation: tuple[float, float, float],
     dl_array: jnp.ndarray = None,
 ) -> jnp.ndarray:
     """*from s2fft.utils*
