@@ -38,7 +38,7 @@ def test_dot_rotation_z(l_max, theta):
 @pytest.mark.parametrize("u", [(1, 0, 0), (0, 1, 0), (0, 0, 1), (1, 1, 1)])
 @pytest.mark.parametrize("theta", [0.1])
 def test_R(l_max, u, theta):
-    """Test full rotation matrix against symbolic one"""
+    """Test full rotation matrix against symbolic  one"""
     pytest.importorskip("mpmath")
     from jaxoplanet.experimental.starry.multiprecision import utils
     from jaxoplanet.experimental.starry.multiprecision.rotation import R
