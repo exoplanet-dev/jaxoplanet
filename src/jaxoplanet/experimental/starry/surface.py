@@ -54,10 +54,10 @@ class Surface(eqx.Module):
     y: Ylm
     """Ylm object representing the spherical harmonic expansion of the map"""
 
-    inc: Array
+    inc: Array | None
     """Inclination of the map in radians"""
 
-    obl: Array
+    obl: Array | None
     """Obliquity of the map in radians."""
 
     u: tuple[Array, ...]
@@ -80,7 +80,7 @@ class Surface(eqx.Module):
         *,
         y: Ylm | None = None,
         inc: Array = 0.5 * jnp.pi,
-        obl: Array = 0.0,
+        obl: Array = None,
         u: Iterable[Array] = (),
         period: Array | None = None,
         amplitude: Array = 1.0,
@@ -122,11 +122,9 @@ class Surface(eqx.Module):
         """Total degree of the spherical harmonic expansion (`udeg + ydeg`)."""
         return self.ydeg + self.udeg
 
-    def _intensity(self, x, y, z, theta=0.0):
+    def _intensity(self, x, y, z, theta=None):
         pT = self._poly_basis(x, y, z)
-        Ry = left_project(
-            self.ydeg, self.inc, self.obl, theta + self.phase, 0.0, self.y.todense()
-        )
+        Ry = left_project(self.ydeg, self.inc, self.obl, theta, 0.0, self.y.todense())
         A1Ry = A1(self.ydeg).todense() @ Ry
         p_y = Pijk.from_dense(A1Ry, degree=self.ydeg)
         u = jnp.array([1, *self.u])
@@ -135,7 +133,7 @@ class Surface(eqx.Module):
         return pT @ p * self.amplitude
 
     @partial(jax.jit, static_argnames=("res",))
-    def render(self, theta: float = 0.0, res: int = 400):
+    def render(self, theta: float | None = None, res: int = 400):
         """Returns the intensity map projected onto the x-y plane (sky).
 
         Args:
@@ -147,7 +145,7 @@ class Surface(eqx.Module):
             (with nans outside the map disk).
         """
         _, xyz = ortho_grid(res)
-        intensity = self._intensity(*xyz, theta=theta + self.phase)
+        intensity = self._intensity(*xyz, theta=theta)
         return jnp.reshape(intensity, (res, res))
 
     def intensity(self, lat: float, lon: float):
@@ -173,7 +171,7 @@ class Surface(eqx.Module):
 
         return self._intensity(x, y, z)
 
-    def rotational_phase(self, time: Array) -> Array:
+    def rotational_phase(self, time: Array) -> Array | None:
         """Returns the rotational phase of the map at a given time.
 
         Args:
@@ -183,6 +181,6 @@ class Surface(eqx.Module):
             ArrayLike: rotational phase of the map at the given time
         """
         if self.period is None:
-            return jnp.zeros_like(time)
+            return None
         else:
-            return 2 * jnp.pi * time / self.period
+            return 2 * jnp.pi * time / self.period + self.phase
