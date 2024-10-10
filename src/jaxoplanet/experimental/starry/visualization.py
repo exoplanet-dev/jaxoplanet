@@ -13,6 +13,7 @@ def show_surface(
     ax=None,
     white_contour: bool = True,
     radius: float = None,
+    include_phase: bool = True,
     **kwargs,
 ):
     """Show map of a
@@ -28,6 +29,8 @@ def show_surface(
         white_contour (bool, optional): Whether to surround the map by a white border
         (to hide border pixel aliasing). Defaults to True.
         radius (float, optional): Radius of the body. Defaults to None.
+        include_phase (bool, optional): Whether to add the proper phase to the map to
+        the rotation angle theta. Defaults to True.
     """
     import matplotlib.pyplot as plt
 
@@ -51,9 +54,11 @@ def show_surface(
         surface = ylm_surface_body
         radius = 1.0 if radius is None else radius
 
+    phase = theta + (surface.phase if include_phase else 0.0)
+
     ax.imshow(
         surface.render(
-            theta,
+            phase,
             res,
         ),
         origin="lower",
@@ -64,7 +69,7 @@ def show_surface(
         graticule(
             surface.inc,
             surface.obl,
-            theta,
+            phase,
             radius=radius,
             n=n,
             white_contour=white_contour,
