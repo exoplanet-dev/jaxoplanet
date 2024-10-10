@@ -15,6 +15,8 @@ from jaxoplanet.experimental.starry.surface import Surface
 from jaxoplanet.light_curves.utils import vectorize
 from jaxoplanet.types import Array, Quantity
 from jaxoplanet.units import quantity_input, unit_registry as ureg
+from jaxoplanet.experimental.starry.multiprecision import basis as basis_mp
+from jaxoplanet.experimental.starry.multiprecision import utils as utils_mp
 
 
 def light_curve(
@@ -103,6 +105,7 @@ def surface_light_curve(
     z: float | None = None,
     theta: float = 0.0,
     order: int = 20,
+    higher_precision: bool = False,
 ):
     """Light curve of an occulted surface.
 
@@ -150,8 +153,11 @@ def surface_light_curve(
         sT = solution_vector(surface.deg, order=order)(b, r)
 
         if surface.deg > 0:
-            A2 = scipy.sparse.linalg.inv(A2_inv(surface.deg))
-            A2 = jax.experimental.sparse.BCOO.from_scipy_sparse(A2)
+            if higher_precision:
+                A2 = np.atleast_2d(utils_mp.to_numpy(basis_mp.A2(surface.deg)))
+            else:
+                A2 = scipy.sparse.linalg.inv(A2_inv(surface.deg))
+                A2 = jax.experimental.sparse.BCOO.from_scipy_sparse(A2)
         else:
             A2 = jnp.array([[1]])
 
@@ -177,7 +183,11 @@ def surface_light_curve(
         p_u = Pijk.from_dense(u @ U(surface.udeg), degree=surface.udeg)
 
     # surface map * limb darkening map
-    A1_val = jax.experimental.sparse.BCOO.from_scipy_sparse(A1(surface.ydeg))
+    if higher_precision:
+        A1_val = np.atleast_2d(utils_mp.to_numpy(basis_mp.A1(surface.ydeg)))
+    else:
+        A1_val = jax.experimental.sparse.BCOO.from_scipy_sparse(A1(surface.ydeg))
+
     p_y = Pijk.from_dense(A1_val @ rotated_y, degree=surface.ydeg)
     p_y = p_y * p_u
 
