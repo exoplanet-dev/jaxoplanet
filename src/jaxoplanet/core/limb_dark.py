@@ -156,7 +156,9 @@ def p_integral(
     rng = 0.5 * kappa0
     phi = rng * roots
     c = jnp.cos(phi + 0.5 * kappa0)
-    s = jnp.sin(phi)
+
+    # integrand is symmetrical so we change integration limits
+    s = jnp.sin((phi + rng) / 2)
     s2 = jnp.square(s)
 
     arg = []
