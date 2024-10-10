@@ -8,14 +8,14 @@ ALL_PYTHON_VS = ["3.10", "3.11", "3.12"]
 @nox.session(python=ALL_PYTHON_VS)
 def test(session):
     session.install(".[test,test-math]")
-    session.run("pytest", "-v", *session.posargs)
+    session.run("pytest", "-n", "auto", *session.posargs)
 
 
 @nox.session(python=ALL_PYTHON_VS)
 def test_x64(session):
     session.install(".[test,test-math]")
     env = {"JAX_ENABLE_X64": "1"}
-    session.run("pytest", "-v", *session.posargs, env=env)
+    session.run("pytest", "-n", "auto", *session.posargs, env=env)
 
 
 @nox.session(python=["3.10"])
@@ -29,7 +29,8 @@ def comparison(session):
         args = ("tests/experimental/starry",)
     session.run(
         "pytest",
-        "-v",
+        "-n",
+        "auto",
         *args,
         env={"JAX_ENABLE_X64": "True"},
     )
