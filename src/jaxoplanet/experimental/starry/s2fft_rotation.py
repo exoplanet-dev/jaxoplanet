@@ -1,3 +1,27 @@
+"""Some of the code in this submodule is taken directly from the MIT-licensed
+'s2fft' package. Below is the original license text:
+
+Copyright (c) 2022 Authors & Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+"""
+
 import jax.numpy as jnp
 from jax.scipy.spatial.transform import Rotation
 
@@ -97,11 +121,8 @@ def _compute_full(dl: jnp.ndarray, beta: float, L: int, el: int) -> jnp.ndarray:
 
 def _generate_rotate_dls(L: int, beta: float) -> jnp.ndarray:
     """*from s2fft.utils*"""
-    dl = jnp.zeros((L, 2 * L - 1, 2 * L - 1)).astype(float)
     dl_iter = jnp.zeros((2 * L - 1, 2 * L - 1)).astype(float)
-    for el in range(L):
-        dl_iter = _compute_full(dl_iter, beta, L, el)
-        dl = dl.at[el].add(dl_iter)
+    dl = jnp.stack([_compute_full(dl_iter, beta, L, el) for el in range(L)], axis=0)
     return dl
 
 
