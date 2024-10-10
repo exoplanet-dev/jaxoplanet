@@ -121,8 +121,11 @@ def _compute_full(dl: jnp.ndarray, beta: float, L: int, el: int) -> jnp.ndarray:
 
 def _generate_rotate_dls(L: int, beta: float) -> jnp.ndarray:
     """*from s2fft.utils*"""
+    dl = jnp.zeros((L, 2 * L - 1, 2 * L - 1)).astype(float)
     dl_iter = jnp.zeros((2 * L - 1, 2 * L - 1)).astype(float)
-    dl = jnp.stack([_compute_full(dl_iter, beta, L, el) for el in range(L)], axis=0)
+    for el in range(L):
+        dl_iter = _compute_full(dl_iter, beta, L, el)
+        dl = dl.at[el].add(dl_iter)
     return dl
 
 
