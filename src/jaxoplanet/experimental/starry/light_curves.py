@@ -15,8 +15,6 @@ from jaxoplanet.experimental.starry.surface import Surface
 from jaxoplanet.light_curves.utils import vectorize
 from jaxoplanet.types import Array, Quantity
 from jaxoplanet.units import quantity_input, unit_registry as ureg
-from jaxoplanet.experimental.starry.multiprecision import basis as basis_mp
-from jaxoplanet.experimental.starry.multiprecision import utils as utils_mp
 
 
 def light_curve(
@@ -127,6 +125,15 @@ def surface_light_curve(
     Returns:
         ArrayLike: flux
     """
+    if higher_precision:
+        try:
+            from jaxoplanet.experimental.starry.multiprecision import basis as basis_mp
+            from jaxoplanet.experimental.starry.multiprecision import utils as utils_mp
+        except ImportError as e:
+            raise ImportError(
+                "The `mpmath` Python package is required for higher_precision=True."
+            ) from e
+
     rT_deg = rT(surface.deg)
 
     x = 0.0 if x is None else x
