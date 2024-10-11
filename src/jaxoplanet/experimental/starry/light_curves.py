@@ -127,8 +127,10 @@ def surface_light_curve(
     """
     if higher_precision:
         try:
-            from jaxoplanet.experimental.starry.multiprecision import basis as basis_mp
-            from jaxoplanet.experimental.starry.multiprecision import utils as utils_mp
+            from jaxoplanet.experimental.starry.multiprecision import (
+                basis as basis_mp,
+                utils as utils_mp,
+            )
         except ImportError as e:
             raise ImportError(
                 "The `mpmath` Python package is required for higher_precision=True."
