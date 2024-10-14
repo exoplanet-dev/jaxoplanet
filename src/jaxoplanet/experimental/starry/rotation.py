@@ -4,6 +4,9 @@ from functools import partial
 import jax
 import jax.numpy as jnp
 
+from jaxoplanet.experimental.starry.s2fft_rotation import (
+    compute_rotation_matrices as compute_rotation_matrices_s2fft,
+)
 from jaxoplanet.types import Array
 from jaxoplanet.utils import get_dtype_eps
 
@@ -42,7 +45,7 @@ def dot_rotation_matrix(ydeg, x, y, z, theta):
     if jnp.shape(theta) != ():
         raise ValueError(f"theta must be a scalar; got {jnp.shape(theta)}")
 
-    rotation_matrices = compute_rotation_matrices(ydeg, x, y, z, theta)
+    rotation_matrices = compute_rotation_matrices_s2fft(ydeg, x, y, z, theta)
     n_max = ydeg**2 + 2 * ydeg + 1
 
     @jax.jit
@@ -95,14 +98,18 @@ def full_rotation_axis_angle(inc: float, obl: float, theta: float, theta_z: floa
     arg = si * cm + ci * cp
     denominator = jnp.sqrt(1 - 0.5 * arg**2)
 
-    angle = 2 * jnp.arccos(f * arg)
+    farg = f * arg
+    zero_angle = jnp.allclose(farg, 1.0, atol=get_dtype_eps(farg))
+    angle = jnp.where(zero_angle, 0.0, 2 * jnp.arccos(farg))
+
+    non_zero_angle = jnp.logical_not(zero_angle)
 
     # this is mostly useful for the float32 case, where
     # (1 - 0.5 * arg**2) in denominator can be negative due to numerical error
     positive_arg = arg**2 < 2.0
-    axis_x = jnp.where(positive_arg, numerator1 / denominator, 1.0)
-    axis_y = jnp.where(positive_arg, numerator2 / denominator, 0.0)
-    axis_z = jnp.where(positive_arg, numerator3 / denominator, 0.0)
+    axis_x = jnp.where(positive_arg & non_zero_angle, numerator1 / denominator, 1.0)
+    axis_y = jnp.where(positive_arg & non_zero_angle, numerator2 / denominator, 0.0)
+    axis_z = jnp.where(positive_arg & non_zero_angle, numerator3 / denominator, 0.0)
 
     return axis_x, axis_y, axis_z, angle
 
@@ -124,6 +131,9 @@ def sky_projection_axis_angle(inc: float, obl: float):
     si = jnp.sin(inc / 2)
 
     denominator = jnp.sqrt(1 - ci**2 * co**2)
+
+    # to avoid nans for the case where ci * co == 1
+    denominator = jnp.where(denominator == 0.0, 1.0, denominator)
 
     axis_x = si * co
     axis_y = si * so
