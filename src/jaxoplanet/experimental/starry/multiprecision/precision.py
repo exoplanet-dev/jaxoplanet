@@ -1,8 +1,9 @@
+import numpy as np
+
+from jaxoplanet.core.limb_dark import light_curve as ld_light_curve
 from jaxoplanet.experimental.starry import Surface, Ylm
 from jaxoplanet.experimental.starry.light_curves import surface_light_curve
-from jaxoplanet.core.limb_dark import light_curve as ld_light_curve
 from jaxoplanet.experimental.starry.multiprecision import flux, mp
-import numpy as np
 
 
 def starry_light_curve(
