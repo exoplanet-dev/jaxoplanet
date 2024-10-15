@@ -93,23 +93,29 @@ def full_rotation_axis_angle(
     Returns:
         tuple: x, y, z, angle
     """
-    inc = 0.0 if inc is None else inc
-    obl = 0.0 if obl is None else obl
-    theta = 0.0 if theta is None else theta
-    theta_z = 0.0 if theta_z is None else theta_z
-
     f = 0.5 * math.sqrt(2)
-    si = jnp.sin(inc / 2)
-    ci = jnp.cos(inc / 2)
-
-    if theta is not None and theta_z is not None:
-        sp = jnp.sin(0.5 * (obl + theta + theta_z))
-        cp = jnp.cos(0.5 * (obl + theta + theta_z))
-        sm = jnp.sin(0.5 * (obl - theta + theta_z))
-        cm = jnp.cos(0.5 * (obl - theta + theta_z))
+    if inc is None:
+        si = 0.0
+        ci = 1.0
     else:
-        sp = jnp.sin(obl / 2)
-        cp = jnp.cos(obl / 2)
+        si = jnp.sin(inc / 2)
+        ci = jnp.cos(inc / 2)
+
+    if theta is not None or theta_z is not None:
+        _obl = obl if obl is not None else 0.0
+        _theta = theta if theta is not None else 0.0
+        _theta_z = theta_z if theta_z is not None else 0.0
+        sp = jnp.sin(0.5 * (_obl + _theta + _theta_z))
+        cp = jnp.cos(0.5 * (_obl + _theta + _theta_z))
+        sm = jnp.sin(0.5 * (_obl - _theta + _theta_z))
+        cm = jnp.cos(0.5 * (_obl - _theta + _theta_z))
+    else:
+        if obl is None:
+            sp = 0.0
+            cp = 1.0
+        else:
+            sp = jnp.sin(obl / 2)
+            cp = jnp.cos(obl / 2)
         sm = sp
         cm = cp
 
@@ -133,6 +139,32 @@ def full_rotation_axis_angle(
     axis_z = jnp.where(positive_arg & non_zero_angle, numerator3 / denominator, 0.0)
 
     return axis_x, axis_y, axis_z, angle
+
+
+def left_project(
+    ydeg: int,
+    inc: float | None,
+    obl: float | None,
+    theta: float | None,
+    theta_z: float | None,
+    y: Array,
+):
+    """R @ y
+
+    Args:
+        ydeg (int): degree of the spherical harmonic map
+        inc (float or None): map inclination
+        obl (float or None): map obliquity
+        theta (float or None): rotation angle about the map z-axis
+        theta_z (float or None): rotation angle about the sky y-axis
+        x (Array): spherical harmonic map coefficients
+
+    Returns:
+        Array: rotated spherical harmonic map coefficients
+    """
+    axis_x, axis_y, axis_z, angle = full_rotation_axis_angle(inc, obl, theta, theta_z)
+    y = dot_rotation_matrix(ydeg, axis_x, axis_y, axis_z, -angle)(y)
+    return y
 
 
 def sky_projection_axis_angle(inc: float | None, obl: float | None):
@@ -181,7 +213,7 @@ def sky_projection_axis_angle(inc: float | None, obl: float | None):
         return axis_x, axis_y, axis_z, angle
 
 
-def left_project(
+def _left_project(
     ydeg: int,
     inc: float | None,
     obl: float | None,
