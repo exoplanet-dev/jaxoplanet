@@ -55,16 +55,17 @@ class Surface(eqx.Module):
     """Ylm object representing the spherical harmonic expansion of the map"""
 
     inc: Array | None
-    """Inclination of the map in radians"""
+    """Inclination of the map in radians. None if seen from the pole."""
 
     obl: Array | None
-    """Obliquity of the map in radians."""
+    """Obliquity of the map in radians. None if no obliquity."""
 
     u: tuple[Array, ...]
     """Tuple of limb darkening coefficients."""
 
     period: Array | None
-    """Rotation period of the map in days (attribute subject to change)"""
+    """Rotation period of the map in days (attribute subject to change). None if not 
+    rotating."""
 
     amplitude: Array
     """Amplitude of the map, a quantity proportional to map luminosity."""
@@ -79,8 +80,8 @@ class Surface(eqx.Module):
         self,
         *,
         y: Ylm | None = None,
-        inc: Array = 0.5 * jnp.pi,
-        obl: Array = None,
+        inc: Array | None = 0.5 * jnp.pi,
+        obl: Array | None = None,
         u: Iterable[Array] = (),
         period: Array | None = None,
         amplitude: Array = 1.0,

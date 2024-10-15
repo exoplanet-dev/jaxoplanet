@@ -227,8 +227,10 @@ def test_compare_starry_system(keplerian_system):
             map_kwargs = dict(
                 ydeg=surface_map.ydeg,
                 udeg=surface_map.udeg,
-                inc=np.rad2deg(surface_map.inc),
-                obl=np.rad2deg(surface_map.obl),
+                inc=(
+                    np.rad2deg(surface_map.inc) if surface_map.inc is not None else 90.0
+                ),
+                obl=np.rad2deg(surface_map.obl) if surface_map.obl is not None else 0.0,
                 amp=surface_map.amplitude,
             )
 
