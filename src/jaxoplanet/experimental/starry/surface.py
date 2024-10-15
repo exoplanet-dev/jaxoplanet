@@ -54,10 +54,10 @@ class Surface(eqx.Module):
     y: Ylm
     """Ylm object representing the spherical harmonic expansion of the map"""
 
-    inc: Array | None
+    _inc: Array | None
     """Inclination of the map in radians. None if seen from the pole."""
 
-    obl: Array | None
+    _obl: Array | None
     """Obliquity of the map in radians. None if no obliquity."""
 
     u: tuple[Array, ...]
@@ -97,13 +97,29 @@ class Surface(eqx.Module):
             y = Ylm(data=y.data).normalize()
 
         self.y = y
-        self.inc = inc
-        self.obl = obl
+        self._inc = inc
+        self._obl = obl
         self.u = tuple(u)
         self.period = period
         self.amplitude = amplitude
         self.normalize = normalize
         self.phase = phase
+
+    @property
+    def inc(self):
+        return self._inc if self._inc is not None else 0.0
+
+    @inc.setter
+    def inc(self, value):
+        self._inc = value
+
+    @property
+    def obl(self):
+        return self._obl if self._obl is not None else 0.0
+
+    @obl.setter
+    def obl(self, value):
+        self._obl = value
 
     @property
     def _poly_basis(self):
