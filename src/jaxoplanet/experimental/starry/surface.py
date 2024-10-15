@@ -64,7 +64,7 @@ class Surface(eqx.Module):
     """Tuple of limb darkening coefficients."""
 
     period: Array | None
-    """Rotation period of the map in days (attribute subject to change). None if not 
+    """Rotation period of the map in days (attribute subject to change). None if not
     rotating."""
 
     amplitude: Array
