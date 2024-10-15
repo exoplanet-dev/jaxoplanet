@@ -15,8 +15,6 @@ from jaxoplanet.experimental.starry.surface import Surface
 from jaxoplanet.light_curves.utils import vectorize
 from jaxoplanet.types import Array, Quantity
 from jaxoplanet.units import quantity_input, unit_registry as ureg
-from jaxoplanet.experimental.starry.multiprecision import basis as basis_mp
-from jaxoplanet.experimental.starry.multiprecision import utils as utils_mp
 
 
 def light_curve(
@@ -103,7 +101,7 @@ def surface_light_curve(
     x: float | None = None,
     y: float | None = None,
     z: float | None = None,
-    theta: float = 0.0,
+    theta: float | None = 0.0,
     order: int = 20,
     higher_precision: bool = False,
 ):
@@ -127,6 +125,17 @@ def surface_light_curve(
     Returns:
         ArrayLike: flux
     """
+    if higher_precision:
+        try:
+            from jaxoplanet.experimental.starry.multiprecision import (
+                basis as basis_mp,
+                utils as utils_mp,
+            )
+        except ImportError as e:
+            raise ImportError(
+                "The `mpmath` Python package is required for higher_precision=True."
+            ) from e
+
     rT_deg = rT(surface.deg)
 
     x = 0.0 if x is None else x
@@ -167,12 +176,7 @@ def surface_light_curve(
         rotated_y = surface.y.todense()
     else:
         rotated_y = left_project(
-            surface.ydeg,
-            surface.inc,
-            surface.obl,
-            theta + surface.phase,
-            theta_z,
-            surface.y.todense(),
+            surface.ydeg, surface.inc, surface.obl, theta, theta_z, surface.y.todense()
         )
 
     # limb darkening
