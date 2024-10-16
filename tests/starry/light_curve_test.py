@@ -65,7 +65,7 @@ def test_flux(r, l_max=5, order=500):
         return surface_light_curve(surface, y=b, z=10.0, r=r, order=order)
 
     for i, y in enumerate(ys):
-        expect[i] = float(mp_flux.flux(l_max)(b, r, y, 0.0))
+        expect[i] = float(mp_flux.flux(ydeg=l_max)(b, r, y=y))
         calc[i] = light_curve(y)
 
     for n in range(expect.size):
