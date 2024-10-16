@@ -19,14 +19,6 @@ CACHED_MATRICES = defaultdict(
     }
 )
 
-CACHED_MATRICES = defaultdict(
-    lambda: {
-        "R_obl": {},
-        "R_inc": {},
-        "sT": {},
-    }
-)
-
 
 def flux(ydeg=0, udeg=0, inc=mp.pi / 2, obl=0.0, cache=None):
     if cache is None:
