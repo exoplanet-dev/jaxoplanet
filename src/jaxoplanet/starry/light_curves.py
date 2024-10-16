@@ -101,7 +101,7 @@ def surface_light_curve(
     x: float | None = None,
     y: float | None = None,
     z: float | None = None,
-    theta: float | None = 0.0,
+    theta: float | None = None,
     order: int = 20,
     higher_precision: bool = False,
 ):
@@ -178,7 +178,12 @@ def surface_light_curve(
         rotated_y = surface.y.todense()
     else:
         rotated_y = left_project(
-            surface.ydeg, surface.inc, surface.obl, theta, theta_z, surface.y.todense()
+            surface.ydeg,
+            surface._inc,
+            surface._obl,
+            theta,
+            theta_z,
+            surface.y.todense(),
         )
 
     # limb darkening
