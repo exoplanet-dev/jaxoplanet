@@ -21,8 +21,8 @@ class Surface(eqx.Module):
     """Surface map object.
 
     Args:
-        y: Ylm object containing the spherical harmonic expansion of the map. Defaults to
-            a uniform map with amplitude 1.0.
+        y: :py:class:`~starry.ylm.Ylm` object containing the spherical harmonic
+            expansion of the map. Defaults to a uniform map with amplitude 1.0.
         inc: inclination of the map relative to line of sight.
             Defaults to 90 degrees (pi/2 radians).
         obl: obliquity of the map.
@@ -52,7 +52,8 @@ class Surface(eqx.Module):
     """
 
     y: Ylm
-    """:py:class:`~starry.ylm.Ylm` object representing the spherical harmonic expansion of the map"""
+    """:py:class:`~starry.ylm.Ylm` object representing the spherical harmonic expansion 
+        of the map"""
 
     _inc: Array | None
     """Inclination of the map in radians. None if seen from the pole."""
