@@ -25,7 +25,6 @@ def test_dot_rotation_symbolic(l_max, u, theta):
     assert_allclose(calc, expected)
 
 
-@pytest.mark.skip(reason="Test if test is causing issues in macos-py11. TODO: revert")
 @pytest.mark.parametrize("l_max", [5, 4, 3, 2, 1, 0])
 @pytest.mark.parametrize("theta", [-0.5, 0.0, 0.1, 1.5 * np.pi])
 def test_dot_rotation_z(l_max, theta):
