@@ -21,14 +21,9 @@ Given an orbital system, the following modules can be used to compute different 
 
 ## Non-uniform surfaces
 
-
-```{warning}
-While being stable, computing *starry* light curves of non-uniform surfaces is still experimental.
-```
-
 The following modules can be used to create systems of bodies with limb-darkened and non-uniform emitting surfaces:
 
-- [starry orbit](jaxoplanet.starry.orbit) : a module to define a system made of a central object and orbiting bodies, all with non-uniform emitting surfaces. (experimental)
+- [starry orbit](jaxoplanet.starry.orbit) : a module to define a system made of a central object and orbiting bodies with non-uniform emitting surfaces (optional).
 - [starry light curve](jaxoplanet.starry.light_curves) : a module to compute the light curve of a non-uniform star whose surface is represented by a sum of spherical harmonics.
 
 And the following are lower-level modules to define and manipulate non-uniform surfaces:
