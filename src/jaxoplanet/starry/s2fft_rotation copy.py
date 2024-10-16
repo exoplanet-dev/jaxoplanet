@@ -22,12 +22,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-import jax
-from functools import partial
 import jax.numpy as jnp
-from jax.scipy.spatial.transform import Rotation
-from jax.experimental.sparse import BCOO
 import numpy as np
+from jax.experimental.sparse import BCOO
+from jax.scipy.spatial.transform import Rotation
 
 
 def _compute_full(dl: jnp.ndarray, beta: float, L: int, el: int) -> jnp.ndarray:

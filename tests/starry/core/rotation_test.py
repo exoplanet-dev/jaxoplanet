@@ -41,9 +41,9 @@ def test_dot_rotation_z(l_max, theta):
 def test_R(l_max, u, theta):
     """Test full rotation matrix against symbolic one"""
     pytest.importorskip("mpmath")
+    from jaxoplanet.starry.core.rotation import compute_rotation_matrices
     from jaxoplanet.starry.multiprecision import utils
     from jaxoplanet.starry.multiprecision.rotation import R
-    from jaxoplanet.starry.core.rotation import compute_rotation_matrices
 
     expected = R(l_max, u, theta)
     calc = compute_rotation_matrices(l_max, u[0], u[1], u[2], theta)
