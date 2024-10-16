@@ -6,12 +6,13 @@ import jax.numpy as jnp
 import numpy as np
 import scipy
 
-from jaxoplanet.experimental.starry.basis import A1, A2_inv, U
-from jaxoplanet.experimental.starry.orbit import SurfaceSystem
-from jaxoplanet.experimental.starry.pijk import Pijk
-from jaxoplanet.experimental.starry.rotation import left_project
-from jaxoplanet.experimental.starry.solution import rT, solution_vector
-from jaxoplanet.experimental.starry.surface import Surface
+from jaxoplanet.starry.core.basis import A1, A2_inv, U
+from jaxoplanet.starry.core.polynomials import Pijk
+from jaxoplanet.starry.core.rotation import left_project
+from jaxoplanet.starry.core.solution import rT, solution_vector
+
+from jaxoplanet.starry.orbit import SurfaceSystem
+from jaxoplanet.starry.surface import Surface
 from jaxoplanet.light_curves.utils import vectorize
 from jaxoplanet.types import Array, Quantity
 from jaxoplanet.units import quantity_input, unit_registry as ureg
@@ -127,7 +128,7 @@ def surface_light_curve(
     """
     if higher_precision:
         try:
-            from jaxoplanet.experimental.starry.multiprecision import (
+            from jaxoplanet.starry.multiprecision import (
                 basis as basis_mp,
                 utils as utils_mp,
             )

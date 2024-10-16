@@ -1,4 +1,4 @@
-from jaxoplanet.experimental.starry.pijk import Pijk
+from jaxoplanet.starry.core.polynomials import Pijk
 
 
 def test_n2ijk():

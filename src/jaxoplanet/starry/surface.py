@@ -6,14 +6,15 @@ import jax
 import jax.numpy as jnp
 from jax.scipy.spatial.transform import Rotation
 
-from jaxoplanet.experimental.starry.basis import A1, U, poly_basis
-from jaxoplanet.experimental.starry.pijk import Pijk
-from jaxoplanet.experimental.starry.rotation import (
+from jaxoplanet.starry.core.basis import A1, U, poly_basis
+from jaxoplanet.starry.core.polynomials import Pijk
+from jaxoplanet.starry.core.rotation import (
     full_rotation_axis_angle,
     left_project,
 )
-from jaxoplanet.experimental.starry.utils import ortho_grid
-from jaxoplanet.experimental.starry.ylm import Ylm
+
+from jaxoplanet.starry.utils import ortho_grid
+from jaxoplanet.starry.ylm import Ylm
 from jaxoplanet.types import Array
 
 
@@ -39,9 +40,9 @@ class Surface(eqx.Module):
 
             import numpy as np
             import jax
-            from jaxoplanet.experimental.starry.utils import show_map
-            from jaxoplanet.experimental.starry.maps import Map
-            from jaxoplanet.experimental.starry.ylm import Ylm
+            from jaxoplanet.starry.utils import show_map
+            from jaxoplanet.starry.maps import Map
+            from jaxoplanet.starry.ylm import Ylm
 
             jax.config.update("jax_enable_x64", True)
 

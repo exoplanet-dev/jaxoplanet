@@ -2,9 +2,9 @@ import jax
 import numpy as np
 import pytest
 
-from jaxoplanet.experimental.starry import Surface, Ylm
-from jaxoplanet.experimental.starry.light_curves import light_curve, surface_light_curve
-from jaxoplanet.experimental.starry.orbit import SurfaceSystem
+from jaxoplanet.starry import Surface, Ylm
+from jaxoplanet.starry.light_curves import light_curve, surface_light_curve
+from jaxoplanet.starry.orbit import SurfaceSystem
 from jaxoplanet.light_curves import limb_dark_light_curve
 from jaxoplanet.light_curves.emission import light_curve as emission_light_curve
 from jaxoplanet.orbits import keplerian
@@ -48,7 +48,7 @@ def test_compare_starry_limb_dark(deg, u):
 @pytest.mark.parametrize("r", [0.01, 0.1, 1.0, 10.0, 100.0])
 def test_flux(r, l_max=5, order=500):
     pytest.importorskip("mpmath")
-    from jaxoplanet.experimental.starry.multiprecision import flux as mp_flux, mp
+    from jaxoplanet.starry.multiprecision import flux as mp_flux, mp
 
     # We know that these are were the errors are the highest
     b = 1 - r if r < 1 else r
@@ -65,7 +65,7 @@ def test_flux(r, l_max=5, order=500):
         return surface_light_curve(surface, y=b, z=10.0, r=r, order=order)
 
     for i, y in enumerate(ys):
-        expect[i] = float(mp_flux.flux_function(l_max, mp.pi / 2, 0.0)(y, b, r, 0.0))
+        expect[i] = float(mp_flux.flux(l_max)(b, r, y, 0.0))
         calc[i] = light_curve(y)
 
     for n in range(expect.size):

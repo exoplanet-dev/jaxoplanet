@@ -4,7 +4,7 @@ from functools import partial
 import jax
 import jax.numpy as jnp
 
-from jaxoplanet.starry.core.s2fft_rotation import (
+from jaxoplanet.experimental.starry.s2fft_rotation import (
     compute_rotation_matrices as compute_rotation_matrices_s2fft,
 )
 from jaxoplanet.types import Array
@@ -25,13 +25,6 @@ def dot_rotation_matrix(ydeg, x, y, z, theta):
         ydeg = int(ydeg)
     except TypeError as e:
         raise TypeError(f"ydeg must be an integer; got {ydeg}") from e
-
-    if theta is None:
-
-        def do_dot(M):
-            return M
-
-        return do_dot
 
     if x is None and y is None:
         if z is None:
@@ -78,9 +71,7 @@ def dot_rotation_matrix(ydeg, x, y, z, theta):
     return do_dot
 
 
-def full_rotation_axis_angle(
-    inc: float | None, obl: float | None, theta: float | None, theta_z: float | None
-):
+def full_rotation_axis_angle(inc: float, obl: float, theta: float, theta_z: float):
     """Return the axis-angle representation of the full rotation of the
        spherical harmonic map
 
@@ -93,25 +84,13 @@ def full_rotation_axis_angle(
     Returns:
         tuple: x, y, z, angle
     """
-    inc = 0.0 if inc is None else inc
-    obl = 0.0 if obl is None else obl
-    theta = 0.0 if theta is None else theta
-    theta_z = 0.0 if theta_z is None else theta_z
-
     f = 0.5 * math.sqrt(2)
     si = jnp.sin(inc / 2)
     ci = jnp.cos(inc / 2)
-
-    if theta is not None and theta_z is not None:
-        sp = jnp.sin(0.5 * (obl + theta + theta_z))
-        cp = jnp.cos(0.5 * (obl + theta + theta_z))
-        sm = jnp.sin(0.5 * (obl - theta + theta_z))
-        cm = jnp.cos(0.5 * (obl - theta + theta_z))
-    else:
-        sp = jnp.sin(obl / 2)
-        cp = jnp.cos(obl / 2)
-        sm = sp
-        cm = cp
+    sp = jnp.sin(0.5 * (obl + theta + theta_z))
+    cp = jnp.cos(0.5 * (obl + theta + theta_z))
+    sm = jnp.sin(0.5 * (obl - theta + theta_z))
+    cm = jnp.cos(0.5 * (obl - theta + theta_z))
 
     numerator1 = f * (-si * cm + ci * cp)
     numerator2 = f * (-si * sm + sp * ci)
@@ -135,112 +114,84 @@ def full_rotation_axis_angle(
     return axis_x, axis_y, axis_z, angle
 
 
-def sky_projection_axis_angle(inc: float | None, obl: float | None):
+def sky_projection_axis_angle(inc: float, obl: float):
     """Return the axis-angle representation of the partial rotation of the
        map due to inclination and obliquity
 
     Args:
-        inc (float or None): map inclination
-        obl (float or None): map obliquity
+        inc (float): map inclination
+        obl (float): map obliquity
 
     Returns:
         tuple: x, y, z, angle
     """
+    co = jnp.cos(obl / 2)
+    so = jnp.sin(obl / 2)
+    ci = jnp.cos(inc / 2)
+    si = jnp.sin(inc / 2)
 
-    if obl is None and inc is None:
-        return 1.0, None, None, None
+    denominator = jnp.sqrt(1 - ci**2 * co**2)
 
-    elif obl is None:
-        return 1.0, None, None, inc
+    # to avoid nans for the case where ci * co == 1
+    denominator = jnp.where(denominator == 0.0, 1.0, denominator)
 
-    elif inc is None:
-        return None, None, 1.0, obl
+    axis_x = si * co
+    axis_y = si * so
+    axis_z = -so * ci
 
-    else:
-        co = jnp.cos(obl / 2)
-        so = jnp.sin(obl / 2)
-        ci = jnp.cos(inc / 2)
-        si = jnp.sin(inc / 2)
+    angle = 2 * jnp.arccos(ci * co)
 
-        denominator = jnp.sqrt(1 - ci**2 * co**2)
+    arg = jnp.linalg.norm(jnp.array([axis_x, axis_y, axis_z]))
+    axis_x = jnp.where(arg > 0.0, axis_x / denominator, 1.0)
+    axis_y = jnp.where(arg > 0.0, axis_y / denominator, 0.0)
+    axis_z = jnp.where(arg > 0.0, axis_z / denominator, 0.0)
 
-        # to avoid nans for the case where ci * co == 1
-        denominator = jnp.where(denominator == 0.0, 1.0, denominator)
-
-        axis_x = si * co
-        axis_y = si * so
-        axis_z = -so * ci
-
-        angle = 2 * jnp.arccos(ci * co)
-
-        arg = jnp.linalg.norm(jnp.array([axis_x, axis_y, axis_z]))
-        axis_x = jnp.where(arg > 0, axis_x / denominator, 1.0)
-        axis_y = jnp.where(arg > 0, axis_y / denominator, 0.0)
-        axis_z = jnp.where(arg > 0, axis_z / denominator, 0.0)
-
-        return axis_x, axis_y, axis_z, angle
+    return axis_x, axis_y, axis_z, angle
 
 
 def left_project(
-    ydeg: int,
-    inc: float | None,
-    obl: float | None,
-    theta: float | None,
-    theta_z: float | None,
-    y: Array,
+    ydeg: int, inc: float, obl: float, theta: float, theta_z: float, y: Array
 ):
     """R @ y
 
     Args:
         ydeg (int): degree of the spherical harmonic map
-        inc (float or None): map inclination
-        obl (float or None): map obliquity
-        theta (float or None): rotation angle about the map z-axis
-        theta_z (float or None): rotation angle about the sky y-axis
+        inc (float): map inclination
+        obl (float): map obliquity
+        theta (float): rotation angle about the map z-axis
+        theta_z (float): rotation angle about the sky y-axis
         x (Array): spherical harmonic map coefficients
 
     Returns:
         Array: rotated spherical harmonic map coefficients
     """
-    m_theta = -theta if theta is not None else theta
-    m_theta_z = -theta_z if theta_z is not None else theta_z
-
     axis_x, axis_y, axis_z, angle = sky_projection_axis_angle(inc, obl)
     y = dot_rotation_matrix(ydeg, 1.0, None, None, -0.5 * jnp.pi)(y)
-    y = dot_rotation_matrix(ydeg, None, None, 1.0, m_theta)(y)
+    y = dot_rotation_matrix(ydeg, None, None, 1.0, -theta)(y)
     y = dot_rotation_matrix(ydeg, axis_x, axis_y, axis_z, angle)(y)
-    y = dot_rotation_matrix(ydeg, None, None, 1.0, m_theta_z)(y)
+    y = dot_rotation_matrix(ydeg, None, None, 1.0, -theta_z)(y)
     return y
 
 
 def right_project(
-    ydeg: int,
-    inc: float | None,
-    obl: float | None,
-    theta: float | None,
-    theta_z: float | None,
-    y: Array,
+    ydeg: int, inc: float, obl: float, theta: float, theta_z: float, y: Array
 ):
     """y @ R
 
     Args:
         ydeg (int): degree of the spherical harmonic map
-        inc (float or None): map inclination
-        obl (float or None): map obliquity
-        theta (float or None): rotation angle about the map z-axis
-        theta_z (float or None): rotation angle about the sky y-axis
+        inc (float): map inclination
+        obl (float): map obliquity
+        theta (float): rotation angle about the map z-axis
+        theta_z (float): rotation angle about the sky y-axis
         x (Array): spherical harmonic map coefficients
 
     Returns:
         Array: rotated spherical harmonic map coefficients
     """
     axis_x, axis_y, axis_z, angle = sky_projection_axis_angle(inc, obl)
-    m_axis_x = -axis_x if axis_x is not None else axis_x
-    m_axis_y = -axis_y if axis_y is not None else axis_y
-    m_axis_z = -axis_z if axis_z is not None else axis_z
-
     y = dot_rotation_matrix(ydeg, None, None, 1.0, theta_z)(y)
-    y = dot_rotation_matrix(ydeg, m_axis_x, m_axis_y, m_axis_z, angle)(y)
+    y = dot_rotation_matrix(ydeg, -axis_x, -axis_y, -axis_z, angle)(y)
     y = dot_rotation_matrix(ydeg, None, None, 1.0, theta)(y)
     y = dot_rotation_matrix(ydeg, 1.0, None, None, 0.5 * jnp.pi)(y)
     return y

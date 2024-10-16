@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from jaxoplanet.experimental.starry.multiprecision import mp
+from jaxoplanet.starry.multiprecision import mp
 
 CACHED_MATRICES = defaultdict(
     lambda: {
