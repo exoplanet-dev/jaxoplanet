@@ -6,14 +6,13 @@ import jax.numpy as jnp
 import numpy as np
 import scipy
 
+from jaxoplanet.light_curves.utils import vectorize
 from jaxoplanet.starry.core.basis import A1, A2_inv, U
 from jaxoplanet.starry.core.polynomials import Pijk
 from jaxoplanet.starry.core.rotation import left_project
 from jaxoplanet.starry.core.solution import rT, solution_vector
-
 from jaxoplanet.starry.orbit import SurfaceSystem
 from jaxoplanet.starry.surface import Surface
-from jaxoplanet.light_curves.utils import vectorize
 from jaxoplanet.types import Array, Quantity
 from jaxoplanet.units import quantity_input, unit_registry as ureg
 

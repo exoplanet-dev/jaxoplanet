@@ -12,7 +12,6 @@ from jaxoplanet.starry.core.rotation import (
     full_rotation_axis_angle,
     left_project,
 )
-
 from jaxoplanet.starry.utils import ortho_grid
 from jaxoplanet.starry.ylm import Ylm
 from jaxoplanet.types import Array
