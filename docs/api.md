@@ -34,7 +34,6 @@ The following modules can be used to create systems of bodies with limb-darkened
 And the following are lower-level modules to define and manipulate non-uniform surfaces:
 
 - [Ylm](jaxoplanet.starry.ylm) : a lower-level module to create and manipulate vectors in the spherical harmonic basis.
-- [Pijk](jaxoplanet.starry.polynomials) : a lower-level module to create and manipulate vectors in the polynomial basis.
 - [Surface](jaxoplanet.starry.surface) : a module to manipulate the oriented surface of spherical bodies, represented by a sum of spherical harmonics.
 - [visualization](jaxoplanet.starry.visualization) : a module to visualize the surface of non-uniform spherical bodies.
 
@@ -50,7 +49,6 @@ transforms <autoapi/jaxoplanet/light_curves/transforms/index>
 starry light curve <autoapi/jaxoplanet/starry/light_curves/index>
 Surface <autoapi/jaxoplanet/starry/surface/index>
 Ylm <autoapi/jaxoplanet/starry/ylm/index>
-Pijk <autoapi/jaxoplanet/starry/pijk/index>
 visualization <autoapi/jaxoplanet/starry/visualization/index>
 ```
 
