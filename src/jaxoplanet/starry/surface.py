@@ -52,7 +52,7 @@ class Surface(eqx.Module):
     """
 
     y: Ylm
-    """Ylm object representing the spherical harmonic expansion of the map"""
+    """:py:class:`~starry.ylm.Ylm` object representing the spherical harmonic expansion of the map"""
 
     _inc: Array | None
     """Inclination of the map in radians. None if seen from the pole."""
@@ -136,7 +136,7 @@ class Surface(eqx.Module):
 
     @property
     def deg(self):
-        """Total degree of the spherical harmonic expansion (`udeg + ydeg`)."""
+        """Total degree of the spherical harmonic expansion (``udeg + ydeg``)."""
         return self.ydeg + self.udeg
 
     def _intensity(self, x, y, z, theta=None):

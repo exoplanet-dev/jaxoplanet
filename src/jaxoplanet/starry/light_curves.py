@@ -108,7 +108,7 @@ def surface_light_curve(
     """Light curve of an occulted surface.
 
     Args:
-        map (Map): Surface object
+        surface (Surface): Surface object
         r (float or None): radius of the occulting body, relative to the current map
            body
         x (float or None): x coordinate of the occulting body relative to the surface
@@ -121,6 +121,8 @@ def surface_light_curve(
             rotation angle of the map, in radians. By default 0.0
         order (int):
             order of the P integral numerical approximation. By default 20
+        higher_precision (bool): whether to compute change of basis matrix as hight
+            precision. By default False (only used to testing).
 
     Returns:
         ArrayLike: flux
