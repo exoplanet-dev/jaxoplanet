@@ -52,7 +52,7 @@ class Surface(eqx.Module):
     """
 
     y: Ylm
-    """:py:class:`~starry.ylm.Ylm` object representing the spherical harmonic expansion 
+    """:py:class:`~starry.ylm.Ylm` object representing the spherical harmonic expansion
         of the map"""
 
     _inc: Array | None
