@@ -119,7 +119,7 @@ def p_integral(order: int, l_max: int, b: Array, r: Array, kappa0: Array) -> Arr
     rng = 0.25 * kappa0
 
     # low order variables
-    low_order = min(20, order)
+    low_order = np.min([order, 20])
     zeros = jnp.zeros(order - low_order)
     roots, low_weights = roots_legendre(low_order)
     low_weights = jnp.hstack((low_weights, zeros))
