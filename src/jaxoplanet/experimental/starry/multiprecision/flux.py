@@ -9,15 +9,18 @@ from jaxoplanet.experimental.starry.multiprecision.rotation import (
 )
 from jaxoplanet.experimental.starry.multiprecision.solution import get_sT, rT
 
+CACHED_MATRICES = defaultdict(
+    lambda: {
+        "R_obl": {},
+        "R_inc": {},
+        "sT": {},
+    }
+)
+
 
 def flux_function(l_max, inc, obl, cache=None):
     if cache is None:
-        cache = defaultdict(
-            lambda: {
-                "R_obl": {},
-                "R_inc": {},
-            }
-        )
+        cache = CACHED_MATRICES
 
     _rT = rT(l_max)
     _A1 = A1(l_max, cache=cache)
@@ -46,7 +49,7 @@ def flux_function(l_max, inc, obl, cache=None):
         xo = 0.0
         yo = b
         theta_z = mp.atan2(xo, yo)
-        _sT = get_sT(l_max, b, r)
+        _sT = get_sT(l_max, b, r, cache=cache)
         x = _sT.T @ _A2
         if rotate:
             y_rotated = rotate_y(y, phi)
