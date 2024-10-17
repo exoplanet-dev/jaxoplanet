@@ -1,8 +1,8 @@
 import numpy as np
 
-from jaxoplanet.experimental.starry.surface import Surface
-from jaxoplanet.experimental.starry.utils import graticule
-from jaxoplanet.experimental.starry.ylm import Ylm
+from jaxoplanet.starry.surface import Surface
+from jaxoplanet.starry.utils import graticule
+from jaxoplanet.starry.ylm import Ylm
 
 
 def show_surface(

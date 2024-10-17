@@ -6,14 +6,14 @@ import jax
 import jax.numpy as jnp
 from jax.scipy.spatial.transform import Rotation
 
-from jaxoplanet.experimental.starry.basis import A1, U, poly_basis
-from jaxoplanet.experimental.starry.pijk import Pijk
-from jaxoplanet.experimental.starry.rotation import (
+from jaxoplanet.starry.core.basis import A1, U, poly_basis
+from jaxoplanet.starry.core.polynomials import Pijk
+from jaxoplanet.starry.core.rotation import (
     full_rotation_axis_angle,
     left_project,
 )
-from jaxoplanet.experimental.starry.utils import ortho_grid
-from jaxoplanet.experimental.starry.ylm import Ylm
+from jaxoplanet.starry.utils import ortho_grid
+from jaxoplanet.starry.ylm import Ylm
 from jaxoplanet.types import Array
 
 
@@ -21,8 +21,8 @@ class Surface(eqx.Module):
     """Surface map object.
 
     Args:
-        y: Ylm object containing the spherical harmonic expansion of the map. Defaults to
-            a uniform map with amplitude 1.0.
+        y: :py:class:`~starry.ylm.Ylm` object containing the spherical harmonic
+            expansion of the map. Defaults to a uniform map with amplitude 1.0.
         inc: inclination of the map relative to line of sight.
             Defaults to 90 degrees (pi/2 radians).
         obl: obliquity of the map.
@@ -39,9 +39,9 @@ class Surface(eqx.Module):
 
             import numpy as np
             import jax
-            from jaxoplanet.experimental.starry.utils import show_map
-            from jaxoplanet.experimental.starry.maps import Map
-            from jaxoplanet.experimental.starry.ylm import Ylm
+            from jaxoplanet.starry.utils import show_map
+            from jaxoplanet.starry.maps import Map
+            from jaxoplanet.starry.ylm import Ylm
 
             jax.config.update("jax_enable_x64", True)
 
@@ -52,7 +52,8 @@ class Surface(eqx.Module):
     """
 
     y: Ylm
-    """Ylm object representing the spherical harmonic expansion of the map"""
+    """:py:class:`~starry.ylm.Ylm` object representing the spherical harmonic expansion
+        of the map"""
 
     _inc: Array | None
     """Inclination of the map in radians. None if seen from the pole."""
@@ -136,7 +137,7 @@ class Surface(eqx.Module):
 
     @property
     def deg(self):
-        """Total degree of the spherical harmonic expansion (`udeg + ydeg`)."""
+        """Total degree of the spherical harmonic expansion (``udeg + ydeg``)."""
         return self.ydeg + self.udeg
 
     def _intensity(self, x, y, z, theta=None):
