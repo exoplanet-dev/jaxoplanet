@@ -39,16 +39,16 @@ class Surface(eqx.Module):
 
             import numpy as np
             import jax
-            from jaxoplanet.starry.utils import show_map
-            from jaxoplanet.starry.maps import Map
+            from jaxoplanet.starry.visualization import show_surface
+            from jaxoplanet.starry.surface import Surface
             from jaxoplanet.starry.ylm import Ylm
 
             jax.config.update("jax_enable_x64", True)
 
             np.random.seed(30)
             y = Ylm.from_dense(np.random.rand(20))
-            m = Map(y=y, u=[0.5, 0.1], inc=0.9, obl=-0.3)
-            show_map(m)
+            m = Surface(y=y, u=[0.5, 0.1], inc=0.9, obl=-0.3)
+            show_surface(m)
     """
 
     y: Ylm
