@@ -14,7 +14,7 @@ from jaxoplanet.starry.core.rotation import (
 )
 from jaxoplanet.starry.utils import ortho_grid
 from jaxoplanet.starry.ylm import Ylm
-from jaxoplanet.types import Array
+from jaxoplanet.types import Array, Quantity
 
 
 class Surface(eqx.Module):
@@ -23,15 +23,20 @@ class Surface(eqx.Module):
     Args:
         y: :py:class:`~starry.ylm.Ylm` object containing the spherical harmonic
             expansion of the map. Defaults to a uniform map with amplitude 1.0.
-        inc: inclination of the map relative to line of sight.
-            Defaults to 90 degrees (pi/2 radians).
-        obl: obliquity of the map.
-        u: polynomial limb-darkening coefficients of the map.
-        period: rotation period of the map.
-        amplitude: amplitude of the map; this quantity is proportional to the luminosity
-            of the map and multiplies all flux-related observables.
-        normalize: whether to normalize the coefficients of the spherical harmonics. If
-            True, Ylm is normalized and the amplitude of the map is set to y[(0, 0)].
+        inc (Optional[Quantity]): inclination of the map relative to line of sight.
+            Defaults to pi/2 [angular unit].
+        obl (Optional[Quantity]): obliquity of the map [angular unit]. Defaults to None.
+        u (Optional[Array]): polynomial limb-darkening coefficients of the map.
+        period (Optional[Quantity]): rotation period of the map [time unit]. Defaults to
+            None.
+        amplitude (Optional[float]): amplitude of the map; this quantity is proportional
+            to the luminosity of the map and multiplies all flux-related observables.
+            Defaults to 1.0.
+        normalize (Optional(bool)): whether to normalize the coefficients of the
+            spherical harmonics. If True, Ylm is normalized and the amplitude of the map
+            is set to y[(0, 0)]. Defaults to True.
+        phase (Optional[float]): initial phase of the map rotation around the polar
+            axis. Defaults to 0.0.
 
     Example:
 
@@ -81,10 +86,10 @@ class Surface(eqx.Module):
         self,
         *,
         y: Ylm | None = None,
-        inc: Array | None = 0.5 * jnp.pi,
-        obl: Array | None = None,
+        inc: Quantity | None = 0.5 * jnp.pi,
+        obl: Quantity | None = None,
         u: Iterable[Array] = (),
-        period: Array | None = None,
+        period: Quantity | None = None,
         amplitude: Array = 1.0,
         normalize: bool = True,
         phase: Array = 0.0,
