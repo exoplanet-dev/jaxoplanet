@@ -17,7 +17,7 @@ from jaxoplanet.starry.ylm import Ylm
 from jaxoplanet.types import Array
 from jaxoplanet import units
 from jaxoplanet.types import Quantity
-from jaxoplanet.units import unit_registry as ureg
+from jaxoplanet.units import unit_registry as ureg, magnitude
 
 
 class Surface(eqx.Module):
@@ -80,14 +80,15 @@ class Surface(eqx.Module):
     phase: Array
     """Initial phase of the map rotation around polar axis"""
 
+    @units.quantity_input(inc=ureg.radians, obl=ureg.radians, period=ureg.d)
     def __init__(
         self,
         *,
         y: Ylm | None = None,
-        inc: Quantity | None = units.field(default=0.5 * jnp.pi, units=ureg.radian),
-        obl: Quantity | None = units.field(default=None, units=ureg.radian),
+        inc: Quantity | None = jnp.pi / 2,
+        obl: Quantity | None = None,
         u: Iterable[Array] = (),
-        period: Quantity | None = units.field(default=None, units=ureg.d),
+        period: Quantity | None = None,
         amplitude: Array = 1.0,
         normalize: bool = True,
         phase: Array = 0.0,
@@ -145,7 +146,14 @@ class Surface(eqx.Module):
 
     def _intensity(self, x, y, z, theta=None):
         pT = self._poly_basis(x, y, z)
-        Ry = left_project(self.ydeg, self.inc, self.obl, theta, 0.0, self.y.todense())
+        Ry = left_project(
+            self.ydeg,
+            magnitude(self.inc, "rad"),
+            magnitude(self.obl, "rad"),
+            theta,
+            0.0,
+            self.y.todense(),
+        )
         A1Ry = A1(self.ydeg).todense() @ Ry
         p_y = Pijk.from_dense(A1Ry, degree=self.ydeg)
         u = jnp.array([1, *self.u])
@@ -185,13 +193,19 @@ class Surface(eqx.Module):
         y = jnp.sin(lat) * jnp.sin(lon)
         z = jnp.cos(lat) * jnp.ones_like(x)
 
-        axis = full_rotation_axis_angle(self.inc - jnp.pi / 2, self.obl, 0.0, 0.0)
+        axis = full_rotation_axis_angle(
+            magnitude(self.inc, "rad") - jnp.pi / 2,
+            magnitude(self.obl, "rad"),
+            0.0,
+            0.0,
+        )
         axis = jnp.array(axis[0:3]) * axis[-1]
         rotation = Rotation.from_rotvec(axis)
         x, y, z = rotation.apply(jnp.array([x, y, z]).T).T
 
         return self._intensity(x, y, z)
 
+    @units.quantity_input(time=ureg.d)
     def rotational_phase(self, time: Array) -> Array | None:
         """Returns the rotational phase of the map at a given time.
 

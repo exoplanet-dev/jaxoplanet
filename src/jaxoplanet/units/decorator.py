@@ -200,3 +200,15 @@ def _apply_units(
 
 def _is_quantity(x: Any) -> bool:
     return hasattr(x, "_magnitude") and hasattr(x, "_units")
+
+
+def magnitude(x, unit=None):
+    if x is None:
+        return None
+    else:
+        if hasattr(x, "_magnitude"):
+            if unit is not None:
+                x = x.to(unit)
+            return x.magnitude
+        else:
+            return x

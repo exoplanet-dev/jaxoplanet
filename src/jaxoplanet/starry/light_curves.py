@@ -14,7 +14,7 @@ from jaxoplanet.starry.core.solution import rT, solution_vector
 from jaxoplanet.starry.orbit import SurfaceSystem
 from jaxoplanet.starry.surface import Surface
 from jaxoplanet.types import Array, Quantity
-from jaxoplanet.units import quantity_input, unit_registry as ureg
+from jaxoplanet.units import quantity_input, unit_registry as ureg, magnitude
 
 
 def light_curve(
@@ -42,7 +42,8 @@ def light_curve(
         if surface is None:
             return 0.0
         else:
-            theta = surface.rotational_phase(time.magnitude)
+            theta = magnitude(surface.rotational_phase(time.magnitude), "rad")
+
             return surface_light_curve(
                 surface,
                 (system.central.radius / radius).magnitude,
@@ -140,22 +141,28 @@ def surface_light_curve(
 
     rT_deg = rT(surface.deg)
 
-    x = 0.0 if x is None else x
-    y = 0.0 if y is None else y
     z = 0.0 if z is None else z
 
     # no occulting body
     if r is None:
         b_rot = True
-        theta_z = 0.0
+        theta_z = None
         design_matrix_p = rT_deg
 
     # occulting body
     else:
+        if x is None or y is None:
+            theta_z = None
+        else:
+            x = 0.0 if x is None else x
+            y = 0.0 if y is None else y
+            theta_z = jnp.arctan2(x, y)
+
+        x = 0.0 if x is None else x
+        y = 0.0 if y is None else y
         b = jnp.sqrt(jnp.square(x) + jnp.square(y))
         b_rot = jnp.logical_or(jnp.greater_equal(b, 1.0 + r), jnp.less_equal(z, 0.0))
         b_occ = jnp.logical_not(b_rot)
-        theta_z = jnp.arctan2(x, y)
 
         # trick to avoid nan `x=jnp.where...` grad caused by nan sT
         r = jnp.where(b_rot, 0.0, r)
@@ -179,9 +186,9 @@ def surface_light_curve(
     else:
         rotated_y = left_project(
             surface.ydeg,
-            surface._inc,
-            surface._obl,
-            theta,
+            magnitude(surface._inc, "rad"),
+            magnitude(surface._obl, "rad"),
+            magnitude(theta, "rad"),
             theta_z,
             surface.y.todense(),
         )

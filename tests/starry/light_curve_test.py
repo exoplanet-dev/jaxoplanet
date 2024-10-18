@@ -9,7 +9,7 @@ from jaxoplanet.starry import Surface, Ylm
 from jaxoplanet.starry.light_curves import light_curve, surface_light_curve
 from jaxoplanet.starry.orbit import SurfaceSystem
 from jaxoplanet.test_utils import assert_allclose
-from jaxoplanet.units import unit_registry as ureg
+from jaxoplanet.units import unit_registry as ureg, magnitude
 
 
 @pytest.mark.parametrize("deg", [2, 5, 10])
@@ -227,15 +227,15 @@ def test_compare_starry_system(keplerian_system):
             map_kwargs = dict(
                 ydeg=surface_map.ydeg,
                 udeg=surface_map.udeg,
-                inc=np.rad2deg(surface_map.inc),
-                obl=np.rad2deg(surface_map.obl),
+                inc=magnitude(surface_map.inc, "deg"),
+                obl=magnitude(surface_map.obl, "deg"),
                 amp=surface_map.amplitude,
             )
 
         body_kwargs = dict(
             r=body.radius.magnitude,
             m=body.mass.magnitude,
-            prot=prot,
+            prot=magnitude(prot, "d"),
         )
 
         if isinstance(body, keplerian.OrbitalBody):

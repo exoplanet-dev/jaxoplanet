@@ -3,6 +3,7 @@ import numpy as np
 from jaxoplanet.starry.surface import Surface
 from jaxoplanet.starry.utils import graticule
 from jaxoplanet.starry.ylm import Ylm
+from jaxoplanet.units import magnitude
 
 
 def show_surface(
@@ -67,8 +68,8 @@ def show_surface(
     )
     if n is not None:
         graticule(
-            surface.inc,
-            surface.obl,
+            magnitude(surface.inc, "rad"),
+            magnitude(surface.obl, "rad"),
             phase,
             radius=radius,
             n=n,

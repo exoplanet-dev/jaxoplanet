@@ -18,7 +18,7 @@ def test_spot_intensity(ydeg, radius=0.5, contrast=0.1):
     lon = np.linspace(-np.pi, np.pi, 500)
     exp = map.intensity(0, np.rad2deg(lon))
 
-    jax_map = Surface(y=ylm_spot(ydeg)(contrast, radius, 0.0, 0.0))
-    calc = jax.vmap(jax_map.intensity, in_axes=(None, 0))(0.0, lon)
+    surface = Surface(y=ylm_spot(ydeg)(contrast, radius, 0.0, 0.0))
+    calc = jax.vmap(surface.intensity, in_axes=(None, 0))(0.0, lon)
 
     assert_allclose(calc, exp)
