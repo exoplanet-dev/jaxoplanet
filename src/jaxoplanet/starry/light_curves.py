@@ -227,7 +227,7 @@ def design_matrix(
     y = 0.0 if y is None else y
     z = 0.0 if z is None else z
 
-    _A1 = A1(surface.ydeg)
+    _A1 = jax.experimental.sparse.BCOO.from_scipy_sparse(A1(surface.ydeg))
 
     if surface.udeg == 0:
         F = jnp.eye((surface.ydeg + 1) ** 2)
@@ -236,7 +236,7 @@ def design_matrix(
         u = jnp.array([1, *surface.u])
         pu = Pijk.from_dense(u @ U(surface.udeg), degree=surface.udeg)
         F = polynomial_product_matrix(pu, surface.ydeg)
-        norm = np.pi / (pu.tosparse() @ rT(surface.udeg))
+        norm = jnp.pi / (pu.tosparse() @ rT(surface.udeg))
 
     if r is not None:
         b = jnp.sqrt(jnp.square(x) + jnp.square(y))
