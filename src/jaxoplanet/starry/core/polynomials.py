@@ -164,7 +164,7 @@ def _mul(u: Pijk, v: Pijk) -> Pijk:
     return Pijk(uv)
 
 
-def polynomial_product_matrix(p, degree):
+def polynomial_product_matrix(p: Pijk, degree: int):
     """Given a polynomial vector p, return a matrix M such that M @ p2 is the polynomial
     product of p with p2.
 
@@ -179,27 +179,26 @@ def polynomial_product_matrix(p, degree):
     Returns:
         Array: The polynomial product matrix.
     """
-    p = jnp.array(p)
-    deg_p = int(np.floor(np.sqrt(len(p))))
-    M = jnp.zeros(
-        ((deg_p + degree + 1) * (deg_p + degree + 1), (degree + 1) * (degree + 1))
-    )
+    dense_p = p.todense()
+    M = jnp.zeros(((p.degree + degree + 1) ** 2, (degree + 1) ** 2))
     n1 = 0
 
     for l1 in range(degree + 1):
         for m1 in range(-l1, l1 + 1):
             odd1 = (l1 + m1) % 2 != 0
             n2 = 0
-            for l2 in range(deg_p + 1):
+            for l2 in range(p.degree + 1):
                 for m2 in range(-l2, l2 + 1):
                     l = l1 + l2
                     n = l * l + l + m1 + m2
                     if odd1 and (l2 + m2) % 2 != 0:
-                        M = M.at[n - 4 * l + 2, n1].set(M[n - 4 * l + 2, n1] + p[n2])
-                        M = M.at[n - 2, n1].set(M[n - 2, n1] - p[n2])
-                        M = M.at[n + 2, n1].set(M[n + 2, n1] - p[n2])
+                        M = M.at[n - 4 * l + 2, n1].set(
+                            M[n - 4 * l + 2, n1] + dense_p[n2]
+                        )
+                        M = M.at[n - 2, n1].set(M[n - 2, n1] - dense_p[n2])
+                        M = M.at[n + 2, n1].set(M[n + 2, n1] - dense_p[n2])
                     else:
-                        M = M.at[n, n1].set(M[n, n1] + p[n2])
+                        M = M.at[n, n1].set(M[n, n1] + dense_p[n2])
                     n2 += 1
             n1 += 1
 
