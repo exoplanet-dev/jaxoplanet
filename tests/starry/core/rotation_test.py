@@ -10,6 +10,7 @@ from jaxoplanet.starry.core.rotation import (
     right_project,
 )
 from jaxoplanet.test_utils import assert_allclose
+from scipy.spatial.transform import Rotation
 
 
 @pytest.mark.skip(reason="superseded by multi-precision tests")
@@ -342,3 +343,46 @@ def R_symbolic(lmax, u, theta):
     u = np.array(u, dtype=float)
     u /= np.sqrt(np.sum(u**2))
     return R(lmax, u, theta)
+
+
+@pytest.mark.parametrize(
+    "angles",
+    [
+        (0.1, 0.2, 0.3, 0.1),
+        (0.1, -0.2, 0.3, 0.0),
+        (0, 0, 0, 0.1),
+        (-0.1, 0, 0, 0.0),
+        (0, 0.4, 0, 0.1),
+        (0, 0, 0.5, 0.0),
+    ],
+)
+def test_full_rotation_axis_angle(angles):
+
+    inc, obl, theta, theta_z = angles
+
+    def reference_rotation(inc, obl, theta, theta_z):
+
+        def from_rot_angle(axis, angle):
+            axis = jnp.asarray(axis)
+            vec = angle * axis / jnp.linalg.norm(axis)
+            return Rotation.from_rotvec(vec)
+
+        r = from_rot_angle((0, 0, 1.0), theta_z)
+        r = r * from_rot_angle(
+            (-jnp.cos(obl), -jnp.sin(obl), 0.0), -(0.5 * jnp.pi - inc)
+        )
+        r = r * from_rot_angle((0, 0, 1.0), obl)
+        r = r * from_rot_angle((1.0, 0.0, 0.0), -0.5 * jnp.pi)
+        r = r * from_rot_angle((0, 0, 1.0), theta)
+        r = r * from_rot_angle((1.0, 0.0, 0.0), 0.5 * jnp.pi)
+
+        return r.as_rotvec()
+
+    def to_rotev(x, y, z, angle):
+        vec = jnp.array([x, y, z])
+        return vec * angle / jnp.linalg.norm(vec)
+
+    expected = reference_rotation(inc, obl, theta, theta_z)
+    calc = to_rotev(*full_rotation_axis_angle(inc, obl, theta, theta_z))
+
+    assert_allclose(calc, expected)

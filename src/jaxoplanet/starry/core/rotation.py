@@ -4,9 +4,7 @@ from functools import partial
 import jax
 import jax.numpy as jnp
 
-from jaxoplanet.starry.core.s2fft_rotation import (
-    compute_rotation_matrices as compute_rotation_matrices_s2fft,
-)
+from jaxoplanet.starry.core.s2fft_rotation import compute_rotation_matrices
 from jaxoplanet.types import Array
 from jaxoplanet.utils import get_dtype_eps
 
@@ -52,7 +50,7 @@ def dot_rotation_matrix(ydeg, x, y, z, theta):
     if jnp.shape(theta) != ():
         raise ValueError(f"theta must be a scalar; got {jnp.shape(theta)}")
 
-    rotation_matrices = compute_rotation_matrices_s2fft(ydeg, x, y, z, theta)
+    rotation_matrices = compute_rotation_matrices(ydeg, x, y, z, theta)
     n_max = ydeg**2 + 2 * ydeg + 1
 
     @jax.jit
@@ -93,7 +91,7 @@ def full_rotation_axis_angle(
     Returns:
         tuple: x, y, z, angle
     """
-    inc = 0.0 if inc is None else inc
+    inc = jnp.pi / 2 if inc is None else inc
     obl = 0.0 if obl is None else obl
     theta = 0.0 if theta is None else theta
     theta_z = 0.0 if theta_z is None else theta_z
@@ -247,7 +245,7 @@ def right_project(
 
 
 @partial(jax.jit, static_argnums=(0,))
-def compute_rotation_matrices(ydeg, x, y, z, theta):
+def _compute_rotation_matrices(ydeg, x, y, z, theta):
     # we need the axis to be a unit vector - enforce that here
     norm = jnp.sqrt(x * x + y * y + z * z)
     # handle the case where axis is (0, 0, 0)
@@ -363,7 +361,7 @@ def rotar(ydeg, c1, s1, c2, s2, c3, s3):
     return D, R
 
 
-def dlmn(ell, s1, c1, c2, tgbet2, s3, c3, D):
+def _dlmn(ell, s1, c1, c2, tgbet2, s3, c3, D):
     iinf = 1 - ell
     isup = -iinf
 
