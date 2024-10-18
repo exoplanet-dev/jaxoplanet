@@ -6,7 +6,11 @@ from jaxoplanet.light_curves import limb_dark_light_curve
 from jaxoplanet.light_curves.emission import light_curve as emission_light_curve
 from jaxoplanet.orbits import keplerian
 from jaxoplanet.starry import Surface, Ylm
-from jaxoplanet.starry.light_curves import light_curve, surface_light_curve
+from jaxoplanet.starry.light_curves import (
+    light_curve,
+    surface_light_curve,
+    design_matrix,
+)
 from jaxoplanet.starry.orbit import SurfaceSystem
 from jaxoplanet.test_utils import assert_allclose
 from jaxoplanet.units import unit_registry as ureg
@@ -557,4 +561,34 @@ def test_emission_light_curve(params):
     expected = light_curve(system)(time)
     calc = emission_light_curve(system)(time)
 
+    assert_allclose(calc, expected)
+
+
+@pytest.mark.parametrize(
+    "params",
+    (
+        {"u": (0.2, 0.1), "ydeg": 1},
+        {"u": (), "ydeg": 5},
+        {"u": (), "ydeg": 5, "y": 0.5, "z": 1.0},
+        {"u": (0.2, 0.1), "ydeg": 1, "y": 0.5, "z": 1.0, "r": 0.1},
+        {"u": (0.2, 0.1), "ydeg": 5, "y": 0.5, "z": 1.0, "r": 0.1},
+        {"u": (), "ydeg": 5, "y": 0.5, "z": 1.0, "r": 0.1},
+        {"u": (0.2, 0.1), "ydeg": 5, "y": 3.0, "z": 1.0, "r": 0.1},
+        {"u": (0.2, 0.1), "ydeg": 5, "y": 0.1, "z": 1.0, "r": 0.1, "x": 0.1},
+    ),
+)
+def test_design_matrix(params):
+    params.setdefault("r", None)
+    params.setdefault("y", None)
+    params.setdefault("z", None)
+    params.setdefault("x", None)
+
+    surface = Surface(
+        y=Ylm.from_dense(np.ones((params["ydeg"] + 1) ** 2)), u=params["u"]
+    )
+    calc = (
+        design_matrix(surface, y=params["y"], z=params["z"], r=params["r"])
+        @ surface.y.todense()
+    )
+    expected = surface_light_curve(surface, y=params["y"], z=params["z"], r=params["r"])
     assert_allclose(calc, expected)

@@ -8,13 +8,18 @@ import scipy
 
 from jaxoplanet.light_curves.utils import vectorize
 from jaxoplanet.starry.core.basis import A1, A2_inv, U
-from jaxoplanet.starry.core.polynomials import Pijk
-from jaxoplanet.starry.core.rotation import left_project
+from jaxoplanet.starry.core.polynomials import Pijk, polynomial_product_matrix
+from jaxoplanet.starry.core.rotation import (
+    left_project,
+    compute_rotation_matrices,
+    full_rotation_axis_angle,
+)
 from jaxoplanet.starry.core.solution import rT, solution_vector
 from jaxoplanet.starry.orbit import SurfaceSystem
 from jaxoplanet.starry.surface import Surface
 from jaxoplanet.types import Array, Quantity
 from jaxoplanet.units import quantity_input, unit_registry as ureg
+from jax.scipy.linalg import block_diag
 
 
 def light_curve(
@@ -94,7 +99,6 @@ def light_curve(
     return light_curve_impl
 
 
-# TODO: figure out the sparse matrices (and Pijk) to avoid todense()
 def surface_light_curve(
     surface: Surface,
     r: float | None = None,
@@ -205,3 +209,76 @@ def surface_light_curve(
     norm = np.pi / (p_u.tosparse() @ rT(surface.udeg))
 
     return surface.amplitude * (p_y.tosparse() @ design_matrix_p) * norm
+
+
+def design_matrix(
+    surface: Surface,
+    r: float | None = None,
+    x: float | None = None,
+    y: float | None = None,
+    z: float | None = None,
+    theta: float | None = None,
+    order: int = 20,
+):
+
+    rT_deg = rT(surface.deg)
+
+    x = 0.0 if x is None else x
+    y = 0.0 if y is None else y
+    z = 0.0 if z is None else z
+
+    _A1 = A1(surface.ydeg)
+
+    if surface.udeg == 0:
+        F = jnp.eye((surface.ydeg + 1) ** 2)
+        norm = 1.0
+    else:
+        u = jnp.array([1, *surface.u])
+        pu = Pijk.from_dense(u @ U(surface.udeg), degree=surface.udeg)
+        F = polynomial_product_matrix(pu, surface.ydeg)
+        norm = np.pi / (pu.tosparse() @ rT(surface.udeg))
+
+    if r is not None:
+        b = jnp.sqrt(jnp.square(x) + jnp.square(y))
+        b_rot = jnp.logical_or(jnp.greater_equal(b, 1.0 + r), jnp.less_equal(z, 0.0))
+        b_occ = jnp.logical_not(b_rot)
+        theta_z = jnp.arctan2(x, y)
+    else:
+        b_rot = True
+        theta_z = 0.0
+
+    if surface.ydeg == 0:
+        R = jnp.eye(1)
+    else:
+        R = block_diag(
+            *compute_rotation_matrices(
+                surface.ydeg,
+                *full_rotation_axis_angle(surface._inc, surface._obl, theta, theta_z),
+            )
+        )
+
+    X_rot = rT_deg @ F @ _A1 @ R * norm
+
+    # no occulting body
+    if r is None:
+        b_rot = True
+        theta_z = 0.0
+        return X_rot
+
+    # occulting body
+    else:
+        # trick to avoid nan `x=jnp.where...` grad caused by nan sT
+        r = jnp.where(b_rot, 0.0, r)
+        b = jnp.where(b_rot, 0.0, b)
+
+        sT = solution_vector(surface.deg, order=order)(b, r)
+
+        if surface.deg > 0:
+            A2 = scipy.sparse.linalg.inv(A2_inv(surface.deg))
+            A2 = jax.experimental.sparse.BCOO.from_scipy_sparse(A2)
+        else:
+            A2 = jnp.array([[1]])
+
+        X_occ = sT @ A2 @ F @ _A1 @ R * norm
+
+        return jnp.where(b_occ, X_occ, X_rot)
