@@ -15,6 +15,9 @@ from jaxoplanet.starry.core.rotation import (
 from jaxoplanet.starry.utils import ortho_grid
 from jaxoplanet.starry.ylm import Ylm
 from jaxoplanet.types import Array
+from jaxoplanet import units
+from jaxoplanet.types import Quantity
+from jaxoplanet.units import unit_registry as ureg
 
 
 class Surface(eqx.Module):
@@ -81,10 +84,10 @@ class Surface(eqx.Module):
         self,
         *,
         y: Ylm | None = None,
-        inc: Array | None = 0.5 * jnp.pi,
-        obl: Array | None = None,
+        inc: Quantity | None = units.field(default=0.5 * jnp.pi, units=ureg.radian),
+        obl: Quantity | None = units.field(default=None, units=ureg.radian),
         u: Iterable[Array] = (),
-        period: Array | None = None,
+        period: Quantity | None = units.field(default=None, units=ureg.d),
         amplitude: Array = 1.0,
         normalize: bool = True,
         phase: Array = 0.0,
@@ -108,7 +111,7 @@ class Surface(eqx.Module):
 
     @property
     def inc(self):
-        return self._inc if self._inc is not None else 0.0
+        return self._inc if self._inc is not None else 0.0 * ureg.radian
 
     @inc.setter
     def inc(self, value):
@@ -116,7 +119,7 @@ class Surface(eqx.Module):
 
     @property
     def obl(self):
-        return self._obl if self._obl is not None else 0.0
+        return self._obl if self._obl is not None else 0.0 * ureg.radian
 
     @obl.setter
     def obl(self, value):
