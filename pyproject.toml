@@ -15,7 +15,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dynamic = ["version"]
-dependencies = ["jax", "jaxlib", "jpu>=0.0.2", "equinox", "pint"]
+dependencies = ["jax", "jaxlib", "jpu>=0.0.2", "equinox", "pint", "jax<=0.4.31"]
 
 [project.urls]
 "Homepage" = "https://jax.exoplanet.codes"
@@ -23,9 +23,18 @@ dependencies = ["jax", "jaxlib", "jpu>=0.0.2", "equinox", "pint"]
 "Bug Tracker" = "https://github.com/exoplanet-dev/jaxoplanet/issues"
 
 [project.optional-dependencies]
-dev = ["nox", "ruff", "black", "pre-commit", "pytest", "sympy"]
+dev = [
+    "nox",
+    "ruff",
+    "black",
+    "pre-commit",
+    "pytest",
+    "sympy",
+    "mpmath",
+    "gmpy2",
+]
 test = ["pytest", "pytest-xdist", "exoplanet-core", "batman-package"]
-test-math = ["sympy"]
+test-math = ["mpmath", "gmpy2"]
 comparison = ["starry", "numpy<1.22", "tqdm", "xarray<2023.10.0"]
 docs = [
     "matplotlib",

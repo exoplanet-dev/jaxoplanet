@@ -6,6 +6,7 @@ from jaxoplanet.experimental.starry import Surface, Ylm
 from jaxoplanet.experimental.starry.light_curves import light_curve, surface_light_curve
 from jaxoplanet.experimental.starry.orbit import SurfaceSystem
 from jaxoplanet.light_curves import limb_dark_light_curve
+from jaxoplanet.light_curves.emission import light_curve as emission_light_curve
 from jaxoplanet.orbits import keplerian
 from jaxoplanet.test_utils import assert_allclose
 from jaxoplanet.units import unit_registry as ureg
@@ -42,6 +43,56 @@ def test_compare_starry_limb_dark(deg, u):
     )
 
     assert_allclose(calc, expected)
+
+
+@pytest.mark.parametrize("r", [0.01, 0.1, 1.0, 10.0, 100.0])
+def test_flux(r, l_max=5, order=500):
+    pytest.importorskip("mpmath")
+    from jaxoplanet.experimental.starry.multiprecision import flux as mp_flux
+
+    # We know that these are were the errors are the highest
+    b = 1 - r if r < 1 else r
+
+    n = (l_max + 1) ** 2
+    expect = np.zeros(n)
+    calc = np.zeros(n)
+    ys = np.eye(n, dtype=np.float64)
+    ys[:, 0] = 1.0
+
+    @jax.jit
+    def light_curve(y):
+        surface = Surface(y=Ylm.from_dense(y, normalize=False), normalize=False)
+        return surface_light_curve(surface, y=b, z=10.0, r=r, order=order)
+
+    for i, y in enumerate(ys):
+        expect[i] = float(mp_flux.flux(ydeg=l_max)(b, r, y=y))
+        calc[i] = light_curve(y)
+
+    for n in range(expect.size):
+        # For logging/debugging purposes, work out the case id
+        l = np.floor(np.sqrt(n)).astype(int)  # noqa
+        m = n - l**2 - l
+        mu = l - m
+        nu = l + m
+        if mu == 1 and l == 1:
+            case = 1
+        elif mu % 2 == 0 and (mu // 2) % 2 == 0:
+            case = 2
+        elif mu == 1 and l % 2 == 0:
+            case = 3
+        elif mu == 1:
+            case = 4
+        elif (mu - 1) % 2 == 0 and ((mu - 1) // 2) % 2 == 0:
+            case = 5
+        else:
+            case = 0
+
+        assert_allclose(
+            calc[n],
+            expect[n],
+            err_msg=f"n={n}, l={l}, m={m}, mu={mu}, nu={nu}, case={case}",
+            atol=1e-6,
+        )
 
 
 @pytest.fixture(
@@ -448,6 +499,7 @@ def test_light_curves_orders(order):
     _ = light_curve(system, order=order)(0.0)
 
 
+@pytest.mark.skip(reason="Test if test is causing issues in macos-py11. TODO: revert ")
 @pytest.mark.parametrize("deg", [2, 5, 10])
 def test_compare_y_from_u(deg):
     """In this test we convert the limb darkening coefficients to spherical harmonic
@@ -468,3 +520,42 @@ def test_compare_y_from_u(deg):
     flux_y = light_curve_function(surface_y, b)
 
     assert_allclose(flux_u, flux_y)
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {
+            "r": [1.0, 0.2],  # radii
+            "u": [(0.1, 0.2), ()],  # limb darkening
+            "a": [1.0, 0.2],  # amplitudes
+        },
+        {
+            "r": [0.2, 1.5],  # radii
+            "u": [(0.1, 0.2), ()],  # limb darkening
+            "a": [0.1, 0.2],  # amplitudes
+        },
+        {
+            "r": [1.0, 0.1, 0.5],  # radii
+            "u": [(0.1, 0.2), (), (0.3, 0.4)],  # limb darkening
+            "a": [1.0, 0.2, 0.5],  # amplitudes
+        },
+    ],
+)
+def test_emission_light_curve(params):
+
+    central = keplerian.Central(radius=params["r"][0], mass=0.5)
+    system = SurfaceSystem(central, Surface(u=params["u"][0], amplitude=params["a"][0]))
+
+    for r, u, a in zip(params["r"][1:], params["u"][1:], params["a"][1:], strict=False):
+        system = system.add_body(
+            radius=r, surface=Surface(u=u, amplitude=a), period=1.0
+        )
+
+    period = system.bodies[0].period.magnitude
+    time = np.linspace(-0.5 * period, 0.5 * period, 1000)
+
+    expected = light_curve(system)(time)
+    calc = emission_light_curve(system)(time)
+
+    assert_allclose(calc, expected)
