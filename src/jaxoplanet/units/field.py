@@ -24,7 +24,7 @@ def field(*, units: Any = None, strict: bool = False, **kwargs: Any) -> Any:
         if value is None:
             return None
         else:
-            return jax.tree.map(
+            return jax.tree_util.tree_map(
                 partial(_apply_units, strict=strict),
                 original_converter(value),
                 units,
