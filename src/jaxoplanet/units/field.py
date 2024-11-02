@@ -21,11 +21,14 @@ def field(*, units: Any = None, strict: bool = False, **kwargs: Any) -> Any:
     original_converter = kwargs.pop("converter", lambda x: x)
 
     def converter(value: Any) -> Any:
-        return jax.tree_util.tree_map(
-            partial(_apply_units, strict=strict),
-            original_converter(value),
-            units,
-            is_leaf=_is_quantity,
-        )
+        if value is None:
+            return None
+        else:
+            return jax.tree_util.tree_map(
+                partial(_apply_units, strict=strict),
+                original_converter(value),
+                units,
+                is_leaf=_is_quantity,
+            )
 
     return eqx.field(converter=converter, **kwargs)
