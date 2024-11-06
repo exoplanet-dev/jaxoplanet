@@ -1,4 +1,5 @@
 __pycache__/
+plugins/
 .ipynb_checkpoints/
 .DS_Store
 *_version.py
