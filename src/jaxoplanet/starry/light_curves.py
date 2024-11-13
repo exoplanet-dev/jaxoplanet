@@ -158,8 +158,8 @@ def surface_light_curve(
         theta_z = jnp.arctan2(x, y)
 
         # trick to avoid nan `x=jnp.where...` grad caused by nan sT
-        r = jnp.where(b_rot, 0.0, r)
-        b = jnp.where(b_rot, 0.0, b)
+        r = jnp.where(b_rot, 1.0, r)
+        b = jnp.where(b_rot, 1.0, b)
 
         sT = solution_vector(surface.deg, order=order)(b, r)
 

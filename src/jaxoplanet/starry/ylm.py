@@ -110,10 +110,6 @@ class Ylm(eqx.Module):
         Raises:
             ValueError: if the (0, 0) coefficient is zero.
         """
-
-        assert self.data[(0, 0)] != 0.0, ValueError(
-            "The (0, 0) coefficient must be non-zero to normalize"
-        )
         data = {k: v / self.data[(0, 0)] for k, v in self.data.items()}
         return Ylm(data=data)
 

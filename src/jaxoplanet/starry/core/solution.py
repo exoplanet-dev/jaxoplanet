@@ -8,6 +8,7 @@ from scipy.special import roots_legendre
 
 from jaxoplanet.core.limb_dark import kite_area
 from jaxoplanet.types import Array
+from jaxoplanet.utils import zero_safe_sqrt
 
 
 def solution_vector(l_max: int, order: int = 20) -> Callable[[Array, Array], Array]:
@@ -156,7 +157,9 @@ def p_integral(order: int, l_max: int, b: Array, r: Array, kappa0: Array) -> Arr
                 cond = jnp.less(omz2, 10 * jnp.finfo(omz2.dtype).eps)
                 omz2 = jnp.where(cond, 1, omz2)
                 z2 = jnp.maximum(0, 1 - omz2)
-                result = 2 * r * (r - b * c) * (1 - z2 * jnp.sqrt(z2)) / (3 * omz2)
+                result = (
+                    2 * r * (r - b * c) * (1 - z2 * zero_safe_sqrt(z2)) / (3 * omz2)
+                )
                 integrand.append(jnp.where(cond, 0, 2 * result))
                 weights.append(high_weights)
 

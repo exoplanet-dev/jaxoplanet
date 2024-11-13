@@ -20,6 +20,7 @@ tutorials/units.ipynb
 
 tutorials/about.ipynb
 tutorials/transit.ipynb
+tutorials/mw_transit.ipynb
 tutorials/rv.ipynb
 ```
 
