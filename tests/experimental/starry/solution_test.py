@@ -117,3 +117,8 @@ def test_solution_compare_starry(r, l_max=10, order=500):
             err_msg=f"n={n}, l={l}, m={m}, mu={mu}, nu={nu}, case={case}",
             atol=1e-6,
         )
+
+
+def test_r_greater_one_grad():
+    # this is an even more minimal version of what caused issue #235
+    assert np.isfinite(jax.jacrev(solution_vector(3))(0.5, 10.0)).all()
