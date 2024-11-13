@@ -21,8 +21,9 @@ class Surface(eqx.Module):
     """Surface map object.
 
     Args:
-        y (Optional(:py:class:`~jaxoplanet.starry.ylm.Ylm`)) Ylm object containing the spherical harmonic
-            expansion of the map. Defaults to a uniform map with amplitude 1.0.
+        y (Optional(:py:class:`~jaxoplanet.starry.ylm.Ylm`)) Ylm object containing the
+            spherical harmonic expansion of the map. Defaults to a uniform map with
+            amplitude 1.0.
         inc (Optional[Quantity]): inclination of the map relative to line of sight.
             Defaults to pi/2 [angular unit].
         obl (Optional[Quantity]): obliquity of the map [angular unit]. Defaults to None.
