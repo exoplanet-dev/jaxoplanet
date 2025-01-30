@@ -1,7 +1,7 @@
 import mpmath
 import numpy as np
 
-from jaxoplanet.starry.multiprecision import mp
+from jaxoplanet.experimental.starry.multiprecision import mp
 
 
 def to_numpy(x):
