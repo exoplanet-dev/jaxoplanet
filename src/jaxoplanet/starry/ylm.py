@@ -47,10 +47,10 @@ import numpy as np
 from jax.experimental.sparse import BCOO
 from scipy.special import legendre as LegendreP
 
-from jaxoplanet.experimental.starry import basis, solution
-from jaxoplanet.experimental.starry.pijk import Pijk
-from jaxoplanet.experimental.starry.rotation import dot_rotation_matrix
-from jaxoplanet.experimental.starry.wigner3j import Wigner3jCalculator
+from jaxoplanet.starry.core import basis, solution
+from jaxoplanet.starry.core.polynomials import Pijk
+from jaxoplanet.starry.core.rotation import dot_rotation_matrix
+from jaxoplanet.starry.core.wigner3j import Wigner3jCalculator
 from jaxoplanet.types import Array
 
 
@@ -256,7 +256,7 @@ def spot_profile(theta, radius, spot_fac=300):
     return 1 / (1 + jnp.exp(-z)) - 1
 
 
-def ylm_spot(ydeg: int) -> callable:
+def ylm_spot(ydeg: int, npts=1000) -> callable:
     """spot expansion in the spherical harmonics basis.
 
     Args:
@@ -265,7 +265,7 @@ def ylm_spot(ydeg: int) -> callable:
     Returns:
         callable: function that returns the spherical harmonics coefficients of the spot
     """
-    B, theta, indices = Bp(ydeg)
+    B, theta, indices = Bp(ydeg, npts=npts)
 
     def func(contrast: float, r: float, lat: float = 0.0, lon: float = 0.0):
         """spot expansion in the spherical harmonics basis.
