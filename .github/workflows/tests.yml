@@ -26,7 +26,7 @@ jobs:
           - os: "macos-latest"
             python-version: "3.11"
             session: "test"
-          - os: "ubuntu-latest"
+          - os: "ubuntu-22.04"
             python-version: "3.10"
             session: "comparison"
 
