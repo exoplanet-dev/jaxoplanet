@@ -1,33 +1,54 @@
+import jax
 import jax.numpy as jnp
-import jpu.numpy as jnpu
-
+import equinox as eqx
 from jaxoplanet import units
-from jaxoplanet.orbits import TransitOrbit
 from jaxoplanet.types import Quantity
 from jaxoplanet.units import unit_registry as ureg
-
+from jaxoplanet.orbits import TransitOrbit
+from functools import partial
 
 def ensure_quantity(x, unit):
-    """
-    Convert x to a JAX array with the given unit if it isn’t already a quantity.
-
-    Args:
-        x: A value that may or may not already be a `Quantity`.
-        unit: The `pint` unit to which x should be converted.
-
-    Returns:
-        A `jnp.ndarray` with the magnitude in the specified unit.
-    """
+    """Convert x to a JAX array with the given unit if it isn’t already a quantity."""
     if hasattr(x, "to"):
         return x
     else:
         return jnp.asarray(x) * unit
+    
+@jax.jit
+def _compute_linear_ephemeris_single(transit_times: jnp.ndarray, indices: jnp.ndarray):
+    """Compute linear ephemeris parameters for a single planet using least squares fitting."""
+    n = transit_times.shape[0]
+    X = jnp.vstack([jnp.ones(n), indices])
+    beta = jnp.linalg.solve(X @ X.T, X @ transit_times)
+    intercept, slope = beta
+    ttvs = transit_times - (intercept + slope * indices)
+    return intercept, slope, ttvs
 
+@jax.jit
+def _compute_bin_edges_values_single(tt: jnp.ndarray, period: float):
+    """Compute bin edges and values for a single planet."""
+    midpoints = 0.5 * (tt[1:] + tt[:-1])
+    bin_edges = jnp.concatenate([
+        jnp.array([tt[0] - 0.5 * period]),
+        midpoints,
+        jnp.array([tt[-1] + 0.5 * period])
+    ])
+    bin_values = jnp.concatenate([
+        jnp.array([tt[0]]),
+        tt,
+        jnp.array([tt[-1]])
+    ])
+    return bin_edges, bin_values
+@jax.jit
+def _process_planet_dt_single(bin_edges: jnp.ndarray, bin_values: jnp.ndarray, t_mag: jnp.ndarray):
+    """Process dt values for a single planet."""
+    inds = jnp.searchsorted(bin_edges, t_mag)
+    return bin_values[inds]
 
 @units.quantity_input(
     period=ureg.d,
     duration=ureg.d,
-    speed=1 / ureg.d,
+    speed=1/ureg.d,
     time_transit=ureg.d,
     impact_param=ureg.dimensionless,
     radius_ratio=ureg.dimensionless,
@@ -36,40 +57,32 @@ class TTVOrbit(TransitOrbit):
     """
     An extension of TransitOrbit that allows for transit timing variations (TTVs).
 
-    The TTVs can be specified by:
-      1. Providing a list of TTV offset arrays (`ttvs`).
-      2. Providing a list of observed transit time arrays (`transit_times`),
-         with optional transit indices (`transit_inds`) to label each transit.
+    The TTVs can be specified in one of two ways:
+    - Provide a tuple (or list) of TTV offset arrays via the argument `ttvs`.
+    - Provide a tuple (or list) of observed transit time arrays via `transit_times`
+        (optionally with `transit_inds` to label each transit). In this case
+        a least-squares linear fit is performed to infer a reference transit time (t₀)
+        and period; the residuals define the TTVs.
 
-    Either `ttvs` or `transit_times` must be provided, not both.
-
-    Attributes:
-        ttvs (list of jnp.ndarray):
-            Per-planet arrays of TTV offsets (in days) or derived from linear fits.
-        transit_times (list of jnp.ndarray):
-            Observed or computed transit times (in days).
-        transit_inds (list of jnp.ndarray):
-            Transit indices corresponding to each set of transit times.
-        t0 (jnp.ndarray):
-            Reference transit time(s) (days, dimensionless).
-        ttv_period (jnp.ndarray):
-            Effective period(s) derived from transit times or supplied (days, dimensionless).
-        all_transit_times (list of jnp.ndarray):
-            Complete transit times (including expected and warped) for each planet.
-        _bin_edges (list of jnp.ndarray):
-            Internal bin edges for time-warp lookups.
-        _bin_values (list of jnp.ndarray):
-            Internal bin values (actual transit times) for time-warp lookups.
+    Only one of these two options should be provided.
+    
+    args added on to TransitOrbit: 
+    ttvs: tuple (or list) of Quantity arrays, each giving the “observed minus computed”
+        transit time offsets (in days) for one planet.
+    transit_times: tuple (or list) of Quantity arrays giving the observed transit times (in days).
+    transit_inds: tuple (or list) of integer arrays (one per planet) labeling the transit numbers.
+    delta_log_period: (optional) if using transit_times and the effective transit period
+        is to be slightly different from the period that governs the transit
+        shape, this parameter gives the offset in natural log.
     """
+    transit_times: tuple[jnp.ndarray, ...]
+    transit_inds: tuple[jnp.ndarray, ...]  # e.g. (jnp.arange(n_transits0), jnp.arange(n_transits1), ...)
+    ttvs: tuple[jnp.ndarray, ...]          # Residuals (observed minus linear model) for each planet
+    t0: jnp.ndarray                        # Reference transit times (one per planet)
+    ttv_period: jnp.ndarray                # Inferred effective periods (one per planet)
 
-    ttvs: list[jnp.ndarray]
-    transit_times: list[jnp.ndarray]
-    transit_inds: list[jnp.ndarray]
-    t0: jnp.ndarray  # Reference transit time(s), stored dimensionless (days).
-    ttv_period: jnp.ndarray  # The effective period(s), dimensionless (days).
-    all_transit_times: list[jnp.ndarray]
-    _bin_edges: list[jnp.ndarray]  # dimensionless arrays (days).
-    _bin_values: list[jnp.ndarray]  # dimensionless arrays (days).
+    _bin_edges: tuple[jnp.ndarray, ...]
+    _bin_values: tuple[jnp.ndarray, ...]
 
     def __init__(
         self,
@@ -80,151 +93,107 @@ class TTVOrbit(TransitOrbit):
         time_transit: Quantity | None = None,
         impact_param: Quantity | None = None,
         radius_ratio: Quantity | None = None,
-        # TTV-specific arguments:
-        ttvs: list[Quantity] | None = None,
-        transit_times: list[Quantity] | None = None,
-        transit_inds: list[jnp.ndarray] | None = None,
+        transit_times: tuple[jnp.ndarray, ...] = None,
+        transit_inds: tuple[jnp.ndarray, ...] | None = None,
+        ttvs: tuple[Quantity, ...] | None = None,
         delta_log_period: float | None = None,
     ):
-        """
-        Initialize a TTVOrbit object, extending TransitOrbit to include transit timing variations.
-
-        Args:
-            period (Quantity, optional):
-                The base orbital period(s) in days for each planet. If not provided and
-                transit_times is given, it is inferred from a linear fit plus any
-                `delta_log_period` offset.
-            duration (Quantity, optional):
-                The transit duration(s) in days for each planet.
-            speed (Quantity, optional):
-                The orbital speed in 1/days. Typically derived if `duration` is given.
-            time_transit (Quantity, optional):
-                The reference transit time(s) in days.
-            impact_param (Quantity, optional):
-                Dimensionless impact parameter.
-            radius_ratio (Quantity, optional):
-                Dimensionless planet/star radius ratio.
-            ttvs (list of Quantity, optional):
-                List of arrays with TTV offsets (days). Either `ttvs` or `transit_times`
-                must be specified, not both.
-            transit_times (list of Quantity, optional):
-                List of arrays with observed transit times (days). If provided, a linear
-                regression is done to infer period(s) and reference time(s).
-            transit_inds (list of jnp.ndarray, optional):
-                Per-planet indices labeling the transit number for each observed transit
-                time. If not provided, they default to a simple range.
-            delta_log_period (float, optional):
-                Offset in natural log to be added to the derived period(s) from transit_times.
-        """
-        # --- Auto-convert inputs to correct units ---
-        period = ensure_quantity(period, ureg.d) if period is not None else None
-        duration = ensure_quantity(duration, ureg.d) if duration is not None else None
-        time_transit = (
-            ensure_quantity(time_transit, ureg.d) if time_transit is not None else None
-        )
-        impact_param = (
-            ensure_quantity(impact_param, ureg.dimensionless)
-            if impact_param is not None
-            else None
-        )
-        radius_ratio = (
-            ensure_quantity(radius_ratio, ureg.dimensionless)
-            if radius_ratio is not None
-            else None
-        )
-
-        # Convert transit_times to a list of arrays in days
-        if transit_times is not None:
-            if not isinstance(transit_times, (list, tuple)):
-                transit_times = [transit_times]
-            transit_times = [ensure_quantity(tt, ureg.d) for tt in transit_times]
-
+        
+        if period is not None:
+            period = ensure_quantity(period, ureg.d)
+        if duration is not None:
+            duration = ensure_quantity(duration, ureg.d)
+        if time_transit is not None:
+            time_transit = ensure_quantity(time_transit, ureg.d)
+        if impact_param is not None:
+            impact_param = ensure_quantity(impact_param, ureg.dimensionless)
+        if radius_ratio is not None:
+            radius_ratio = ensure_quantity(radius_ratio, ureg.dimensionless)
+            
+        if ttvs is not None and transit_times is not None:
+            raise ValueError("Supply either ttvs or transit_times, not both.")
         if ttvs is None and transit_times is None:
-            raise ValueError("One of 'ttvs' or 'transit_times' must be provided.")
+            raise ValueError("You must supply either transit_times or ttvs.")
 
-        # Prepare containers
-        self.ttvs = []
-        self.transit_times = []
-        self.transit_inds = []
 
-        # --- CASE 1: transit_times are provided ---
+        # CASE 1: transit_times are provided
         if transit_times is not None:
+            self.transit_times = tuple(
+                jnp.atleast_1d(ensure_quantity(tt, ureg.d).magnitude)
+                for tt in transit_times
+            )
+            if transit_inds is None:
+                self.transit_inds = tuple(
+                    jnp.arange(tt.shape[0]) for tt in self.transit_times
+                )
+            else:
+                self.transit_inds = tuple(transit_inds)
+                
             t0_list = []
             period_list = []
-            # Possibly fill in transit_inds
-            if transit_inds is None:
-                transit_inds = [None] * len(transit_times)
-            for i, times in enumerate(transit_times):
-                arr_times = jnp.atleast_1d(
-                    times.magnitude
-                )  # dimensionless array of shape (n,)
-
-                if transit_inds[i] is None:
-                    inds = jnp.arange(arr_times.shape[0], dtype=jnp.int64)
-                else:
-                    inds = jnp.asarray(transit_inds[i], dtype=jnp.int64)
-
-                # Linear regression: times ~ intercept + slope * inds
-                X = jnp.vstack([jnp.ones_like(inds), inds])
-                beta = jnp.linalg.solve(X @ X.T, X @ arr_times)
-                intercept, slope = beta
-
-                expect = intercept + slope * inds
-                period_list.append(slope)
-                t0_list.append(intercept)
-                self.transit_times.append(arr_times)  # keep dimensionless
-                self.transit_inds.append(inds)
-                self.ttvs.append(arr_times - expect)
-
-            # Stack up the reference times and periods
-            self.t0 = jnp.stack(t0_list)  # shape (n_planets,)
-            self.ttv_period = jnp.stack(period_list)
-
-            # If single planet, make them scalars
-            if self.t0.shape[0] == 1:
-                self.t0 = self.t0[0]
-                self.ttv_period = self.ttv_period[0]
-
-            # If period wasn't provided, use the fitted period (+ delta_log_period if any)
-            if period is None:
-                if delta_log_period is not None:
-                    period = jnp.exp(jnp.log(self.ttv_period) + delta_log_period)
-                else:
-                    period = self.ttv_period
-
-            # time_transit is set to t0:
-            time_transit = self.t0 * ureg.d
-
-        # --- CASE 2: ttvs are provided ---
-        else:
-            # Convert them to dimensionless in days
-            self.ttvs = [jnp.atleast_1d(ttv.magnitude) for ttv in ttvs]
-            # Possibly fill in transit_inds
-            if transit_inds is None:
-                self.transit_inds = [jnp.arange(ttv.shape[0]) for ttv in self.ttvs]
-            else:
-                self.transit_inds = [
-                    jnp.asarray(inds, dtype=jnp.int64) for inds in transit_inds
-                ]
-
+            ttvs_list = []
+            for tt, inds in zip(self.transit_times, self.transit_inds):
+                t0_i, period_i, ttv_i = _compute_linear_ephemeris_single(tt, inds)
+                t0_list.append(t0_i)
+                period_list.append(period_i)
+                ttvs_list.append(ttv_i)
+            self.t0 = jnp.array(t0_list)
+            self.ttv_period = jnp.array(period_list)
+            self.ttvs = tuple(ttvs_list)
             if time_transit is None:
-                time_transit = 0.0 * ureg.d
-            self.t0 = jnp.atleast_1d(time_transit.magnitude)  # dimensionless
-
-            # Must provide period in this mode
+                time_transit = self.t0 * ureg.d
+                # --- Begin delta_log_period adjustment ---
+            # If a period was not provided and a delta_log_period is provided,
+            # adjust the computed period accordingly.
             if period is None:
-                raise ValueError("When using ttvs, 'period' must be provided.")
+
+                if delta_log_period is not None:
+                    # Compute the adjusted period using delta_log_period
+                    period = jnp.exp(jnp.log(self.ttv_period) + delta_log_period) * ureg.d
+                else:
+                    period = self.ttv_period * ureg.d
+        else:
+            # Here, the user must supply period and time_transit.
+            if period is None:
+                raise ValueError("When supplying ttvs, period must be provided.")
+            period = ensure_quantity(period, ureg.d)
+            if time_transit is None:
+                # If time_transit is not provided, assume t0 = 0
+                time_transit = 0.0 * ureg.d
+            time_transit = ensure_quantity(time_transit, ureg.d)
+
+            # In the TTVs branch of __init__
+            self.ttvs = tuple(
+                jnp.atleast_1d(ensure_quantity(ttv, ureg.d).magnitude - jnp.mean(ensure_quantity(ttv, ureg.d).magnitude))
+                for ttv in ttvs
+            )
+
+            # For each planet, define transit_inds based on the shape of ttvs if not provided.
+            if transit_inds is None:
+                self.transit_inds = tuple(
+                    jnp.arange(ttv.shape[0]) for ttv in self.ttvs
+                )
+            else:
+                self.transit_inds = tuple(transit_inds)
+            self.t0 = jnp.atleast_1d(time_transit.magnitude)
+            # For ttvs mode, period is required and used directly:
             self.ttv_period = jnp.atleast_1d(period.magnitude)
+            # Reconstruct transit_times: t0 + period * inds + ttvs
+            transit_times_list = []
+            for ttv, inds in zip(self.ttvs, self.transit_inds):
+                # Handle single-planet t0 and period versus multi-planet cases.
+                if self.t0.ndim > 0 and self.t0.shape[0] > 1:
+                    t0_i = self.t0[len(transit_times_list)]
+                    period_i = self.ttv_period[len(transit_times_list)]
+                else:
+                    t0_i = self.t0.item() if hasattr(self.t0, "item") else self.t0
+                    period_i = self.ttv_period.item() if hasattr(self.ttv_period, "item") else self.ttv_period
+                transit_times_list.append(t0_i + period_i * inds + ttv)
+            self.transit_times = tuple(transit_times_list)
 
-        # If either t0 or ttv_period is a 1D array with length 1, squeeze it to a scalar:
-        if self.t0.size == 1:
-            self.t0 = self.t0.item()
-        if self.ttv_period.size == 1:
-            self.ttv_period = self.ttv_period.item()
-
-        # --- Initialize the base TransitOrbit (computes speed or duration) ---
+        # Initialize the base TransitOrbit.
         super().__init__(
-            period=period,
+            period=period if period is not None else self.ttv_period * ureg.d,
             duration=duration,
             speed=speed,
             time_transit=time_transit,
@@ -232,199 +201,88 @@ class TTVOrbit(TransitOrbit):
             radius_ratio=radius_ratio,
         )
 
-        # If only ttvs were provided, compute the transit_times = t0 + period * inds + ttv
-        if transit_times is None:
-            self.transit_times = []
-            for i, ttv_arr in enumerate(self.ttvs):
-                if jnp.ndim(self.t0) > 0:
-                    t0_i = self.t0[i]
-                    period_i = self.period.magnitude[i]
-                else:
-                    t0_i = self.t0
-                    period_i = self.period.magnitude
-                inds = self.transit_inds[i]
-                times = t0_i + period_i * inds + ttv_arr
-                self.transit_times.append(times)
+        # Compute bins separately for each planet
+        bin_edges_list = []
+        bin_values_list = []
+        
+        for tt, period in zip(self.transit_times, self.ttv_period):
+            edges, values = _compute_bin_edges_values_single(tt, period)
+            bin_edges_list.append(edges)
+            bin_values_list.append(values)
+            
+        self._bin_edges = tuple(bin_edges_list)
+        self._bin_values = tuple(bin_values_list)
 
-        # --- Build lookup tables (bin edges, bin values), dimensionless ---
-        self.all_transit_times = []
-        self._bin_edges = []
-        self._bin_values = []
-
-        # Helper to index single- or multi-planet parameters
-        def get_t0(i):
-            """Return the appropriate t0 for planet i, handling shape differences."""
-            return self.t0[i] if self.t0.ndim and self.t0.shape[0] > 1 else self.t0
-
-        def get_period(i):
-            """Return the appropriate period for planet i, handling shape differences."""
-            if hasattr(self.period, "magnitude"):
-                p = self.period.magnitude
-            else:
-                p = self.period
-            return p[i] if jnp.ndim(p) and p.shape[0] > 1 else p
-
-        def get_ttv_period(i):
-            """Return the appropriate TTV-fitted period for planet i."""
-            return (
-                self.ttv_period[i]
-                if jnp.ndim(self.ttv_period) and self.ttv_period.shape[0] > 1
-                else self.ttv_period
-            )
-
-        for i, inds in enumerate(self.transit_inds):
-            t0_i = get_t0(i)
-            period_i = get_period(i)
-            ttv_p_i = get_ttv_period(i)
-
-            max_ind = inds.shape[0] - 1
-            expected_times = t0_i + period_i * jnp.arange(max_ind + 1, dtype=inds.dtype)
-
-            full_transits = expected_times.at[inds].set(self.transit_times[i])
-            self.all_transit_times.append(full_transits)
-
-            # Build the bin edges
-            half_p = 0.5 * ttv_p_i
-            if full_transits.shape[0] > 1:
-                midpoints = 0.5 * (full_transits[1:] + full_transits[:-1])
-                bin_edges = jnp.concatenate(
-                    (
-                        jnp.array([full_transits[0] - half_p]),
-                        midpoints,
-                        jnp.array([full_transits[-1] + half_p]),
-                    )
-                )
-                bin_values = jnp.concatenate(
-                    (
-                        jnp.array([full_transits[0]]),
-                        full_transits,
-                        jnp.array([full_transits[-1]]),
-                    )
-                )
-            else:
-                # Single transit index => trivial bins
-                bin_edges = jnp.array(
-                    [full_transits[0] - half_p, full_transits[0] + half_p]
-                )
-                bin_values = jnp.array([full_transits[0], full_transits[0]])
-
-            # Store dimensionless
-            self._bin_edges.append(bin_edges)
-            self._bin_values.append(bin_values)
-
-    @property
-    def linear_t0(self):
-        """
-        Return reference transit time(s) in days (dimensionless array).
-
-        If `self.t0` is scalar, it is wrapped in `jnp.atleast_1d`.
-        """
-        return jnp.atleast_1d(self.t0)
-
-    @property
-    def linear_period(self):
-        """
-        Return the TTV period(s) in days (dimensionless array).
-
-        If `self.ttv_period` is scalar, it is wrapped in `jnp.atleast_1d`.
-        """
-        return jnp.atleast_1d(self.ttv_period)
-
+    @jax.jit
     def _get_model_dt(self, t: Quantity) -> jnp.ndarray:
-        """
-        Determine the mapped transit time for each planet by searching
-        which transit bin the input time belongs to.
-
-        Args:
-            t (Quantity):
-                Observation times (days).
-
-        Returns:
-            jnp.ndarray:
-                Dimensionless array (in days) of shape (..., n_planets) giving
-                the transit time that each planet is currently “closest” to.
-        """
+        """Get model dt values for time warping."""
         t_magnitude = jnp.asarray(t.to(ureg.d).magnitude)
-
         dt_list = []
-        for i in range(len(self._bin_edges)):
-            inds = jnp.searchsorted(self._bin_edges[i], t_magnitude)
-            dt_i = self._bin_values[i][inds]  # dimensionless
-            dt_list.append(dt_i)
+        for edges, values in zip(self._bin_edges, self._bin_values):
+            edges_mag = edges.to(ureg.d).magnitude if hasattr(edges, 'to') else edges
+            values_mag = values.to(ureg.d).magnitude if hasattr(values, 'to') else values
+            
+            dt = _process_planet_dt_single(edges_mag, values_mag, t_magnitude)
+            dt_list.append(dt)
+        
+        return jnp.stack(dt_list) * ureg.d
 
-        return jnp.stack(dt_list, axis=-1)  # shape (..., n_planets)
-
+    @jax.jit
     def _warp_times(self, t: Quantity) -> Quantity:
-        """
-        Warp the time axis to incorporate TTVs.
-
-        This uses the lookup from `_get_model_dt` to shift each input time
-        to the “nearest” transit time for each planet.
-
-        Args:
-            t (Quantity):
-                The times at which to evaluate the TTV-warped orbit (days).
-
-        Returns:
-            Quantity:
-                The warped times (days) accounting for TTVs.
-        """
-        dt = self._get_model_dt(t)  # dimensionless shape (..., n_planets)
-        # If only one planet, drop the trailing axis
-        if dt.shape[-1] == 1:
-            dt = dt[..., 0]
-
-        # Convert self.t0 to dimensionless array
-        t0 = jnp.atleast_1d(self.t0)
-        return t - (dt - t0) * ureg.d
+        """Warp times based on transit timing variations."""
+        dt = self._get_model_dt(t)
+        t0_days = self.t0.to(ureg.d) if hasattr(self.t0, 'to') else self.t0 * ureg.d
+        return t - (dt - t0_days)
 
     @units.quantity_input(t=ureg.d, parallax=ureg.arcsec)
     def relative_position(
-        self, t: Quantity, parallax: Quantity | None = None
-    ) -> tuple[Quantity, Quantity, Quantity]:
-        """
-        Override the base relative_position method to warp the time axis first.
-
-        Args:
-            t (Quantity):
-                Times at which to compute the orbit (days).
-            parallax (Quantity, optional):
-                Parallax angle if relevant.
-
-        Returns:
-            (x, y, z): tuple of Quantity
-                The 3D position in the star‐centric frame, with shape matching `t`.
-        """
+        self, t: Quantity, parallax: Quantity | None = None) -> tuple[Quantity, Quantity, Quantity]:
+        """Compute relative position of the planet(s)."""
         warped_t = self._warp_times(t)
         x, y, z = super().relative_position(warped_t, parallax=parallax)
-        return jnpu.squeeze(x), jnpu.squeeze(y), jnpu.squeeze(z)
+        return (jnp.squeeze(x.magnitude)*x.units, 
+                jnp.squeeze(y.magnitude)*y.units, 
+                jnp.squeeze(z.magnitude)*z.units)
+    
+    @property
+    def linear_t0(self):
+        """Return the linear reference transit time."""
+        if hasattr(self.t0, "magnitude"):
+            return jnp.atleast_1d(self.t0.magnitude)
+        else:
+            return jnp.atleast_1d(self.t0)
 
+    @property
+    def linear_period(self):
+        """Return the linear period."""
+        if hasattr(self.ttv_period, "magnitude"):
+            return jnp.atleast_1d(self.ttv_period.magnitude)
+        else:
+            return jnp.atleast_1d(self.ttv_period)
 
 def compute_expected_transit_times(min_time, max_time, period, t0):
     """
-    Compute the expected transit times within a dataset.
-
+    Compute expected transit times for each planet and return them as a tuple of 1D arrays.
+    
     Args:
-        min_time (float):
-            The start time of the dataset (days).
-        max_time (float):
-            The end time of the dataset (days).
-        period (array-like):
-            The orbital period(s) for one or more planets (days).
-        t0 (array-like):
-            The reference transit times for those planets (days).
-
+        min_time (float): Start time (in days).
+        max_time (float): End time (in days).
+        period (array-like): Orbital period for each planet (in days). Should be convertible to a 1D JAX array.
+        t0 (array-like): Reference transit times for each planet (in days). Should be convertible to a 1D JAX array.
+        
     Returns:
-        A list of arrays, where each array contains the transit times
-        between `min_time` and `max_time` for the corresponding planet.
+        transit_times: tuple of JAX arrays, one per planet.
     """
-    periods = jnp.atleast_1d(period)
-    t0s = jnp.atleast_1d(t0)
-    transit_times = []
-    for p, t0_ in zip(periods, t0s, strict=False):
-        min_ind = jnp.floor((min_time - t0_) / p)
-        max_ind = jnp.ceil((max_time - t0_) / p)
-        times = t0_ + p * jnp.arange(min_ind, max_ind, 1)
-        times = times[(min_time <= times) & (times <= max_time)]
-        transit_times.append(times)
-    return transit_times
+    period = jnp.atleast_1d(period)
+    t0 = jnp.atleast_1d(t0)
+    
+    transit_times_list = []
+    for p, t0_val in zip(period, t0):
+        i_min = int(jnp.ceil((min_time - t0_val) / p))
+        i_max = int(jnp.floor((max_time - t0_val) / p))
+        indices = jnp.arange(i_min, i_max + 1)
+        times = t0_val + p * indices
+        times = times[(times >= min_time) & (times <= max_time)]
+        transit_times_list.append(times)
+    
+    return tuple(transit_times_list)
