@@ -10,6 +10,8 @@
 install
 commonissues
 tutorials/quickstart.ipynb
+tutorials/precision.ipynb
+tutorials/units.ipynb
 ```
 
 ```{toctree}
@@ -18,6 +20,7 @@ tutorials/quickstart.ipynb
 
 tutorials/about.ipynb
 tutorials/transit.ipynb
+tutorials/mw_transit.ipynb
 tutorials/rv.ipynb
 ```
 
