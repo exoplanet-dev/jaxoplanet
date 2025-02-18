@@ -14,7 +14,8 @@ from jaxoplanet.starry.core.solution import rT, solution_vector
 from jaxoplanet.starry.orbit import SurfaceSystem
 from jaxoplanet.starry.surface import Surface
 from jaxoplanet.types import Array, Quantity
-from jaxoplanet.units import quantity_input, unit_registry as ureg
+from jaxoplanet.units import quantity_input
+from jaxoplanet.units import unit_registry as ureg
 
 
 def light_curve(
@@ -94,8 +95,7 @@ def light_curve(
     return light_curve_impl
 
 
-# TODO: figure out the sparse matrices (and Pijk) to avoid todense()
-def surface_light_curve(
+def _design_matrix_elements(
     surface: Surface,
     r: float | None = None,
     x: float | None = None,
@@ -104,41 +104,20 @@ def surface_light_curve(
     theta: float | None = None,
     order: int = 20,
     higher_precision: bool = False,
+    rv: bool = False,
 ):
-    """Light curve of an occulted surface.
-
-    Args:
-        surface (Surface): Surface object
-        r (float or None): radius of the occulting body, relative to the current map
-           body
-        x (float or None): x coordinate of the occulting body relative to the surface
-           center. By default (None) 0.0
-        y (float or None): y coordinate of the occulting body relative to the surface
-           center. By default (None) 0.0
-        z (float or None): z coordinate of the occulting body relative to the surface
-           center. By default (None) 0.0
-        theta (float):
-            rotation angle of the map, in radians. By default 0.0
-        order (int):
-            order of the P integral numerical approximation. By default 20
-        higher_precision (bool): whether to compute change of basis matrix as hight
-            precision. By default False (only used to testing).
-
-    Returns:
-        ArrayLike: flux
-    """
     if higher_precision:
         try:
-            from jaxoplanet.starry.multiprecision import (
-                basis as basis_mp,
-                utils as utils_mp,
-            )
+            from jaxoplanet.starry.multiprecision import basis as basis_mp
+            from jaxoplanet.starry.multiprecision import utils as utils_mp
         except ImportError as e:
             raise ImportError(
                 "The `mpmath` Python package is required for higher_precision=True."
             ) from e
 
-    rT_deg = rT(surface.deg)
+    total_deg = surface.deg + (surface.vdeg if rv else 0)
+
+    rT_deg = rT(total_deg)
 
     x = 0.0 if x is None else x
     y = 0.0 if y is None else y
@@ -161,13 +140,13 @@ def surface_light_curve(
         r = jnp.where(b_rot, 1.0, r)
         b = jnp.where(b_rot, 1.0, b)
 
-        sT = solution_vector(surface.deg, order=order)(b, r)
+        sT = solution_vector(total_deg, order=order)(b, r)
 
-        if surface.deg > 0:
+        if total_deg > 0:
             if higher_precision:
-                A2 = np.atleast_2d(utils_mp.to_numpy(basis_mp.A2(surface.deg)))
+                A2 = np.atleast_2d(utils_mp.to_numpy(basis_mp.A2(total_deg)))
             else:
-                A2 = scipy.sparse.linalg.inv(A2_inv(surface.deg))
+                A2 = scipy.sparse.linalg.inv(A2_inv(total_deg))
                 A2 = jax.experimental.sparse.BCOO.from_scipy_sparse(A2)
         else:
             A2 = jnp.array([[1]])
@@ -200,8 +179,56 @@ def surface_light_curve(
         A1_val = jax.experimental.sparse.BCOO.from_scipy_sparse(A1(surface.ydeg))
 
     p_y = Pijk.from_dense(A1_val @ rotated_y, degree=surface.ydeg)
-    p_y = p_y * p_u
 
     norm = np.pi / (p_u.tosparse() @ rT(surface.udeg))
 
-    return surface.amplitude * (p_y.tosparse() @ design_matrix_p) * norm
+    return design_matrix_p, p_y, p_u, norm
+
+
+def surface_light_curve(
+    surface: Surface,
+    r: float | None = None,
+    x: float | None = None,
+    y: float | None = None,
+    z: float | None = None,
+    theta: float | None = None,
+    order: int = 20,
+    higher_precision: bool = False,
+):
+    """Light curve of an occulted surface.
+
+    Args:
+        surface (Surface): Surface object
+        r (float or None): radius of the occulting body, relative to the current map
+           body
+        x (float or None): x coordinate of the occulting body relative to the surface
+           center. By default (None) 0.0
+        y (float or None): y coordinate of the occulting body relative to the surface
+           center. By default (None) 0.0
+        z (float or None): z coordinate of the occulting body relative to the surface
+           center. By default (None) 0.0
+        theta (float):
+            rotation angle of the map, in radians. By default 0.0
+        order (int):
+            order of the P integral numerical approximation. By default 20
+        higher_precision (bool): whether to compute change of basis matrix as hight
+            precision. By default False (only used to testing).
+
+    Returns:
+        ArrayLike: flux
+    """
+    design_matrix_p, p_y, p_u, norm = _design_matrix_elements(
+        surface=surface,
+        r=r,
+        x=x,
+        y=y,
+        z=z,
+        theta=theta,
+        order=order,
+        higher_precision=higher_precision,
+        rv=False,
+    )
+
+    p_yu = p_y * p_u
+
+    return surface.amplitude * (p_yu.tosparse() @ design_matrix_p) * norm

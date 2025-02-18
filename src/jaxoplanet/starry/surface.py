@@ -8,10 +8,7 @@ from jax.scipy.spatial.transform import Rotation
 
 from jaxoplanet.starry.core.basis import A1, U, poly_basis
 from jaxoplanet.starry.core.polynomials import Pijk
-from jaxoplanet.starry.core.rotation import (
-    full_rotation_axis_angle,
-    left_project,
-)
+from jaxoplanet.starry.core.rotation import full_rotation_axis_angle, left_project
 from jaxoplanet.starry.utils import ortho_grid
 from jaxoplanet.starry.ylm import Ylm
 from jaxoplanet.types import Array, Quantity
@@ -83,6 +80,12 @@ class Surface(eqx.Module):
     phase: Array
     """Initial phase of the map rotation around polar axis"""
 
+    radius: Array
+    """Radius of the map in solar radii"""
+
+    shear: Array
+    """Differential rotation shear of the map"""
+
     def __init__(
         self,
         *,
@@ -94,6 +97,8 @@ class Surface(eqx.Module):
         amplitude: Array = 1.0,
         normalize: bool = True,
         phase: Array = 0.0,
+        radius: Array = 1.0,
+        shear: Array = None,
     ):
 
         if y is None:
@@ -111,6 +116,8 @@ class Surface(eqx.Module):
         self.amplitude = amplitude
         self.normalize = normalize
         self.phase = phase
+        self.radius = radius
+        self.shear = shear
 
     @property
     def inc(self):
@@ -129,17 +136,29 @@ class Surface(eqx.Module):
         self._obl = value
 
     @property
+    def veq(self):
+        """Equatorial velocity of the map in Rsun/day."""
+        return 2 * jnp.pi * self.radius / self.period
+
+    @property
     def _poly_basis(self):
         return jax.jit(poly_basis(self.deg))
 
     @property
-    def udeg(self):
+    def udeg(self) -> int:
         """Order of the polynomial limb darkening."""
         return len(self.u)
 
     @property
-    def ydeg(self):
+    def ydeg(self) -> int:
         return self.y.deg
+
+    @property
+    def vdeg(self) -> int:
+        if self.shear is not None:
+            return
+        else:
+            return 1
 
     @property
     def deg(self):
