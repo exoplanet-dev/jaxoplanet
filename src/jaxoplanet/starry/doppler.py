@@ -4,7 +4,7 @@ import jax.numpy as jnp
 from jaxoplanet.starry import Surface
 from jaxoplanet.starry.core import basis
 from jaxoplanet.starry.core.polynomials import Pijk
-from jaxoplanet.starry.light_curves import _design_matrix_elements, surface_light_curve
+from jaxoplanet.starry.light_curves import _design_matrix_elements
 from jaxoplanet.starry.utils import RSUN_DAY_TO_M_S
 
 

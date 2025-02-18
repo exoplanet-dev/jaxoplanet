@@ -14,8 +14,7 @@ from jaxoplanet.starry.core.solution import rT, solution_vector
 from jaxoplanet.starry.orbit import SurfaceSystem
 from jaxoplanet.starry.surface import Surface
 from jaxoplanet.types import Array, Quantity
-from jaxoplanet.units import quantity_input
-from jaxoplanet.units import unit_registry as ureg
+from jaxoplanet.units import quantity_input, unit_registry as ureg
 
 
 def light_curve(
@@ -108,8 +107,10 @@ def _design_matrix_elements(
 ):
     if higher_precision:
         try:
-            from jaxoplanet.starry.multiprecision import basis as basis_mp
-            from jaxoplanet.starry.multiprecision import utils as utils_mp
+            from jaxoplanet.starry.multiprecision import (
+                basis as basis_mp,
+                utils as utils_mp,
+            )
         except ImportError as e:
             raise ImportError(
                 "The `mpmath` Python package is required for higher_precision=True."
