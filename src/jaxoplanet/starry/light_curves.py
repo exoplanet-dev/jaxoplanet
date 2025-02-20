@@ -202,6 +202,6 @@ def surface_light_curve(
     p_y = Pijk.from_dense(A1_val @ rotated_y, degree=surface.ydeg)
     p_y = p_y * p_u
 
-    norm = np.pi / (p_u.tosparse() @ rT(surface.udeg))
+    norm = np.pi / (p_u.todense() @ rT(surface.udeg))
 
-    return surface.amplitude * (p_y.tosparse() @ design_matrix_p) * norm
+    return surface.amplitude * (p_y.todense() @ design_matrix_p) * norm
