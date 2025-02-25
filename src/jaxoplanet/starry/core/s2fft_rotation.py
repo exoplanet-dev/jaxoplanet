@@ -22,11 +22,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+from functools import partial
+
 import jax
 import jax.numpy as jnp
 from jax.scipy.spatial.transform import Rotation
-from functools import partial
-from typing import Tuple
+
 
 def _compute_full(dl: jnp.ndarray, beta: float, L: int, el: int) -> jnp.ndarray:
     """from s2fft.recursions.risbo_jax"""
@@ -205,7 +206,7 @@ def __exp_array(L: int, x: float) -> jnp.ndarray:
 def rotate_flms(
     flm: jnp.ndarray,
     L: int,
-    rotation: Tuple[float, float, float],
+    rotation: tuple[float, float, float],
     dl_array: jnp.ndarray = None,
 ) -> jnp.ndarray:
     """Rotates an array of spherical harmonic coefficients by angle rotation.

@@ -9,8 +9,8 @@ from jax.scipy.spatial.transform import Rotation
 from jaxoplanet.starry.core.basis import A1, U, poly_basis
 from jaxoplanet.starry.core.polynomials import Pijk
 from jaxoplanet.starry.core.rotation import (
+    fast_direct_left_project,
     full_rotation_axis_angle,
-    fast_direct_left_project
 )
 from jaxoplanet.starry.utils import ortho_grid
 from jaxoplanet.starry.ylm import Ylm
@@ -148,7 +148,9 @@ class Surface(eqx.Module):
 
     def _intensity(self, x, y, z, theta=None):
         pT = self._poly_basis(x, y, z)
-        Ry = fast_direct_left_project(self.ydeg, self.inc, self.obl, theta, 0.0, self.y.todense())
+        Ry = fast_direct_left_project(
+            self.ydeg, self.inc, self.obl, theta, 0.0, self.y.todense()
+        )
         A1Ry = A1(self.ydeg).todense() @ Ry
         p_y = Pijk.from_dense(A1Ry, degree=self.ydeg)
         u = jnp.array([1, *self.u])
