@@ -23,6 +23,7 @@ tutorials/transit.ipynb
 tutorials/mw_transit.ipynb
 tutorials/ttv.ipynb
 tutorials/rv.ipynb
+tutorials/phase-curve.ipynb
 ```
 
 ```{toctree}

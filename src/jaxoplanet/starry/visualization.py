@@ -56,6 +56,7 @@ def show_surface(
         radius = 1.0 if radius is None else radius
 
     phase = theta + (surface.phase if include_phase else 0.0)
+    extent = np.array([-1, 1, -1, 1])
 
     ax.imshow(
         surface.render(
@@ -64,7 +65,7 @@ def show_surface(
         ),
         origin="lower",
         **kwargs,
-        extent=(-radius, radius, -radius, radius),
+        extent=extent,
     )
     if n is not None:
         graticule(
@@ -75,4 +76,6 @@ def show_surface(
             n=n,
             white_contour=white_contour,
         )
+    ax.set_xlim(-1.02, 1.02)
+    ax.set_ylim(-1.02, 1.02)
     ax.axis(False)
