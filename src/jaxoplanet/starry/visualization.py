@@ -3,10 +3,12 @@ import numpy as np
 from jaxoplanet.starry.surface import Surface
 from jaxoplanet.starry.utils import graticule
 from jaxoplanet.starry.ylm import Ylm
+from jaxoplanet.starry.core.polynomials import Pijk
+from jaxoplanet.starry.core.basis import A1
 
 
 def show_surface(
-    ylm_surface_body,
+    ylm_pijk_surface_body,
     theta: float = 0.0,
     res: int = 400,
     n: int = 6,
@@ -19,8 +21,8 @@ def show_surface(
     """Show map of a
 
     Args:
-        ylm_surface_body (Ylm, Surface or SurfaceBody): Ylm, Surface or Body with a
-            surface
+        ylm_pijk_surface_body (Ylm, Pijk, Surface or SurfaceBody): Ylm, Pijk, Surface or
+            Body with a surface
         theta (float, optional): Rotation angle of the map wrt its rotation axis.
             Defaults to 0.0.
         res (int, optional): Resolution of the map render. Defaults to 400.
@@ -40,19 +42,25 @@ def show_surface(
         if ax is None:
             ax = plt.subplot(111)
 
-    if hasattr(ylm_surface_body, "surface"):
-        surface = ylm_surface_body.surface
-        if ylm_surface_body.radius is not None:
-            radius = ylm_surface_body.radius.magnitude
+    if hasattr(ylm_pijk_surface_body, "surface"):
+        surface = ylm_pijk_surface_body.surface
+        if ylm_pijk_surface_body.radius is not None:
+            radius = ylm_pijk_surface_body.radius.magnitude
         else:
             radius = 1.0 if radius is None else radius
         n = int(np.ceil(n * np.cbrt(radius)))
     # import Ylm leads to circular import
-    elif isinstance(ylm_surface_body, Ylm):
-        surface = Surface(y=ylm_surface_body)
+    elif isinstance(ylm_pijk_surface_body, Ylm):
+        surface = Surface(y=ylm_pijk_surface_body)
+        radius = 1.0 if radius is None else radius
+    elif isinstance(ylm_pijk_surface_body, Pijk):
+        A1inv = np.linalg.inv(A1(ylm_pijk_surface_body.degree).todense())
+        surface = Surface(
+            y=Ylm.from_dense(A1inv @ ylm_pijk_surface_body.todense(), normalize=False), normalize=False
+        )
         radius = 1.0 if radius is None else radius
     else:
-        surface = ylm_surface_body
+        surface = ylm_pijk_surface_body
         radius = 1.0 if radius is None else radius
 
     phase = theta + (surface.phase if include_phase else 0.0)
