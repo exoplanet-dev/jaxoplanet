@@ -17,7 +17,7 @@ def ensure_quantity(x, unit):
 
 @jax.jit
 def _compute_linear_ephemeris_single(transit_times: jnp.ndarray, indices: jnp.ndarray):
-    """Compute linear ephemeris parameters for a single planet using least squares 
+    """Compute linear ephemeris parameters for a single planet using least squares
     fitting."""
     n = transit_times.shape[0]
     X = jnp.vstack([jnp.ones(n), indices])
@@ -73,14 +73,14 @@ class TTVOrbit(TransitOrbit):
     Only one of these two options should be provided.
 
     args added on to TransitOrbit:
-    
-    - ttvs: tuple (or list) of Quantity arrays, each giving the “observed minus 
+
+    - ttvs: tuple (or list) of Quantity arrays, each giving the “observed minus
         computed” transit time offsets (in days) for one planet.
     - transit_times: tuple (or list) of Quantity arrays giving the observed transit times
          (in days).
-    - transit_inds: tuple (or list) of integer arrays (one per planet) labeling the 
+    - transit_inds: tuple (or list) of integer arrays (one per planet) labeling the
         transit numbers.
-    - delta_log_period: (optional) if using transit_times and the effective transit 
+    - delta_log_period: (optional) if using transit_times and the effective transit
         period is to be slightly different from the period that governs the transit
         shape, this parameter gives the offset in natural log.
 
@@ -187,7 +187,7 @@ class TTVOrbit(TransitOrbit):
                 for ttv in ttvs
             )
 
-            # For each planet, define transit_inds based on the shape of ttvs if not 
+            # For each planet, define transit_inds based on the shape of ttvs if not
             # provided.
             if transit_inds is None:
                 self.transit_inds = tuple(jnp.arange(ttv.shape[0]) for ttv in self.ttvs)
@@ -290,15 +290,15 @@ class TTVOrbit(TransitOrbit):
 
 def compute_expected_transit_times(min_time, max_time, period, t0):
     """
-    Compute expected transit times for each planet and return them as a tuple of 1D 
+    Compute expected transit times for each planet and return them as a tuple of 1D
     arrays.
 
     Args:
         min_time (float): Start time (in days).
         max_time (float): End time (in days).
-        period (array-like): Orbital period for each planet (in days). Should be 
+        period (array-like): Orbital period for each planet (in days). Should be
             convertible to a 1D JAX array.
-        t0 (array-like): Reference transit times for each planet (in days). Should be 
+        t0 (array-like): Reference transit times for each planet (in days). Should be
             convertible to a 1D JAX array.
 
     Returns:
