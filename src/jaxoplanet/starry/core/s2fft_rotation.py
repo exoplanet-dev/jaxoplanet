@@ -214,7 +214,7 @@ def rotate_flms(
     Args:
         flm (jnp.ndarray): Array of spherical harmonic coefficients.
         L (int): Harmonic band-limit.
-        rotation  (Tuple[float, float, float]): Rotation on the sphere 
+        rotation  (Tuple[float, float, float]): Rotation on the sphere
             (alpha, beta, gamma).
         dl_array (jnp.ndarray, optional): Precomputed array of reduced Wigner d-function
             coefficients, see :func:~`generate_rotate_dls`. Defaults to None.
