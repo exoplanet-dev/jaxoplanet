@@ -144,6 +144,7 @@ def y1d_to_2d(ydeg: int, flm_1d: np.ndarray) -> np.ndarray:
 
     return new_flm
 
+
 # s2fft have the same but this one is jitabel
 def y2d_to_1d(ydeg: int, flm_2d: np.ndarray) -> np.ndarray:
     """2D starry Ylm to 1D s2fft"""
