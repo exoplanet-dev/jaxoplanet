@@ -51,7 +51,7 @@ def flux(ydeg=0, udeg=0, inc=mp.pi / 2, obl=0.0, cache=None):
 
     def rot_flux(y, phi):
         y = mp.matrix(y.tolist())
-        y_rotated = rotate_y(y, phi, cache=cache)
+        y_rotated = rotate_y(y, phi)
         return ((_A1 @ y_rotated).T @ _rT)[0]
 
     def occ_flux(y, b, r, phi=0.0, u=None, rotate=True):
