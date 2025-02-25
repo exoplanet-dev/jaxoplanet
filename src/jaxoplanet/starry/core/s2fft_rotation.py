@@ -22,9 +22,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+import jax
 import jax.numpy as jnp
 from jax.scipy.spatial.transform import Rotation
-
+from functools import partial
+from typing import Tuple
 
 def _compute_full(dl: jnp.ndarray, beta: float, L: int, el: int) -> jnp.ndarray:
     """from s2fft.recursions.risbo_jax"""
@@ -192,3 +194,70 @@ def compute_rotation_matrices(deg, x, y, z, theta, homogeneous=False):
             Rs.append(Rs_full[i, deg - i : deg + i + 1, deg - i : deg + i + 1])
 
     return Rs
+
+
+def __exp_array(L: int, x: float) -> jnp.ndarray:
+    """Private function to generate rotation arrays for alpha/gamma rotations"""
+    return jnp.exp(-1j * jnp.arange(-L + 1, L) * x)
+
+
+@partial(jax.jit, static_argnums=(1))
+def rotate_flms(
+    flm: jnp.ndarray,
+    L: int,
+    rotation: Tuple[float, float, float],
+    dl_array: jnp.ndarray = None,
+) -> jnp.ndarray:
+    """Rotates an array of spherical harmonic coefficients by angle rotation.
+
+    Args:
+        flm (jnp.ndarray): Array of spherical harmonic coefficients.
+        L (int): Harmonic band-limit.
+        rotation  (Tuple[float, float, float]): Rotation on the sphere (alpha, beta, gamma).
+        dl_array (jnp.ndarray, optional): Precomputed array of reduced Wigner d-function
+            coefficients, see :func:~`generate_rotate_dls`. Defaults to None.
+
+    Returns:
+        jnp.ndarray: Rotated spherical harmonic coefficients with shape [L,2L-1].
+    """
+
+    # Split out angles
+    alpha = __exp_array(L, rotation[0])
+    gamma = __exp_array(L, rotation[2])
+    beta = rotation[1]
+
+    # Create empty arrays
+    flm_rotated = jnp.zeros_like(flm)
+
+    dl = (
+        dl_array
+        if dl_array != None
+        else jnp.zeros((2 * L - 1, 2 * L - 1)).astype(jnp.float64)
+    )
+
+    # Perform rotation
+    for el in range(L):
+        if dl_array is None:
+            dl = _compute_full(dl, beta, L, el)
+        n_max = min(el, L - 1)
+
+        m = jnp.arange(-el, el + 1)
+        n = jnp.arange(-n_max, n_max + 1)
+
+        flm_rotated = flm_rotated.at[el, L - 1 + m].add(
+            jnp.einsum(
+                "mn,n->m",
+                jnp.einsum(
+                    "mn,m->mn",
+                    (
+                        dl[m + L - 1][:, n + L - 1]
+                        if dl_array is None
+                        else dl[el, m + L - 1][:, n + L - 1]
+                    ),
+                    alpha[m + L - 1],
+                    optimize=True,
+                ),
+                gamma[n + L - 1] * flm[el, n + L - 1],
+            )
+        )
+    return flm_rotated

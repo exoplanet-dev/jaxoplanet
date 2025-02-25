@@ -8,7 +8,7 @@ from jaxoplanet.starry.ylm import Ylm
 def show_surface(
     ylm_surface_body,
     theta: float = 0.0,
-    res: int = 400,
+    res: int = 150,
     n: int = 6,
     ax=None,
     white_contour: bool = True,

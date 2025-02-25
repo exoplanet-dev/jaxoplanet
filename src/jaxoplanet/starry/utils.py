@@ -5,9 +5,6 @@ import jax.numpy as jnp
 import numpy as np
 from scipy.spatial.transform import Rotation
 
-from jaxoplanet.starry.core.basis import A1, poly_basis
-from jaxoplanet.starry.core.rotation import left_project
-
 
 @partial(jax.jit, static_argnums=(0))
 def ortho_grid(res: int):
@@ -20,14 +17,6 @@ def ortho_grid(res: int):
     lat = 0.5 * jnp.pi - jnp.arccos(y)
     lon = jnp.arctan2(x, z)
     return (lat, lon), (x, y, z)
-
-
-def render(deg, res, theta, inc, obl, y):
-    _, xyz = ortho_grid(res)
-    pT = poly_basis(deg)(*xyz)
-    Ry = left_project(deg, inc, obl, theta, 0.0, y)
-    A1Ry = A1(deg) @ Ry
-    return jnp.reshape(pT @ A1Ry, (res, res))
 
 
 def lon_lat_lines(n: int = 6, pts: int = 100, radius: float = 1.0):
@@ -141,3 +130,43 @@ def graticule(
     plt.plot(sqrt_radius * np.cos(theta), sqrt_radius * np.sin(theta), **kwargs)
     if white_contour:
         plt.plot(sqrt_radius * np.cos(theta), sqrt_radius * np.sin(theta), c="w", lw=3)
+
+
+# s2fft have the same but this one is jitabel
+def y1d_to_2d(ydeg: int, flm_1d: np.ndarray) -> np.ndarray:
+    """1D starry Ylm to 2D s2fft"""
+    new_flm = jnp.zeros((ydeg + 1, 2 * ydeg + 1), dtype=flm_1d.dtype)
+    i = 0
+    for l in range(ydeg + 1):
+        for m in range(-l, l + 1):
+            new_flm = new_flm.at[l, m + ydeg].set(flm_1d[i])
+            i += 1
+
+    return new_flm
+
+# s2fft have the same but this one is jitabel
+def y2d_to_1d(ydeg: int, flm_2d: np.ndarray) -> np.ndarray:
+    """2D starry Ylm to 1D s2fft"""
+    new_flm = jnp.zeros((ydeg + 1) ** 2, dtype=flm_2d.dtype)
+    i = 0
+    for l in range(ydeg + 1):
+        for m in range(-l, l + 1):
+            new_flm = new_flm.at[i].set(flm_2d[l, m + ydeg])
+            i += 1
+
+    return new_flm
+
+
+def C(l):
+    """Complex to real conversion matrix"""
+    # See https://doi.org/10.1016/s0166-1280(97)00185-1 (Blanco 1997, Eq. 19)
+    A = np.eye(l, l)[:, ::-1]
+    B = np.zeros(l)[:, None]
+    C = np.diag((-1) ** np.arange(1, l + 1))
+
+    ABC = np.hstack([A, B, C])
+    jABC = np.hstack([1j * A, B, -1j * C])[::-1, :]
+    one = np.zeros(2 * l + 1)
+    one[l] = np.sqrt(2)
+
+    return np.vstack([jABC, one, ABC]) / np.sqrt(2)
