@@ -1,18 +1,17 @@
 from collections.abc import Iterable
-from functools import partial
 
 import equinox as eqx
 import jax
 import jax.numpy as jnp
 from jax.scipy.spatial.transform import Rotation
 
+from jaxoplanet import starry
 from jaxoplanet.starry.core.basis import A1, U, poly_basis
 from jaxoplanet.starry.core.polynomials import Pijk
 from jaxoplanet.starry.core.rotation import full_rotation_axis_angle, left_project
 from jaxoplanet.starry.utils import ortho_grid
 from jaxoplanet.starry.ylm import Ylm
 from jaxoplanet.types import Array, Quantity
-from jaxoplanet import starry
 
 
 class Surface(eqx.Module):

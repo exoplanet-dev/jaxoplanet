@@ -3,10 +3,10 @@ import numpy as np
 import pytest
 
 from jaxoplanet.starry import Surface, Ylm
+from jaxoplanet.starry.doppler import radial_velocity, surface_radial_velocity
+from jaxoplanet.starry.orbit import Body, Central, SurfaceSystem
 from jaxoplanet.starry.utils import RSUN_DAY_TO_M_S
-from jaxoplanet.starry.doppler import surface_radial_velocity, radial_velocity
 from jaxoplanet.test_utils import assert_allclose
-from jaxoplanet.starry.orbit import SurfaceSystem, Central, Body
 
 
 @pytest.mark.parametrize("deg", (2, 6))

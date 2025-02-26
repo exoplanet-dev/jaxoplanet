@@ -1,11 +1,11 @@
-import numpy as np
 import jax.numpy as jnp
+import numpy as np
 
+from jaxoplanet.starry.core.basis import A1
+from jaxoplanet.starry.core.polynomials import Pijk
 from jaxoplanet.starry.surface import Surface
 from jaxoplanet.starry.utils import graticule
 from jaxoplanet.starry.ylm import Ylm
-from jaxoplanet.starry.core.polynomials import Pijk
-from jaxoplanet.starry.core.basis import A1
 
 
 def show_surface(
@@ -41,9 +41,9 @@ def show_surface(
     import matplotlib.pyplot as plt
 
     if rv:
-        assert isinstance(ylm_pijk_surface_body, Surface), (
-            "if rv is True, surface must be a Surface object"
-        )
+        assert isinstance(
+            ylm_pijk_surface_body, Surface
+        ), "if rv is True, surface must be a Surface object"
         kwargs.setdefault("cmap", "RdBu_r")
 
     if ax is None:
