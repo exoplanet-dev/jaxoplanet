@@ -12,6 +12,7 @@ from jaxoplanet.starry.core.rotation import full_rotation_axis_angle, left_proje
 from jaxoplanet.starry.utils import ortho_grid
 from jaxoplanet.starry.ylm import Ylm
 from jaxoplanet.types import Array, Quantity
+from jaxoplanet import starry
 
 
 class Surface(eqx.Module):
@@ -100,7 +101,6 @@ class Surface(eqx.Module):
         radius: Array = 1.0,
         shear: Array = None,
     ):
-
         if y is None:
             y = Ylm()
 
@@ -140,9 +140,11 @@ class Surface(eqx.Module):
         """Equatorial velocity of the map in Rsun/day."""
         return 2 * jnp.pi * self.radius / self.period
 
-    @property
-    def _poly_basis(self):
-        return jax.jit(poly_basis(self.deg))
+    def _poly_basis(self, rv=False):
+        if rv:
+            return jax.jit(poly_basis(self.deg + self.vdeg))
+        else:
+            return jax.jit(poly_basis(self.deg))
 
     @property
     def udeg(self) -> int:
@@ -165,18 +167,29 @@ class Surface(eqx.Module):
         """Total degree of the spherical harmonic expansion (``udeg + ydeg``)."""
         return self.ydeg + self.udeg
 
-    def _intensity(self, x, y, z, theta=None):
-        pT = self._poly_basis(x, y, z)
+    def _intensity(self, x, y, z, theta=None, rv=False):
+        pT = self._poly_basis(rv)(x, y, z)
         Ry = left_project(self.ydeg, self.inc, self.obl, theta, 0.0, self.y.todense())
         A1Ry = A1(self.ydeg).todense() @ Ry
         p_y = Pijk.from_dense(A1Ry, degree=self.ydeg)
         u = jnp.array([1, *self.u])
         p_u = Pijk.from_dense(u @ U(self.udeg), degree=self.udeg)
-        p = (p_y * p_u).todense()
-        return pT @ p * self.amplitude
+        p = p_y * p_u
 
-    @partial(jax.jit, static_argnames=("res",))
-    def render(self, theta: float | None = None, res: int = 400):
+        if rv:
+            y_rv = starry.doppler.rv_map_expansion(
+                inc=self._inc, obl=self._obl, veq=self.veq, alpha=None
+            )
+            p_rv = Pijk.from_dense(
+                jax.experimental.sparse.BCOO.from_scipy_sparse(A1(self.vdeg)).todense()
+                @ y_rv
+            )
+            p = p_y * p_u * p_rv
+
+        return pT @ p.todense() * self.amplitude
+
+    # @partial(jax.jit, static_argnames=("res",))
+    def render(self, theta: float | None = None, res: int = 400, rv: bool = False):
         """Returns the intensity map projected onto the x-y plane (sky).
 
         Args:
@@ -188,7 +201,7 @@ class Surface(eqx.Module):
             (with nans outside the map disk).
         """
         _, xyz = ortho_grid(res)
-        intensity = self._intensity(*xyz, theta=theta)
+        intensity = self._intensity(*xyz, theta=theta, rv=rv)
         return jnp.reshape(intensity, (res, res))
 
     def intensity(self, lat: float, lon: float):

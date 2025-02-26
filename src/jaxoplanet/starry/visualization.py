@@ -1,4 +1,5 @@
 import numpy as np
+import jax.numpy as jnp
 
 from jaxoplanet.starry.surface import Surface
 from jaxoplanet.starry.utils import graticule
@@ -16,6 +17,8 @@ def show_surface(
     white_contour: bool = True,
     radius: float = None,
     include_phase: bool = True,
+    rv=False,
+    return_im=False,
     **kwargs,
 ):
     """Show map of a
@@ -37,12 +40,21 @@ def show_surface(
     """
     import matplotlib.pyplot as plt
 
+    if rv:
+        assert isinstance(ylm_pijk_surface_body, Surface), (
+            "if rv is True, surface must be a Surface object"
+        )
+        kwargs.setdefault("cmap", "RdBu_r")
+
     if ax is None:
         ax = plt.gca()
         if ax is None:
             ax = plt.subplot(111)
-
-    if hasattr(ylm_pijk_surface_body, "surface"):
+    if isinstance(ylm_pijk_surface_body, (np.ndarray, jnp.ndarray)):
+        y = Ylm.from_dense(ylm_pijk_surface_body, normalize=False)
+        surface = Surface(y=y, normalize=False)
+        radius = 1.0 if radius is None else radius
+    elif hasattr(ylm_pijk_surface_body, "surface"):
         surface = ylm_pijk_surface_body.surface
         if ylm_pijk_surface_body.radius is not None:
             radius = ylm_pijk_surface_body.radius.magnitude
@@ -56,7 +68,8 @@ def show_surface(
     elif isinstance(ylm_pijk_surface_body, Pijk):
         A1inv = np.linalg.inv(A1(ylm_pijk_surface_body.degree).todense())
         surface = Surface(
-            y=Ylm.from_dense(A1inv @ ylm_pijk_surface_body.todense(), normalize=False), normalize=False
+            y=Ylm.from_dense(A1inv @ ylm_pijk_surface_body.todense(), normalize=False),
+            normalize=False,
         )
         radius = 1.0 if radius is None else radius
     else:
@@ -65,11 +78,8 @@ def show_surface(
 
     phase = theta + (surface.phase if include_phase else 0.0)
 
-    ax.imshow(
-        surface.render(
-            phase,
-            res,
-        ),
+    im = ax.imshow(
+        surface.render(phase, res, rv=rv),
         origin="lower",
         **kwargs,
         extent=(-radius, radius, -radius, radius),
@@ -84,3 +94,6 @@ def show_surface(
             white_contour=white_contour,
         )
     ax.axis(False)
+
+    if return_im:
+        return im
