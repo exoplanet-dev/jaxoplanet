@@ -1,15 +1,14 @@
 import jax
 import numpy as np
 import jax.numpy as jnp
-
-from jaxoplanet.starry.core import basis
-from jaxoplanet.starry.core.polynomials import Pijk
-from jaxoplanet.starry.core.basis import A1, A2_inv, U
-from jaxoplanet.starry.core.rotation import left_project, dot_rz
-from jaxoplanet.starry.core.solution import rT, solution_vector
-from jaxoplanet.starry.surface import Surface
 import scipy
 
+from jaxoplanet.starry.core import basis
+from jaxoplanet.starry.core.basis import A1, A2_inv, U
+from jaxoplanet.starry.core.polynomials import Pijk
+from jaxoplanet.starry.core.rotation import dot_rz, left_project
+from jaxoplanet.starry.core.solution import rT, solution_vector
+from jaxoplanet.starry.surface import Surface
 from jaxoplanet.starry.system_observable import system_observable
 
 

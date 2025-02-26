@@ -1,4 +1,3 @@
-from collections.abc import Callable
 
 import jax
 import jax.numpy as jnp
@@ -10,7 +9,6 @@ from jaxoplanet.starry.core.polynomials import Pijk
 from jaxoplanet.starry.core.rotation import left_project
 from jaxoplanet.starry.core.solution import rT, solution_vector
 from jaxoplanet.starry.surface import Surface
-
 from jaxoplanet.starry.system_observable import system_observable
 
 

@@ -1,11 +1,11 @@
-import numpy as np
 import jax.numpy as jnp
+import numpy as np
 
+from jaxoplanet.starry.core.basis import A1
+from jaxoplanet.starry.core.polynomials import Pijk
 from jaxoplanet.starry.surface import Surface
 from jaxoplanet.starry.utils import graticule
 from jaxoplanet.starry.ylm import Ylm
-from jaxoplanet.starry.core.polynomials import Pijk
-from jaxoplanet.starry.core.basis import A1
 
 
 def show_surface(
