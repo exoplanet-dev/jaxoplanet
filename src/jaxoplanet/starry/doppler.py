@@ -1,7 +1,7 @@
 import jax
+import numpy as np
 import jax.numpy as jnp
 
-from jaxoplanet.starry import Surface
 from jaxoplanet.starry.core import basis
 from jaxoplanet.starry.core.polynomials import Pijk
 from jaxoplanet.starry.core.basis import A1, A2_inv, U

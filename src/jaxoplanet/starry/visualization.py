@@ -41,16 +41,16 @@ def show_surface(
     import matplotlib.pyplot as plt
 
     if rv:
-        assert isinstance(ylm_pijk_surface_body, Surface), (
-            "if rv is True, surface must be a Surface object"
-        )
+        assert isinstance(
+            ylm_pijk_surface_body, Surface
+        ), "if rv is True, surface must be a Surface object"
         kwargs.setdefault("cmap", "RdBu_r")
 
     if ax is None:
         ax = plt.gca()
         if ax is None:
             ax = plt.subplot(111)
-    if isinstance(ylm_pijk_surface_body, (np.ndarray, jnp.ndarray)):
+    if isinstance(ylm_pijk_surface_body, np.ndarray | jnp.ndarray):
         y = Ylm.from_dense(ylm_pijk_surface_body, normalize=False)
         surface = Surface(y=y, normalize=False)
         radius = 1.0 if radius is None else radius
