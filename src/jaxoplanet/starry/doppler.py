@@ -1,6 +1,6 @@
 import jax
-import numpy as np
 import jax.numpy as jnp
+import numpy as np
 import scipy
 
 from jaxoplanet.starry.core import basis
