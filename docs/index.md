@@ -22,6 +22,7 @@ tutorials/about.ipynb
 tutorials/transit.ipynb
 tutorials/mw_transit.ipynb
 tutorials/rv.ipynb
+tutorials/rossiter.ipynb
 ```
 
 ```{toctree}
@@ -37,6 +38,7 @@ tutorials/core-from-scratch.ipynb
 :caption: Developer Documentation
 :maxdepth: 1
 
+conventions.ipynb
 api
 contributing
 
