@@ -17,3 +17,4 @@ poetry.lock
 .*_cache
 .jupyter
 .vscode
+jupyter_execute

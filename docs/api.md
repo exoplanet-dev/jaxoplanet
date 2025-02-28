@@ -10,6 +10,7 @@ The modules to define orbital systems are:
 
 - [keplerian](jaxoplanet.orbits.keplerian) : a module to define a Keplerian system made of a central object and its orbiting bodies.
 - [transit](jaxoplanet.orbits.transit) : a module to define a system made of a star and its transiting planet, defined by the transit parameters assuming the planet transits at a constant velocity.
+- [ttv](jaxoplanet.orbits.ttv): a module to define a system of planets featuring transit time variations.
 
 ## Limb-darkened stars
 
