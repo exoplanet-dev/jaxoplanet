@@ -23,7 +23,7 @@ tutorials/transit.ipynb
 tutorials/mw_transit.ipynb
 tutorials/ttv.ipynb
 tutorials/rv.ipynb
-tutorials/phase-curve.ipynb
+tutorials/rossiter.ipynb
 ```
 
 ```{toctree}
@@ -39,6 +39,7 @@ tutorials/core-from-scratch.ipynb
 :caption: Developer Documentation
 :maxdepth: 1
 
+conventions.ipynb
 api
 contributing
 

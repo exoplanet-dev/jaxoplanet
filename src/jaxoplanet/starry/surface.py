@@ -1,17 +1,14 @@
 from collections.abc import Iterable
-from functools import partial
 
 import equinox as eqx
 import jax
 import jax.numpy as jnp
 from jax.scipy.spatial.transform import Rotation
 
+from jaxoplanet import starry
 from jaxoplanet.starry.core.basis import A1, U, poly_basis
 from jaxoplanet.starry.core.polynomials import Pijk
-from jaxoplanet.starry.core.rotation import (
-    fast_direct_left_project,
-    full_rotation_axis_angle,
-)
+from jaxoplanet.starry.core.rotation import full_rotation_axis_angle, left_project
 from jaxoplanet.starry.utils import ortho_grid
 from jaxoplanet.starry.ylm import Ylm
 from jaxoplanet.types import Array, Quantity
@@ -83,6 +80,12 @@ class Surface(eqx.Module):
     phase: Array
     """Initial phase of the map rotation around polar axis"""
 
+    radius: Array
+    """Radius of the map in solar radii"""
+
+    shear: Array
+    """Differential rotation shear of the map"""
+
     def __init__(
         self,
         *,
@@ -94,8 +97,9 @@ class Surface(eqx.Module):
         amplitude: Array = 1.0,
         normalize: bool = True,
         phase: Array = 0.0,
+        radius: Array = 1.0,
+        shear: Array = None,
     ):
-
         if y is None:
             y = Ylm()
 
@@ -111,6 +115,8 @@ class Surface(eqx.Module):
         self.amplitude = amplitude
         self.normalize = normalize
         self.phase = phase
+        self.radius = radius
+        self.shear = shear
 
     @property
     def inc(self):
@@ -129,37 +135,60 @@ class Surface(eqx.Module):
         self._obl = value
 
     @property
-    def _poly_basis(self):
-        return poly_basis(self.deg)
+    def veq(self):
+        """Equatorial velocity of the map in Rsun/day."""
+        return 2 * jnp.pi * self.radius / self.period
+
+    def _poly_basis(self, rv=False):
+        if rv:
+            return jax.jit(poly_basis(self.deg + self.vdeg))
+        else:
+            return jax.jit(poly_basis(self.deg))
 
     @property
-    def udeg(self):
+    def udeg(self) -> int:
         """Order of the polynomial limb darkening."""
         return len(self.u)
 
     @property
-    def ydeg(self):
+    def ydeg(self) -> int:
         return self.y.deg
+
+    @property
+    def vdeg(self) -> int:
+        if self.shear is not None:
+            return
+        else:
+            return 1
 
     @property
     def deg(self):
         """Total degree of the spherical harmonic expansion (``udeg + ydeg``)."""
         return self.ydeg + self.udeg
 
-    def _intensity(self, x, y, z, theta=None):
-        pT = self._poly_basis(x, y, z)
-        Ry = fast_direct_left_project(
-            self.ydeg, self.inc, self.obl, theta, 0.0, self.y.todense()
-        )
+    def _intensity(self, x, y, z, theta=None, rv=False):
+        pT = self._poly_basis(rv)(x, y, z)
+        Ry = left_project(self.ydeg, self.inc, self.obl, theta, 0.0, self.y.todense())
         A1Ry = A1(self.ydeg).todense() @ Ry
         p_y = Pijk.from_dense(A1Ry, degree=self.ydeg)
         u = jnp.array([1, *self.u])
         p_u = Pijk.from_dense(u @ U(self.udeg), degree=self.udeg)
-        p = (p_y * p_u).todense()
-        return pT @ p * self.amplitude
+        p = p_y * p_u
 
-    @partial(jax.jit, static_argnames=("res",))
-    def render(self, theta: float | None = None, res: int = 400):
+        if rv:
+            y_rv = starry.doppler.rv_map_expansion(
+                inc=self._inc, obl=self._obl, veq=self.veq, alpha=None
+            )
+            p_rv = Pijk.from_dense(
+                jax.experimental.sparse.BCOO.from_scipy_sparse(A1(self.vdeg)).todense()
+                @ y_rv
+            )
+            p = p_y * p_u * p_rv
+
+        return pT @ p.todense() * self.amplitude
+
+    # @partial(jax.jit, static_argnames=("res",))
+    def render(self, theta: float | None = None, res: int = 400, rv: bool = False):
         """Returns the intensity map projected onto the x-y plane (sky).
 
         Args:
@@ -171,7 +200,7 @@ class Surface(eqx.Module):
             (with nans outside the map disk).
         """
         _, xyz = ortho_grid(res)
-        intensity = self._intensity(*xyz, theta=theta)
+        intensity = self._intensity(*xyz, theta=theta, rv=rv)
         return jnp.reshape(intensity, (res, res))
 
     def intensity(self, lat: float, lon: float):
