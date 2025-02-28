@@ -5,8 +5,6 @@ import jax.numpy as jnp
 import numpy as np
 from scipy.spatial.transform import Rotation
 
-from jaxoplanet.starry.core.basis import A1, poly_basis
-from jaxoplanet.starry.core.rotation import left_project
 from jaxoplanet.units import unit_registry as u
 
 RSUN_DAY_TO_M_S = ((1 * u.R_sun / u.day).to(u.m / u.s)).magnitude
