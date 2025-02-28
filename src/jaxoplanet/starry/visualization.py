@@ -11,7 +11,7 @@ from jaxoplanet.starry.ylm import Ylm
 def show_surface(
     ylm_pijk_surface_body,
     theta: float = 0.0,
-    res: int = 400,
+    res: int = 150,
     n: int = 6,
     ax=None,
     white_contour: bool = True,
@@ -77,12 +77,13 @@ def show_surface(
         radius = 1.0 if radius is None else radius
 
     phase = theta + (surface.phase if include_phase else 0.0)
+    extent = np.array([-1, 1, -1, 1])
 
     im = ax.imshow(
         surface.render(phase, res, rv=rv),
         origin="lower",
         **kwargs,
-        extent=(-radius, radius, -radius, radius),
+        extent=extent,
     )
     if n is not None:
         graticule(
@@ -93,6 +94,8 @@ def show_surface(
             n=n,
             white_contour=white_contour,
         )
+    ax.set_xlim(-1.02, 1.02)
+    ax.set_ylim(-1.02, 1.02)
     ax.axis(False)
 
     if return_im:
