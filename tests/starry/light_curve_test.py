@@ -470,11 +470,7 @@ def test_EB_interchanged():
     flux_reversed = light_curve(system_2)(time + params["period"] / 2).sum(1)
 
     # for some reason the assert_allclose wasn't catching error here
-    np.testing.assert_allclose(
-        flux_ordered,
-        flux_reversed,
-        atol=1e-6 if flux_ordered.dtype.name == "float32" else 1e-12,
-    )
+    assert_allclose(flux_ordered, flux_reversed)
 
 
 @pytest.mark.parametrize("order", [20, 100, 500])

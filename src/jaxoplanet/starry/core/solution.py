@@ -121,9 +121,7 @@ def p_integral(order: int, l_max: int, b: Array, r: Array, kappa0: Array) -> Arr
 
     # low order variables
     low_order = np.min([order, 20])
-    zeros = jnp.zeros(order - low_order)
     roots, low_weights = roots_legendre(low_order)
-    low_weights = jnp.hstack((low_weights, zeros))
     phi = rng * (roots + 1)
     low_s2 = jnp.square(jnp.sin(phi))
     low_a1 = low_s2 - jnp.square(low_s2)
@@ -139,9 +137,12 @@ def p_integral(order: int, l_max: int, b: Array, r: Array, kappa0: Array) -> Arr
     high_a2 = jnp.where(r_cond, 0, delta + high_s2)
     high_a4 = 1 - 2 * high_s2
 
-    indices = []
-    weights = []
-    integrand = []
+    low_indices = []
+    low_integrand = []
+
+    high_indices = []
+    high_integrand = []
+
     n = 0
 
     for l in range(l_max + 1):  # noqa
@@ -160,8 +161,8 @@ def p_integral(order: int, l_max: int, b: Array, r: Array, kappa0: Array) -> Arr
                 result = (
                     2 * r * (r - b * c) * (1 - z2 * zero_safe_sqrt(z2)) / (3 * omz2)
                 )
-                integrand.append(jnp.where(cond, 0, 2 * result))
-                weights.append(high_weights)
+                high_integrand.append(jnp.where(cond, 0, 2 * result))
+                high_indices.append(n)
 
             elif mu % 2 == 0 and (mu // 2) % 2 == 0:
                 f = (
@@ -170,18 +171,18 @@ def p_integral(order: int, l_max: int, b: Array, r: Array, kappa0: Array) -> Arr
                     * low_a1 ** (0.25 * (mu + 4))
                     * low_a2 ** (0.5 * nu)
                 )
-                integrand.append(2 * jnp.hstack((f, zeros)))
-                weights.append(low_weights)
+                low_integrand.append(2 * f)
+                low_indices.append(n)
 
             elif mu == 1 and l % 2 == 0:
                 f = high_fa3 * high_a1 ** (l // 2 - 1) * high_a4
-                integrand.append(2 * f)
-                weights.append(high_weights)
+                high_integrand.append(2 * f)
+                high_indices.append(n)
 
             elif mu == 1:
                 f = high_fa3 * high_a1 ** ((l - 3) // 2) * high_a2 * high_a4
-                integrand.append(2 * f)
-                weights.append(high_weights)
+                high_integrand.append(2 * f)
+                high_indices.append(n)
 
             elif (mu - 1) % 2 == 0 and ((mu - 1) // 2) % 2 == 0:
                 f = (
@@ -190,23 +191,26 @@ def p_integral(order: int, l_max: int, b: Array, r: Array, kappa0: Array) -> Arr
                     * high_a1 ** ((mu - 1) // 4)
                     * high_a2 ** (0.5 * (nu - 1))
                 )
-                integrand.append(2 * f)
-                weights.append(high_weights)
+                high_integrand.append(2 * f)
+                high_indices.append(n)
 
             else:
                 n += 1
                 continue
 
-            indices.append(n)
             n += 1
 
-    indices = np.stack(indices)
-    weights = jnp.stack(weights)
+    low_indices = np.stack(low_indices)
+    high_indices = np.stack(high_indices)
 
-    P0 = rng * jnp.sum(jnp.stack(integrand) * weights, axis=1)
+    low_P0 = rng * jnp.sum(jnp.stack(low_integrand) * low_weights, axis=1)
+    high_P0 = rng * jnp.sum(jnp.stack(high_integrand) * high_weights, axis=1)
+
     P = jnp.zeros(l_max**2 + 2 * l_max + 1)
+    P = P.at[low_indices].set(low_P0)
+    P = P.at[high_indices].set(high_P0)
 
-    return P.at[indices].set(P0)
+    return P
 
 
 def rT(lmax: int) -> Array:
