@@ -57,6 +57,23 @@ from jaxoplanet.types import Array
 class Ylm(eqx.Module):
     """Ylm object containing the spherical harmonic coefficients.
 
+    Coefficients are stored in the dictionary ``Ylm.data`` where keys are the
+    (l, m) coefficients. For example:
+
+
+    ..code-block::
+        :python:
+
+        from jaxoplanet.starry import Ylm
+
+        y = Ylm({
+            (0, 0): 1.0, # l = 0, m = 0
+            (1, -1): 0.1, # l = 1, m = -1
+            (2, -1): 0.2, # l = 2, m = -1
+            (3, 2): 0.2, # l = 3, m = 2
+        })
+
+
     Args:
         data (Mapping[tuple[int, int], Array], optional): dictionary of
             spherical harmonic coefficients. Defaults to {(0, 0): 1.0}.
