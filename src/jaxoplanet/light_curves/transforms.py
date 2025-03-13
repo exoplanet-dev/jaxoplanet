@@ -1,5 +1,4 @@
-"""A module providing decorators to transform light curve functions
-"""
+"""A module providing decorators to transform light curve functions"""
 
 __all__ = ["integrate", "interpolate"]
 
@@ -8,8 +7,6 @@ from typing import Any
 
 import jax
 import jax.numpy as jnp
-import jpu.numpy as jnpu
-from jpu.core import is_quantity
 
 from jaxoplanet import units
 from jaxoplanet.light_curves.types import LightCurveFunc
@@ -62,10 +59,10 @@ def integrate(
     if exposure_time is None:
         return func
 
-    if jnpu.ndim(exposure_time) != 0:
+    if jnp.ndim(exposure_time) != 0:
         raise ValueError(
             "The exposure time passed to 'integrate_exposure_time' has shape "
-            f"{jnpu.shape(exposure_time)}, but a scalar was expected; "
+            f"{jnp.shape(exposure_time)}, but a scalar was expected; "
             "To use exposure time integration with different exposures at different "
             "times, manually 'vmap' or 'vectorize' the function"
         )
@@ -98,10 +95,10 @@ def integrate(
     @units.quantity_input(time=ureg.d)
     @vectorize
     def wrapped(time: Quantity, *args: Any, **kwargs: Any) -> Array | Quantity:
-        if jnpu.ndim(time) != 0:
+        if jnp.ndim(time) != 0:
             raise ValueError(
                 "The time passed to 'integrate_exposure_time' has shape "
-                f"{jnpu.shape(time)}, but a scalar was expected; "
+                f"{jnp.shape(time)}, but a scalar was expected; "
                 "this shouldn't typically happen so please open an issue "
                 "on GitHub demonstrating the problem"
             )
@@ -116,7 +113,7 @@ def integrate(
 @lu.transformation  # type: ignore
 def apply_exposure_time_integration(stencil, dt, time, args, kwargs):
     result = yield (time + dt,) + args, kwargs
-    yield jnpu.dot(stencil, result)
+    yield jnp.dot(stencil, result)
 
 
 @units.quantity_input(period=ureg.day, time_transit=ureg.day, duration=ureg.day)
@@ -165,13 +162,8 @@ def interpolate(
         duration = period
     time_grid = time_transit + duration * jnp.linspace(-0.5, 0.5, num_samples)
     flux_grid = func(time_grid, *args, **kwargs)
-
-    if is_quantity(flux_grid):
-        flux_magnitude = flux_grid.magnitude
-        flux_units = flux_grid.units
-    else:
-        flux_magnitude = flux_grid
-        flux_units = None
+    flux_magnitude = flux_grid
+    flux_units = None
 
     @wraps(func)
     @units.quantity_input(time=ureg.d)
@@ -179,7 +171,7 @@ def interpolate(
     def wrapped(time: Quantity, *args: Any, **kwargs: Any) -> Array | Quantity:
         del args, kwargs
         time_wrapped = (
-            jnpu.mod(time - time_transit + 0.5 * period, period)
+            jnp.mod(time - time_transit + 0.5 * period, period)
             + 0.5 * period
             + time_transit
         )

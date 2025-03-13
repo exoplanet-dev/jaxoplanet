@@ -4,7 +4,6 @@ from collections.abc import Callable
 from functools import partial
 
 import jax.numpy as jnp
-import jpu.numpy as jnpu
 
 from jaxoplanet import units
 from jaxoplanet.core.limb_dark import light_curve as _limb_dark_light_curve
@@ -41,10 +40,10 @@ def light_curve(
     @units.quantity_input(time=ureg.d)
     @vectorize
     def light_curve_impl(time: Quantity) -> Array:
-        if jnpu.ndim(time) != 0:
+        if jnp.ndim(time) != 0:
             raise ValueError(
                 "The time passed to 'light_curve' has shape "
-                f"{jnpu.shape(time)}, but a scalar was expected; "
+                f"{jnp.shape(time)}, but a scalar was expected; "
                 "this shouldn't typically happen so please open an issue "
                 "on GitHub demonstrating the problem"
             )
@@ -53,7 +52,7 @@ def light_curve(
         r_star = orbit.central_radius
         x, y, z = orbit.relative_position(time)
 
-        b = jnpu.sqrt(x**2 + y**2) / r_star
+        b = jnp.sqrt(x**2 + y**2) / r_star
         assert b.units == ureg.dimensionless
         r = orbit.radius / r_star
         assert r.units == ureg.dimensionless
