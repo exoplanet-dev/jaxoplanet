@@ -38,7 +38,7 @@ def system_observable(surface_observable, **kwargs):
                     theta,
                 )
 
-        @vectorize
+        @partial(jnp.vectorize, signature="()->(n)")
         def obsrvable_impl(time: Scalar) -> Array:
             # a function that give the array of observables for all bodies, starting
             # with the central

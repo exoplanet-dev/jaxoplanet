@@ -104,4 +104,4 @@ class TransitOrbit(eqx.Module):
         m = jnp.fabs(dt) < 0.5 * self.duration
         z = m * 1.0 - (~m) * 1.0
 
-        return x, y, z
+        return jnp.array([[x, y, z]]).T

@@ -361,7 +361,7 @@ def test_EB():
     )
 
     def flux_function(time):
-        light_curve(system)(time)
+        return light_curve(system)(time)
 
     # no occultation
     assert_allclose(

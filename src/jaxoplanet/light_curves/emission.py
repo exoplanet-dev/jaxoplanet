@@ -15,7 +15,7 @@ def light_curve(system: SurfaceSystem, order: int = 10) -> Callable[[Scalar], Ar
         system, SurfaceSystem
     ), f"Expected an instance of 'SurfaceSystem', but got {type(system)}"
 
-    @vectorize
+    @partial(jnp.vectorize, signature="()->(n)")
     def light_curve_impl(time: Scalar) -> Array:
         if jnp.ndim(time) != 0:
             raise ValueError(

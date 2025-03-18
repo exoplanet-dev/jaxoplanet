@@ -35,7 +35,7 @@ def light_curve(
     else:
         ld_u = jnp.array([])
 
-    @vectorize
+    @partial(jnp.vectorize, signature="()->(n)")
     def light_curve_impl(time: Scalar) -> Array:
         if jnp.ndim(time) != 0:
             raise ValueError(
