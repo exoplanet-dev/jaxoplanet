@@ -6,7 +6,6 @@ from typing import Any
 import equinox as eqx
 import jax.numpy as jnp
 
-from jaxoplanet import units
 from jaxoplanet.core.kepler import kepler
 from jaxoplanet.object_stack import ObjectStack
 from jaxoplanet.types import Scalar
@@ -346,10 +345,6 @@ class OrbitalBody(eqx.Module):
             self.time_transit = jnp.zeros_like(self.time_ref)
 
     @property
-    def shape(self) -> tuple[int, ...]:
-        return self.period.shape
-
-    @property
     def central_radius(self) -> Scalar:
         return self.central.radius
 
@@ -592,12 +587,6 @@ class OrbitalBody(eqx.Module):
         semiamplitude: Scalar | None = None,
         parallax: Scalar | None = None,
     ) -> tuple[tuple[Scalar, Scalar, Scalar], tuple[Scalar, Scalar, Scalar]]:
-        if self.shape != ():
-            raise ValueError(
-                "Cannot evaluate the position or velocity of a Keplerian 'Body' "
-                "with multiple planets. Use 'jax.vmap' instead."
-            )
-
         if semiamplitude is None:
             semiamplitude = self.radial_velocity_semiamplitude
 
@@ -614,7 +603,8 @@ class OrbitalBody(eqx.Module):
                 k0 = self.radial_velocity_semiamplitude
 
             if parallax is not None:
-                k0 = k0.to(ureg.au / ureg.d).magnitude * parallax / ureg.day
+                # TODO
+                k0 = k0.to(ureg.au / ureg.d) * parallax / ureg.day
         else:
             k0 = semiamplitude
 
@@ -623,7 +613,8 @@ class OrbitalBody(eqx.Module):
             if parallax is None:
                 r0 = semimajor
             else:
-                r0 = semimajor.to(ureg.au).magnitude * parallax
+                # TODO
+                r0 = semimajor.to(ureg.au) * parallax
 
         sinf, cosf = self._get_true_anomaly(t)
         if self.eccentricity is None:
@@ -636,15 +627,6 @@ class OrbitalBody(eqx.Module):
         vx, vy, vz = self._rotate_vector(
             v1, v2, include_inclination=semiamplitude is None
         )
-
-        # In the case a semiamplitude was passed without units, we strip the
-        # units of the output
-        if semiamplitude is not None and not (
-            hasattr(semiamplitude, "_magnitude") and hasattr(semiamplitude, "_units")
-        ):
-            vx = vx
-            vy = vy
-            vz = vz
 
         return (x, y, z), (vx, vy, vz)
 

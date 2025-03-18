@@ -9,7 +9,6 @@ from jaxoplanet.starry import Surface, Ylm
 from jaxoplanet.starry.light_curves import light_curve, surface_light_curve
 from jaxoplanet.starry.orbit import SurfaceSystem
 from jaxoplanet.test_utils import assert_allclose
-from jaxoplanet.units import unit_registry as ureg
 
 
 @pytest.mark.parametrize("deg", [2, 5, 10])
@@ -233,13 +232,13 @@ def test_compare_starry_system(keplerian_system):
             )
 
         body_kwargs = dict(
-            r=body.radius.magnitude,
-            m=body.mass.magnitude,
+            r=body.radius,
+            m=body.mass,
             prot=prot,
         )
 
         if isinstance(body, keplerian.OrbitalBody):
-            body_kwargs["porb"] = body.period.magnitude
+            body_kwargs["porb"] = body.period
             map_kwargs["amp"] = surface_map.amplitude if surface_map else 0.0
 
         starry_body = cls(starry.Map(**map_kwargs), **body_kwargs)
@@ -327,8 +326,6 @@ def test_compare_starry_rot(deg):
 
 def test_EB():
 
-    from jaxoplanet.units import unit_registry as ureg
-
     params = {
         "primary_mass": 2.0,
         "secondary_mass": 1.0,
@@ -341,19 +338,19 @@ def test_EB():
     }
 
     primary = keplerian.Central(
-        radius=params["primary_radius"] * ureg.R_sun,
-        mass=params["primary_mass"] * ureg.M_sun,
+        radius=params["primary_radius"],
+        mass=params["primary_mass"],
     )
 
     primary_amplitude = 1.1
     primary_surface = Surface(amplitude=primary_amplitude, normalize=False)
 
     secondary = keplerian.Body(
-        radius=params["secondary_radius"] * ureg.R_sun,
-        mass=params["secondary_mass"] * ureg.M_sun,
-        period=params["period"] * ureg.day,
-        time_transit=params["t0"] * ureg.day,
-        inclination=params["inclination"] * ureg.rad,
+        radius=params["secondary_radius"],
+        mass=params["secondary_mass"],
+        period=params["period"],
+        time_transit=params["t0"],
+        inclination=params["inclination"],
     )
 
     secondary_amplitude = params["s"]
@@ -432,34 +429,34 @@ def test_EB_interchanged():
 
     system_1 = SurfaceSystem(
         keplerian.Central(
-            radius=params["primary_radius"] * ureg.R_sun,
-            mass=params["primary_mass"] * ureg.M_sun,
+            radius=params["primary_radius"],
+            mass=params["primary_mass"],
         ),
         Surface(amplitude=params["primary_amplitude"], normalize=False),
     ).add_body(
         keplerian.Body(
-            radius=params["secondary_radius"] * ureg.R_sun,
-            mass=params["secondary_mass"] * ureg.M_sun,
-            period=params["period"] * ureg.day,
-            time_transit=params["t0"] * ureg.day,
-            inclination=params["inclination"] * ureg.rad,
+            radius=params["secondary_radius"],
+            mass=params["secondary_mass"],
+            period=params["period"],
+            time_transit=params["t0"],
+            inclination=params["inclination"],
         ),
         Surface(amplitude=params["secondary_amplitude"], normalize=False),
     )
 
     system_2 = SurfaceSystem(
         keplerian.Central(
-            radius=params["secondary_radius"] * ureg.R_sun,
-            mass=params["secondary_mass"] * ureg.M_sun,
+            radius=params["secondary_radius"],
+            mass=params["secondary_mass"],
         ),
         Surface(amplitude=params["secondary_amplitude"], normalize=False),
     ).add_body(
         keplerian.Body(
-            radius=params["primary_radius"] * ureg.R_sun,
-            mass=params["primary_mass"] * ureg.M_sun,
-            period=params["period"] * ureg.day,
-            time_transit=params["t0"] * ureg.day,
-            inclination=params["inclination"] * ureg.rad,
+            radius=params["primary_radius"],
+            mass=params["primary_mass"],
+            period=params["period"],
+            time_transit=params["t0"],
+            inclination=params["inclination"],
         ),
         Surface(amplitude=params["primary_amplitude"], normalize=False),
     )
@@ -481,8 +478,8 @@ def test_EB_interchanged():
 def test_light_curves_orders(order):
 
     central = keplerian.Central(
-        radius=1.0 * ureg.R_sun,
-        mass=1.0 * ureg.M_sun,
+        radius=1.0,
+        mass=1.0,
     )
 
     np.random.seed(42)
@@ -490,9 +487,9 @@ def test_light_curves_orders(order):
     surface = Surface(inc=1.0, obl=0.2, period=27.0, u=(0.1, 0.1), y=y)
 
     system = SurfaceSystem(central, surface).add_body(
-        semimajor=40.0 * ureg.au,
-        radius=20.0 * ureg.R_earth,
-        mass=1.0 * ureg.M_earth,
+        semimajor=40.0,
+        radius=20.0,
+        mass=1.0,
         impact_param=0.2,
     )
 
@@ -551,7 +548,7 @@ def test_emission_light_curve(params):
             radius=r, surface=Surface(u=u, amplitude=a), period=1.0
         )
 
-    period = system.bodies[0].period.magnitude
+    period = system.bodies[0].period
     time = np.linspace(-0.5 * period, 0.5 * period, 1000)
 
     expected = light_curve(system)(time)

@@ -57,7 +57,7 @@ def show_surface(
     elif hasattr(ylm_pijk_surface_body, "surface"):
         surface = ylm_pijk_surface_body.surface
         if ylm_pijk_surface_body.radius is not None:
-            radius = ylm_pijk_surface_body.radius.magnitude
+            radius = ylm_pijk_surface_body.radius
         else:
             radius = 1.0 if radius is None else radius
         n = int(np.ceil(n * np.cbrt(radius)))

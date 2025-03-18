@@ -1,7 +1,6 @@
 import equinox as eqx
 import jax.numpy as jnp
 
-from jaxoplanet import units
 from jaxoplanet.types import Scalar
 
 
@@ -26,7 +25,7 @@ class TransitOrbit(eqx.Module):
 
     Properties:
         - shape: Returns the shape of the period, i.e. the number of planets.
-        - central_radius: A quantity representing the radius of the central body.
+        - central_radius: A Scalar representing the radius of the central body.
             Its value is always 1 in this class, but required for compatibility reasons.
         - radius: An alias for radius_ratio required for compatibility reasons.
         - relative_position: The relative position of the orbiting body at a given time.
