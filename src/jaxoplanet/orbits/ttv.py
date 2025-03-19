@@ -95,7 +95,6 @@ class TTVOrbit(TransitOrbit):
         ttvs: tuple[Scalar, ...] | None = None,
         delta_log_period: float | None = None,
     ):
-
         if ttvs is not None and transit_times is not None:
             raise ValueError("Supply either ttvs or transit_times, not both.")
         if ttvs is None and transit_times is None:
@@ -128,7 +127,6 @@ class TTVOrbit(TransitOrbit):
             # If a period was not provided and a delta_log_period is provided,
             # adjust the computed period accordingly.
             if period is None:
-
                 if delta_log_period is not None:
                     # Compute the adjusted period using delta_log_period
                     period = jnp.exp(jnp.log(self.ttv_period) + delta_log_period)
@@ -138,19 +136,12 @@ class TTVOrbit(TransitOrbit):
             # Here, the user must supply period and time_transit.
             if period is None:
                 raise ValueError("When supplying ttvs, period must be provided.")
-            period = ensure_Scalar(period, ureg.d)
             if time_transit is None:
                 # If time_transit is not provided, assume t0 = 0
-                time_transit = 0.0 * ureg.d
-            time_transit = ensure_Scalar(time_transit, ureg.d)
+                time_transit = 0.0
 
             # In the TTVs branch of __init__
-            self.ttvs = tuple(
-                jnp.atleast_1d(
-                    ensure_Scalar(ttv, ureg.d) - jnp.mean(ensure_Scalar(ttv, ureg.d))
-                )
-                for ttv in ttvs
-            )
+            self.ttvs = tuple(jnp.atleast_1d(ttv - jnp.mean(ttv)) for ttv in ttvs)
 
             # For each planet, define transit_inds based on the shape of ttvs if not
             # provided.
