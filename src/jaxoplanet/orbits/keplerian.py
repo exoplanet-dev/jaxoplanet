@@ -6,10 +6,10 @@ from typing import Any
 import equinox as eqx
 import jax.numpy as jnp
 
+from jaxoplanet import constants
 from jaxoplanet.core.kepler import kepler
 from jaxoplanet.object_stack import ObjectStack
 from jaxoplanet.types import Scalar
-from jaxoplanet import constants
 
 
 class Central(eqx.Module):

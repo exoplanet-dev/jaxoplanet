@@ -4,9 +4,9 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 
+from jaxoplanet import constants
 from jaxoplanet.orbits.keplerian import Body, Central, System
 from jaxoplanet.test_utils import assert_allclose, assert_pytree_allclose
-from jaxoplanet import constants
 
 
 @pytest.fixture(

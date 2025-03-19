@@ -1,7 +1,4 @@
-import jax.numpy as jnp
-import pytest
 
-from jaxoplanet.object_stack import ObjectStack
 
 
 def f1(x):
