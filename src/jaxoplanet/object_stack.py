@@ -7,7 +7,6 @@ from typing import Any, Generic, TypeVar
 import equinox as eqx
 import jax
 import jax.numpy as jnp
-import jpu.numpy as jnpu
 from jax.interpreters import batching
 from jax.tree_util import tree_flatten
 
@@ -119,7 +118,7 @@ class ObjectStack(eqx.Module, Generic[Obj]):
                 "body_vmap out_axes", out_tree, out_axes
             )
             return out_tree.unflatten(  # type: ignore
-                parts[0] if a is None else jnpu.stack(parts, axis=a)
+                parts[0] if a is None else jnp.stack(parts, axis=a)
                 for a, *parts in zip(out_axes_flat, *results, strict=False)  # type: ignore
             )
 

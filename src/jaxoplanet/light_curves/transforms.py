@@ -1,5 +1,4 @@
-"""A module providing decorators to transform light curve functions
-"""
+"""A module providing decorators to transform light curve functions"""
 
 __all__ = ["integrate", "interpolate"]
 
@@ -8,14 +7,10 @@ from typing import Any
 
 import jax
 import jax.numpy as jnp
-import jpu.numpy as jnpu
-from jpu.core import is_quantity
 
-from jaxoplanet import units
 from jaxoplanet.light_curves.types import LightCurveFunc
 from jaxoplanet.light_curves.utils import vectorize
-from jaxoplanet.types import Array, Quantity
-from jaxoplanet.units import unit_registry as ureg
+from jaxoplanet.types import Array, Scalar
 
 try:
     from jax.extend import linear_util as lu
@@ -23,10 +18,9 @@ except ImportError:
     from jax import linear_util as lu  # type: ignore
 
 
-@units.quantity_input(exposure_time=ureg.d)
 def integrate(
     func: LightCurveFunc,
-    exposure_time: Quantity | None = None,
+    exposure_time: Scalar | None = None,
     order: int = 0,
     num_samples: int = 7,
 ) -> LightCurveFunc:
@@ -48,9 +42,9 @@ def integrate(
     integral, trading off against higher computational cost.
 
     Args:
-        func: A light curve function which takes a time ``Quantity`` as the first
+        func: A light curve function which takes a time ``Scalar`` as the first
             argument
-        exposure_time (Quantity): The exposure time (in days, by default)
+        exposure_time (Scalar): The exposure time (in days, by default)
         order (int): The order of the integration scheme as discussed above
         num_samples (int): The number of function evaluations made per integral,
             controlling the accuracy of the numerics
@@ -62,10 +56,10 @@ def integrate(
     if exposure_time is None:
         return func
 
-    if jnpu.ndim(exposure_time) != 0:
+    if jnp.ndim(exposure_time) != 0:
         raise ValueError(
             "The exposure time passed to 'integrate_exposure_time' has shape "
-            f"{jnpu.shape(exposure_time)}, but a scalar was expected; "
+            f"{jnp.shape(exposure_time)}, but a scalar was expected; "
             "To use exposure time integration with different exposures at different "
             "times, manually 'vmap' or 'vectorize' the function"
         )
@@ -95,13 +89,12 @@ def integrate(
     stencil /= jnp.sum(stencil)
 
     @wraps(func)
-    @units.quantity_input(time=ureg.d)
     @vectorize
-    def wrapped(time: Quantity, *args: Any, **kwargs: Any) -> Array | Quantity:
-        if jnpu.ndim(time) != 0:
+    def wrapped(time: Scalar, *args: Any, **kwargs: Any) -> Array | Scalar:
+        if jnp.ndim(time) != 0:
             raise ValueError(
                 "The time passed to 'integrate_exposure_time' has shape "
-                f"{jnpu.shape(time)}, but a scalar was expected; "
+                f"{jnp.shape(time)}, but a scalar was expected; "
                 "this shouldn't typically happen so please open an issue "
                 "on GitHub demonstrating the problem"
             )
@@ -116,17 +109,16 @@ def integrate(
 @lu.transformation  # type: ignore
 def apply_exposure_time_integration(stencil, dt, time, args, kwargs):
     result = yield (time + dt,) + args, kwargs
-    yield jnpu.dot(stencil, result)
+    yield jnp.dot(stencil, result)
 
 
-@units.quantity_input(period=ureg.day, time_transit=ureg.day, duration=ureg.day)
 def interpolate(
     func: LightCurveFunc,
     *,
-    period: Quantity,
-    time_transit: Quantity,
+    period: Scalar,
+    time_transit: Scalar,
     num_samples: int,
-    duration: Quantity | None = None,
+    duration: Scalar | None = None,
     args: tuple[Any, ...] = (),
     kwargs: dict[str, Any] | None = None,
 ) -> LightCurveFunc:
@@ -143,13 +135,13 @@ def interpolate(
         pre-computed when it is tranformed.
 
     Args:
-        func: A light curve function which takes a time ``Quantity`` as the first
+        func: A light curve function which takes a time ``Scalar`` as the first
             argument
-        period (Quantity): The period of the orbit. Used to wrap the input times into the
+        period (Scalar): The period of the orbit. Used to wrap the input times into the
             domain of the pre-computed model
-        time_transit (Quantity): The transit time of the orbit. Used to wrap the input
+        time_transit (Scalar): The transit time of the orbit. Used to wrap the input
             times into the domain of the pre-computed model
-        duration (Quantity): The duration centered on the transit to pre-compute. By
+        duration (Scalar): The duration centered on the transit to pre-compute. By
             default, the full period will be evaluated
         num_samples (int): The number of points in the time grid used for pre-computation
         args (tuple): Any extra positional arguments that should be passed to ``func``
@@ -165,35 +157,25 @@ def interpolate(
         duration = period
     time_grid = time_transit + duration * jnp.linspace(-0.5, 0.5, num_samples)
     flux_grid = func(time_grid, *args, **kwargs)
-
-    if is_quantity(flux_grid):
-        flux_magnitude = flux_grid.magnitude
-        flux_units = flux_grid.units
-    else:
-        flux_magnitude = flux_grid
-        flux_units = None
+    flux_magnitude = flux_grid
 
     @wraps(func)
-    @units.quantity_input(time=ureg.d)
     @vectorize
-    def wrapped(time: Quantity, *args: Any, **kwargs: Any) -> Array | Quantity:
+    def wrapped(time: Scalar, *args: Any, **kwargs: Any) -> Array | Scalar:
         del args, kwargs
         time_wrapped = (
-            jnpu.mod(time - time_transit + 0.5 * period, period)
+            jnp.mod(time - time_transit + 0.5 * period, period)
             + 0.5 * period
             + time_transit
         )
         flux = jnp.interp(
-            time_wrapped.magnitude,
-            time_grid.magnitude,
+            time_wrapped,
+            time_grid,
             flux_magnitude,
             left=flux_magnitude[0],
             right=flux_magnitude[-1],
-            period=period.magnitude,
+            period=period,
         )
-        if flux_units is None:
-            return flux
-        else:
-            return flux * flux_units
+        return flux
 
     return wrapped

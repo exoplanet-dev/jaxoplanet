@@ -173,7 +173,7 @@ def radial_velocity(system, order=20):
 
     def impl(time):
         rvs = bodies_rv(time)
-        rvs = rvs.at[:, 0].set(rvs[:, 0] + system.radial_velocity(time)[0].magnitude)
+        rvs = rvs.at[:, 0].set(rvs[:, 0] + system.radial_velocity(time)[0])
         return rvs
 
     return impl

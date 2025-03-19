@@ -11,7 +11,6 @@ install
 commonissues
 tutorials/quickstart.ipynb
 tutorials/precision.ipynb
-tutorials/units.ipynb
 ```
 
 ```{toctree}
