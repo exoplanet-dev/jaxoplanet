@@ -3,9 +3,12 @@ from functools import partial
 
 import jax
 import jax.numpy as jnp
+from jax.scipy.spatial.transform import Rotation
 
+from jaxoplanet.starry import utils
 from jaxoplanet.starry.core.s2fft_rotation import (
     compute_rotation_matrices as compute_rotation_matrices_s2fft,
+    rotate_flms,
 )
 from jaxoplanet.types import Array
 from jaxoplanet.utils import get_dtype_eps
@@ -503,3 +506,31 @@ def dot_rz(deg, theta):
         return jnp.array(result, dtype=jnp.dtype(M))
 
     return impl
+
+
+def fast_direct_left_project(ydeg, inc, obl, theta, theta_z, y):
+
+    def euler(x, y, z, theta):
+        """axis-angle to euler angles"""
+        # the jnp where for theta == 0 is to avoid nans when computing grad
+        axis = jnp.array([jnp.where(theta == 0.0, 1.0, x), y, z])
+        _theta = jnp.where(theta == 0.0, 1.0, theta)
+        axis = axis / jnp.linalg.norm(axis)
+        r = Rotation.from_rotvec(axis * _theta)
+        return jnp.where(theta == 0.0, jnp.array([0.0, 0.0, 0.0]), r.as_euler("zyz"))
+
+    _x, _y, _z, angle = full_rotation_axis_angle(inc, obl, theta, theta_z)
+
+    _axis = jnp.array([-_x, -_y, _z])
+    alpha, beta, gamma = euler(*_axis, -angle)
+
+    u = utils.C(ydeg)
+    u_dag = jnp.conj(u.T)
+    y_complex = jnp.array(y, dtype=jnp.complex128)
+    y_d2 = utils.y1d_to_2d(ydeg, y_complex)
+    y_2d_complex = (u_dag @ y_d2.T).T
+
+    y2d_rotated_complex = rotate_flms(y_2d_complex, ydeg + 1, (alpha, beta, gamma))
+    y2d_rotated_real = u @ y2d_rotated_complex.T
+    y_rotated = utils.y2d_to_1d(ydeg, y2d_rotated_real.T).real
+    return y_rotated

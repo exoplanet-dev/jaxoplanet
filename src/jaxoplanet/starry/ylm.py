@@ -256,7 +256,7 @@ def spot_profile(theta, radius, spot_fac=300):
     return 1 / (1 + jnp.exp(-z)) - 1
 
 
-def ylm_spot(ydeg: int, npts=1000) -> callable:
+def ylm_spot(ydeg: int, npts=300, spot_fac=300) -> callable:
     """spot expansion in the spherical harmonics basis.
 
     Args:
@@ -285,7 +285,7 @@ def ylm_spot(ydeg: int, npts=1000) -> callable:
         Returns:
             Ylm: Ylm object containing the spherical harmonics coefficients of the spot
         """
-        b = spot_profile(theta, r)
+        b = spot_profile(theta, r, spot_fac=spot_fac)
         y = jnp.zeros((ydeg + 1) * (ydeg + 1))
         y = y.at[indices].set(B @ b * contrast)
         y = y.at[0].set(y[0] + 1.0)
