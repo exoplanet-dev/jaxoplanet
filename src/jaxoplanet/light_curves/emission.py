@@ -4,7 +4,6 @@ from functools import partial
 import jax.numpy as jnp
 
 from jaxoplanet.core.limb_dark import light_curve as _limb_dark_light_curve
-from jaxoplanet.light_curves.utils import vectorize
 from jaxoplanet.starry.orbit import SurfaceSystem
 from jaxoplanet.types import Array, Scalar
 
