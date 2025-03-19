@@ -16,3 +16,15 @@ def assert_allclose(calculated, expected, *args, **kwargs):
         },
     )
     check_close(calculated, expected, *args, **kwargs)
+
+
+def assert_pytree_allclose(calculated, expected, *args, **kwargs):
+    """
+    Check that two Pytrees with floating point or arrays as leaves are equal
+    within a dtype-dependent tolerance
+    """
+    leaves1, treedef1 = tree_util.tree_flatten(calculated)
+    leaves2, treedef2 = tree_util.tree_flatten(expected)
+    assert treedef1 == treedef2
+    for l1, l2 in zip(leaves1, leaves2, strict=False):
+        assert_allclose(l1, l2, *args, **kwargs)

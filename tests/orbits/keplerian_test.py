@@ -5,7 +5,8 @@ import numpy as np
 import pytest
 
 from jaxoplanet.orbits.keplerian import Body, Central, System
-from jaxoplanet.test_utils import assert_allclose
+from jaxoplanet.test_utils import assert_allclose, assert_pytree_allclose
+from jaxoplanet import constants
 
 
 @pytest.fixture(
@@ -46,35 +47,35 @@ def time():
     return jnp.linspace(-50.0, 50.0, 500)
 
 
-# TODO
-# def test_keplerian_central_density():
-#     star = Central()
-#     assert_Scalar_allclose(
-#         star.density, 1.4 * ureg.g / ureg.cm**3, atol=0.01, convert=True
-#     )
+def test_keplerian_central_density():
+    star = Central()
+
+    # ((1 * u.Msun / u.Rsun**3).to(u.g / u.cm**3)).value
+    conversion = 5.905271918964842
+
+    assert_allclose(star.density * conversion, 1.4, atol=0.01)
 
 
-# def test_keplerian_central_from_orbit():
-#     sun = Central.from_orbital_properties(
-#         period=1.0 * ureg.yr,
-#         semimajor=1.0 * ureg.au,
-#         radius=1.0 * ureg.R_sun,
-#         body_mass=1.0 * ureg.M_earth,
-#     )
-#     # add large tolerance to account for lack of precision in ureg.yr
-#     assert_Scalar_allclose(sun.mass, 1.0 * ureg.M_sun, atol=5e-5)
+def test_keplerian_central_from_orbit():
+    sun = Central.from_orbital_properties(
+        period=365.25,
+        semimajor=constants.au,
+        radius=1.0,
+        body_mass=constants.M_earth,
+    )
+
+    # add large tolerance to account for lack of precision in ureg.yr
+    assert_allclose(sun.mass, 1.0, atol=5e-5)
 
 
-# def test_keplerian_body_keplers_law():
-#     orbit = System().add_body(semimajor=1.0 * ureg.au)
-#     assert_Scalar_allclose(
-#         orbit.bodies[0].period, 1.0 * ureg.year, atol=0.01, convert=True
-#     )
+def test_keplerian_body_keplers_law():
+    orbit = System().add_body(
+        semimajor=constants.au,
+    )
+    assert_allclose(orbit.bodies[0].period, 365.25, atol=0.01)
 
-#     orbit = System().add_body(period=1.0 * ureg.year)
-#     assert_Scalar_allclose(
-#         orbit.bodies[0].semimajor, 1.0 * ureg.au, atol=0.01, convert=True
-#     )
+    orbit = System().add_body(period=365.25)
+    assert_allclose(orbit.bodies[0].semimajor, constants.au, atol=0.01)
 
 
 @pytest.mark.parametrize("prefix", ["", "central_", "relative_"])
@@ -89,15 +90,10 @@ def test_keplerian_body_velocity(time, system, prefix):
         )
 
 
-# def test_keplerian_body_radial_velocity(time, system):
-#     body = system.bodies[0]
-#     computed = body.radial_velocity(time)
-#     assert computed.units == ureg.R_sun / ureg.d
-#     computed.to(ureg.m / ureg.s)
-
-#     computed = body.radial_velocity(time, semiamplitude=1.0)
-#     assert not hasattr(computed, "_magnitude")
-#     assert not hasattr(computed, "_units")
+def test_keplerian_body_radial_velocity(time, system):
+    body = system.bodies[0]
+    computed = body.radial_velocity(time)
+    computed = body.radial_velocity(time, semiamplitude=1.0)
 
 
 def test_keplerian_body_impact_parameter(system):
@@ -247,40 +243,40 @@ def body_vmap_func4(body, x):
     return {"y": x}
 
 
-# @pytest.mark.parametrize(
-#     "func, in_axes, out_axes, args",
-#     [
-#         (body_vmap_func1, None, 0, (jnp.linspace(0.0, 2.0, 3),)),
-#         (body_vmap_func1, 0, 0, (jnp.linspace(0.0, 2.0, 6).reshape(2, 3),)),
-#         (body_vmap_func1, (0,), 0, (jnp.linspace(0.0, 2.0, 6).reshape(2, 3),)),
-#         (body_vmap_func1, (1,), 0, (jnp.linspace(0.0, 2.0, 6).reshape(3, 2),)),
-#         (body_vmap_func2, None, 0, ({"x": jnp.linspace(0.0, 2.0, 3)},)),
-#         (body_vmap_func2, {"x": None}, 0, ({"x": jnp.linspace(0.0, 2.0, 3)},)),
-#         (
-#             body_vmap_func2,
-#             {"x": 0},
-#             0,
-#             ({"x": jnp.linspace(0.0, 2.0, 6).reshape(2, 3)},),
-#         ),
-#         (body_vmap_func3, None, 0, (jnp.linspace(0.0, 2.0, 3),)),
-#         (body_vmap_func3, None, 1, (jnp.linspace(0.0, 2.0, 3),)),
-#         (body_vmap_func3, None, {"y": 1}, (jnp.linspace(0.0, 2.0, 3),)),
-#         (body_vmap_func4, None, None, (jnp.linspace(0.0, 2.0, 3),)),
-#     ],
-# )
-# def test_body_vmap(func, in_axes, out_axes, args):
-#     central = Central()
-#     vmap_sys = (
-#         System(central)
-#         .add_body(radius=0.5, period=1.0)
-#         .add_body(radius=0.8, period=1.0)
-#     )
-#     no_vmap_sys = (
-#         System(central)
-#         .add_body(radius=0.5, period=1.0, eccentricity=0.1, omega_peri=0.1)
-#         .add_body(radius=0.8, period=1.0)
-#     )
+@pytest.mark.parametrize(
+    "func, in_axes, out_axes, args",
+    [
+        (body_vmap_func1, None, 0, (jnp.linspace(0.0, 2.0, 3),)),
+        (body_vmap_func1, 0, 0, (jnp.linspace(0.0, 2.0, 6).reshape(2, 3),)),
+        (body_vmap_func1, (0,), 0, (jnp.linspace(0.0, 2.0, 6).reshape(2, 3),)),
+        (body_vmap_func1, (1,), 0, (jnp.linspace(0.0, 2.0, 6).reshape(3, 2),)),
+        (body_vmap_func2, None, 0, ({"x": jnp.linspace(0.0, 2.0, 3)},)),
+        (body_vmap_func2, {"x": None}, 0, ({"x": jnp.linspace(0.0, 2.0, 3)},)),
+        (
+            body_vmap_func2,
+            {"x": 0},
+            0,
+            ({"x": jnp.linspace(0.0, 2.0, 6).reshape(2, 3)},),
+        ),
+        (body_vmap_func3, None, 0, (jnp.linspace(0.0, 2.0, 3),)),
+        (body_vmap_func3, None, 1, (jnp.linspace(0.0, 2.0, 3),)),
+        (body_vmap_func3, None, {"y": 1}, (jnp.linspace(0.0, 2.0, 3),)),
+        (body_vmap_func4, None, None, (jnp.linspace(0.0, 2.0, 3),)),
+    ],
+)
+def test_body_vmap(func, in_axes, out_axes, args):
+    central = Central()
+    vmap_sys = (
+        System(central)
+        .add_body(radius=0.5, period=1.0)
+        .add_body(radius=0.8, period=1.0)
+    )
+    no_vmap_sys = (
+        System(central)
+        .add_body(radius=0.5, period=1.0, eccentricity=0.1, omega_peri=0.1)
+        .add_body(radius=0.8, period=1.0)
+    )
 
-#     result1 = vmap_sys.body_vmap(func, in_axes=in_axes, out_axes=out_axes)(*args)
-#     result2 = no_vmap_sys.body_vmap(func, in_axes=in_axes, out_axes=out_axes)(*args)
-#     assert_Scalar_pytree_allclose(result1, result2)
+    result1 = vmap_sys.body_vmap(func, in_axes=in_axes, out_axes=out_axes)(*args)
+    result2 = no_vmap_sys.body_vmap(func, in_axes=in_axes, out_axes=out_axes)(*args)
+    assert_pytree_allclose(result1, result2)

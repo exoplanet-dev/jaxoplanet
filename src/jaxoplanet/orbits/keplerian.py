@@ -103,12 +103,7 @@ class Central(eqx.Module):
 
         radius = 1.0 if radius is None else radius
 
-        mass = (
-            4
-            * jnp.pi**2
-            * semimajor**3
-            / (constants.gravitational_constant * period**2)
-        )
+        mass = 4 * jnp.pi**2 * semimajor**3 / (constants.G * period**2)
         if body_mass is not None:
             mass -= body_mass
 
@@ -603,8 +598,7 @@ class OrbitalBody(eqx.Module):
                 k0 = self.radial_velocity_semiamplitude
 
             if parallax is not None:
-                # TODO
-                k0 = k0.to(ureg.au / ureg.d) * parallax / ureg.day
+                k0 = k0 * constants.au * parallax
         else:
             k0 = semiamplitude
 
@@ -614,7 +608,7 @@ class OrbitalBody(eqx.Module):
                 r0 = semimajor
             else:
                 # TODO
-                r0 = semimajor.to(ureg.au) * parallax
+                r0 = semimajor * constants.au * parallax
 
         sinf, cosf = self._get_true_anomaly(t)
         if self.eccentricity is None:
