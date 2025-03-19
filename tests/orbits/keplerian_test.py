@@ -267,7 +267,9 @@ def body_vmap_func4(body, x):
 def test_body_vmap(func, in_axes, out_axes, args):
     central = Central()
     vmap_sys = (
-        System(central).add_body(radius=0.5, period=1.0).add_body(radius=0.8, period=1.0)
+        System(central)
+        .add_body(radius=0.5, period=1.0)
+        .add_body(radius=0.8, period=1.0)
     )
     no_vmap_sys = (
         System(central)
