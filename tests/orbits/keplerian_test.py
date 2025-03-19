@@ -4,9 +4,9 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 
+from jaxoplanet import constants
 from jaxoplanet.orbits.keplerian import Body, Central, System
 from jaxoplanet.test_utils import assert_allclose, assert_pytree_allclose
-from jaxoplanet import constants
 
 
 @pytest.fixture(
@@ -92,8 +92,8 @@ def test_keplerian_body_velocity(time, system, prefix):
 
 def test_keplerian_body_radial_velocity(time, system):
     body = system.bodies[0]
-    computed = body.radial_velocity(time)
-    computed = body.radial_velocity(time, semiamplitude=1.0)
+    _ = body.radial_velocity(time)
+    _ = body.radial_velocity(time, semiamplitude=1.0)
 
 
 def test_keplerian_body_impact_parameter(system):
@@ -267,9 +267,7 @@ def body_vmap_func4(body, x):
 def test_body_vmap(func, in_axes, out_axes, args):
     central = Central()
     vmap_sys = (
-        System(central)
-        .add_body(radius=0.5, period=1.0)
-        .add_body(radius=0.8, period=1.0)
+        System(central).add_body(radius=0.5, period=1.0).add_body(radius=0.8, period=1.0)
     )
     no_vmap_sys = (
         System(central)
