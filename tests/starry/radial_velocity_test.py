@@ -23,18 +23,15 @@ def test_rv(deg, u, inc):
         map[1 + i] = ui
 
     theta = np.linspace(-180, 180, 100)
-    expected = map.rv(theta=theta)
+    expected = map.rv(theta=theta) * map.velocity_unit.to("Rsun/day").value
 
     def veq2period(map, radius=1):
         veq = map.veq * map.velocity_unit
         return 2 * np.pi * radius / veq.to("Rsun/day").value
 
     surface = Surface(y=Ylm.from_dense(map.y), u=u, period=veq2period(map), inc=inc)
-    calc = (
-        jax.vmap(lambda theta: surface_radial_velocity(surface, theta=theta))(
-            np.deg2rad(theta)
-        )
-        * RSUN_DAY_TO_M_S
+    calc = jax.vmap(lambda theta: surface_radial_velocity(surface, theta=theta))(
+        np.deg2rad(theta)
     )
 
     assert_allclose(calc, expected)
@@ -63,7 +60,7 @@ def test_system_rv(params):
     A.map[2] = 0.25
     b = starry.Secondary(starry.Map(ydeg=2, rv=True), r=r, porb=1.0, m=m)
     sys = starry.System(A, b)
-    expected = sys.rv(time)
+    expected = sys.rv(time) * map.velocity_unit.to("Rsun/day").value
 
     # jaxoplanet
     def veq2period(map, radius=1):
@@ -77,5 +74,5 @@ def test_system_rv(params):
     system = SurfaceSystem(Central(), star_surface).add_body(
         Body(period=b.porb, mass=b.m, radius=b.r), body_surface
     )
-    calc = np.sum(radial_velocity(system)(time), 1) * RSUN_DAY_TO_M_S
+    calc = np.sum(radial_velocity(system)(time), 1)
     assert_allclose(calc, expected)
