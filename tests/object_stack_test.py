@@ -1,6 +1,3 @@
-
-
-
 def f1(x):
     return x["a"] ** 2
 
