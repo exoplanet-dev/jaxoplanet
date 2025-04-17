@@ -35,7 +35,7 @@ dev = [
 ]
 test = ["pytest", "pytest-xdist", "exoplanet-core", "batman-package"]
 test-math = ["mpmath", "gmpy2"]
-comparison = ["starry", "numpy<1.22", "tqdm", "xarray<2023.10.0"]
+comparison = ["starry", "numpy", "tqdm", "xarray<2023.10.0"]
 docs = [
     "matplotlib",
     "arviz",
