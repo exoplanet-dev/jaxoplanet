@@ -15,6 +15,7 @@ def test(session):
 
 @nox.session(python=ALL_PYTHON_VS)
 def test_x64(session):
+    session.install("git+https://github.com/dfm/jpu.git")
     session.install(".[test,test-math]")
     env = {"JAX_ENABLE_X64": "1"}
     session.run("pytest", "-n", "auto", *session.posargs, env=env)
@@ -22,7 +23,7 @@ def test_x64(session):
 
 @nox.session(python=["3.10"])
 def comparison(session):
-    session.install(".[test,comparison]")
+    session.install(".[test,comparison]", "numpy<1.22")
     session.run("python", "-c", "import starry")
     session.run("python", "-c", "import theano")
     if session.posargs:
