@@ -20,7 +20,7 @@ def test_x64(session):
 
 @nox.session(python=["3.10"])
 def comparison(session):
-    session.install(".[test,comparison]", "numpy<1.22")
+    session.install(".[test,comparison]")
     session.run("python", "-c", "import starry")
     session.run("python", "-c", "import theano")
     if session.posargs:
