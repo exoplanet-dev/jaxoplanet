@@ -325,6 +325,7 @@ def test_compare_starry_rot(deg):
     assert_allclose(calc, expected)
 
 
+@pytest.mark.xfail(reason="see issue #268")
 def test_EB():
 
     from jaxoplanet.units import unit_registry as ureg
