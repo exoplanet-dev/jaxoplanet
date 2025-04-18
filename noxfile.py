@@ -7,15 +7,12 @@ ALL_PYTHON_VS = ["3.10", "3.11", "3.12"]
 
 @nox.session(python=ALL_PYTHON_VS)
 def test(session):
-    session.install("git+https://github.com/dfm/jpu.git")
-
     session.install(".[test,test-math]")
     session.run("pytest", "-n", "auto", *session.posargs)
 
 
 @nox.session(python=ALL_PYTHON_VS)
 def test_x64(session):
-    session.install("git+https://github.com/dfm/jpu.git")
     session.install(".[test,test-math]")
     env = {"JAX_ENABLE_X64": "1"}
     session.run("pytest", "-n", "auto", *session.posargs, env=env)
