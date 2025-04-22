@@ -1,8 +1,11 @@
+from functools import partial
+
 import jax
 import jax.numpy as jnp
 import numpy as np
 import scipy
 
+from jaxoplanet.core.limb_dark import light_curve as _limb_dark_light_curve
 from jaxoplanet.starry.core.basis import A1, A2_inv, U
 from jaxoplanet.starry.core.polynomials import Pijk
 from jaxoplanet.starry.core.rotation import left_project
@@ -73,13 +76,26 @@ def surface_light_curve(
         b = jnp.sqrt(jnp.square(x) + jnp.square(y))
         b_rot = jnp.logical_or(jnp.greater_equal(b, 1.0 + r), jnp.less_equal(z, 0.0))
         b_occ = jnp.logical_not(b_rot)
-        theta_z = jnp.arctan2(x, y)
 
         # trick to avoid nan `x=jnp.where...` grad caused by nan sT
         r = jnp.where(b_rot, 1.0, r)
         b = jnp.where(b_rot, 1.0, b)
 
-        sT = solution_vector(total_deg, order=order)(b, r)
+        if surface.ydeg == 0:
+            if surface.udeg == 0:
+                ld_u = jnp.array([])
+            else:
+                ld_u = jnp.concatenate(
+                    [jnp.atleast_1d(jnp.asarray(u_)) for u_ in surface.u], axis=0
+                )
+
+            lc_func = partial(_limb_dark_light_curve, ld_u, order=order)
+            lc = lc_func(b, r)
+            return 1.0 + jnp.where(b_occ, lc, 0)
+
+        else:
+            theta_z = jnp.arctan2(x, y)
+            sT = solution_vector(total_deg, order=order)(b, r)
 
         if total_deg > 0:
             if higher_precision:
@@ -118,10 +134,8 @@ def surface_light_curve(
         A1_val = jax.experimental.sparse.BCOO.from_scipy_sparse(A1(surface.ydeg))
 
     p_y = Pijk.from_dense(A1_val @ rotated_y, degree=surface.ydeg)
-
-    norm = np.pi / (p_u.tosparse() @ rT(surface.udeg))
-
     p_yu = p_y * p_u
+    norm = np.pi / (p_u.tosparse() @ rT(surface.udeg))
 
     return surface.amplitude * (p_yu.tosparse() @ design_matrix_p) * norm
 
