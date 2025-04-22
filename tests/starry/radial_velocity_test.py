@@ -17,13 +17,15 @@ def test_rv(deg, u, inc):
     starry.config.quiet = True
 
     map = starry.Map(ydeg=deg, udeg=len(u), rv=True, inc=np.rad2deg(inc))
+    map.velocity_unit = "Rsun/day"
     map.veq = 1e2
     map.add_spot(-0.015, sigma=0.03, lat=0, lon=0)
     for i, ui in enumerate(u):
         map[1 + i] = ui
 
     theta = np.linspace(-180, 180, 100)
-    expected = map.rv(theta=theta) * map.velocity_unit.to("Rsun/day").value
+    # expected = map.rv(theta=theta) * map.velocity_unit.to("Rsun/day").value
+    expected = map.rv(theta=theta)
 
     def veq2period(map, radius=1):
         veq = map.veq * map.velocity_unit
@@ -60,7 +62,8 @@ def test_system_rv(params):
     A.map[2] = 0.25
     b = starry.Secondary(starry.Map(ydeg=2, rv=True), r=r, porb=1.0, m=m)
     sys = starry.System(A, b)
-    expected = sys.rv(time) * map.velocity_unit.to("Rsun/day").value
+    # expected = sys.rv(time) * map.velocity_unit.to("Rsun/day").value
+    expected = sys.rv(time)
 
     # jaxoplanet
     def veq2period(map, radius=1):
