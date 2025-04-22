@@ -7,6 +7,8 @@ from jaxoplanet.starry.doppler import radial_velocity, surface_radial_velocity
 from jaxoplanet.starry.orbit import Body, Central, SurfaceSystem
 from jaxoplanet.test_utils import assert_allclose
 
+Rsun_day_2_m_s = 6.957e8 / 86400
+
 
 @pytest.mark.parametrize("deg", (2, 6))
 @pytest.mark.parametrize("u", ((), (0.2, 0.6)))
@@ -36,7 +38,7 @@ def test_rv(deg, u, inc):
         np.deg2rad(theta)
     )
 
-    assert_allclose(calc, expected)
+    assert_allclose(calc * Rsun_day_2_m_s, expected)
 
 
 @pytest.mark.parametrize(
@@ -78,4 +80,4 @@ def test_system_rv(params):
         Body(period=b.porb, mass=b.m, radius=b.r), body_surface
     )
     calc = np.sum(radial_velocity(system)(time), 1)
-    assert_allclose(calc, expected)
+    assert_allclose(calc * Rsun_day_2_m_s, expected)
