@@ -3,6 +3,7 @@ __all__ = ["light_curve"]
 from collections.abc import Callable
 from functools import partial
 
+import jax
 import jax.numpy as jnp
 
 from jaxoplanet.core.limb_dark import light_curve as _limb_dark_light_curve
@@ -34,7 +35,6 @@ def light_curve(
     else:
         ld_u = jnp.array([])
 
-    @partial(jnp.vectorize, signature="()->(n)")
     def light_curve_impl(time: Scalar) -> Array:
         if jnp.ndim(time) != 0:
             raise ValueError(
@@ -57,4 +57,4 @@ def light_curve(
 
         return lc
 
-    return light_curve_impl
+    return jax.vmap(light_curve_impl)
