@@ -17,9 +17,7 @@ classifiers = [
 dynamic = ["version"]
 dependencies = ["jax",
                 "jaxlib",
-                "jpu @ git+https://github.com/dfm/jpu.git",
                 "equinox",
-                "pint",
                 ]
 
 [project.urls]
