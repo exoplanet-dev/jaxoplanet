@@ -19,7 +19,6 @@ def test_rv(deg, u, inc):
     starry.config.quiet = True
 
     map = starry.Map(ydeg=deg, udeg=len(u), rv=True, inc=np.rad2deg(inc))
-    map.velocity_unit = "Rsun/day"
     map.veq = 1e2
     map.add_spot(-0.015, sigma=0.03, lat=0, lon=0)
     for i, ui in enumerate(u):
