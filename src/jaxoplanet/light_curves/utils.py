@@ -4,44 +4,34 @@ from functools import wraps
 from typing import Any
 
 import jax
-from jpu.core import is_quantity
 
 from jaxoplanet.light_curves.types import LightCurveFunc
-from jaxoplanet.types import Array, Quantity
+from jaxoplanet.types import Array, Scalar
 
 
 def vectorize(func: LightCurveFunc) -> LightCurveFunc:
     """Vectorize a scalar light curve function to work with array inputs
 
     Like ``jax.numpy.vectorize``, this automatically wraps a function which operates on a
-    scalar to handle array inputs. Unlike that function, this handles ``Quantity`` inputs
+    scalar to handle array inputs. Unlike that function, this handles ``Scalar`` inputs
     and outputs, but it only broadcasts the first input (``time``).
 
     Args:
-        func: A function which takes a scalar ``Quantity`` time as the first input
+        func: A function which takes a scalar ``Scalar`` time as the first input
 
     Returns:
-        An updated function which can operate on ``Quantity`` times of any shape
+        An updated function which can operate on ``Scalar`` times of any shape
     """
 
     @wraps(func)
-    def wrapped(time: Quantity, *args: Any, **kwargs: Any) -> Array | Quantity:
-        if is_quantity(time):
-            time_magnitude = time.magnitude
-            time_units = time.units
-        else:
-            time_magnitude = time
-            time_units = None
+    def wrapped(time: Scalar, *args: Any, **kwargs: Any) -> Array | Scalar:
 
-        def inner(time_magnitude: Array) -> Array | Quantity:
-            if time_units is None:
-                return func(time_magnitude, *args, **kwargs)
-            else:
-                return func(time_magnitude * time_units, *args, **kwargs)
+        def inner(time_magnitude: Array) -> Array | Scalar:
+            return func(time_magnitude, *args, **kwargs)
 
         for _ in time.shape:
             inner = jax.vmap(inner)
 
-        return inner(time_magnitude)
+        return inner(time)
 
     return wrapped
