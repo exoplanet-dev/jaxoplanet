@@ -5,44 +5,39 @@ from typing import Any
 
 import equinox as eqx
 import jax.numpy as jnp
-import jpu.numpy as jnpu
 
-from jaxoplanet import units
+from jaxoplanet import constants
 from jaxoplanet.core.kepler import kepler
 from jaxoplanet.object_stack import ObjectStack
-from jaxoplanet.types import Quantity
-from jaxoplanet.units import unit_registry as ureg
+from jaxoplanet.types import Scalar
 
 
 class Central(eqx.Module):
     """A central body in an orbital system
 
     Args:
-        mass (Optional[Quantity]): Mass of central body [mass unit].
-        radius (Optional[Quantity]): Radius of central body [length unit].
-        density (Optional[Quantity]): Density of central body [mass/length**3 unit].
+        mass (Optional[Scalar]): Mass of central body [mass unit].
+        radius (Optional[Scalar]): Radius of central body [length unit].
+        density (Optional[Scalar]): Density of central body [mass/length**3 unit].
         map (Optional[Map]): Map of the central body. If None a uniform map with
             intensity 1 is used.
     """
 
-    mass: Quantity = units.field(units=ureg.M_sun)
-    radius: Quantity = units.field(units=ureg.R_sun)
-    density: Quantity = units.field(units=ureg.M_sun / ureg.R_sun**3)
+    mass: Scalar = None
+    radius: Scalar = None
+    density: Scalar = None
 
-    @units.quantity_input(
-        mass=ureg.M_sun, radius=ureg.R_sun, density=ureg.M_sun / ureg.R_sun**3
-    )
     def __init__(
         self,
         *,
-        mass: Quantity | None = None,
-        radius: Quantity | None = None,
-        density: Quantity | None = None,
+        mass: Scalar | None = None,
+        radius: Scalar | None = None,
+        density: Scalar | None = None,
     ):
         if radius is None and mass is None:
-            radius = 1.0 * ureg.R_sun
+            radius = 1.0
             if density is None:
-                mass = 1.0 * ureg.M_sun
+                mass = 1.0
 
         # Check that all the input values are scalars; we don't support Scalars
         # here
@@ -75,16 +70,13 @@ class Central(eqx.Module):
             self.density = density
 
     @classmethod
-    @units.quantity_input(
-        period=ureg.day, semimajor=ureg.R_sun, radius=ureg.R_sun, body_mass=ureg.M_sun
-    )
     def from_orbital_properties(
         cls,
         *,
-        period: Quantity,
-        semimajor: Quantity,
-        radius: Quantity | None = None,
-        body_mass: Quantity | None = None,
+        period: Scalar,
+        semimajor: Scalar,
+        radius: Scalar | None = None,
+        body_mass: Scalar | None = None,
     ) -> "Central":
         """Initialize the central body (e.g. a star) of an orbital system using
         orbital parameters to derive radius and mass.
@@ -92,8 +84,8 @@ class Central(eqx.Module):
         Args:
             period: The orbital period of the orbiting body [time unit].
             semimajor: The semi-major axis of the orbiting body [length unit].
-            radius (Optional[Quantity]): Radius of central body [length unit].
-            body_mass (Optional[Quantity]): Mass of orbiting body [mass unit].
+            radius (Optional[Scalar]): Radius of central body [length unit].
+            body_mass (Optional[Scalar]): Mass of orbiting body [mass unit].
 
         Returns:
             Central object
@@ -109,9 +101,9 @@ class Central(eqx.Module):
                 "scalars; for multi-planet systems, use 'jax.vmap'"
             )
 
-        radius = 1.0 * ureg.R_sun if radius is None else radius
+        radius = 1.0 if radius is None else radius
 
-        mass = 4 * jnp.pi**2 * semimajor**3 / (ureg.gravitational_constant * period**2)
+        mass = 4 * jnp.pi**2 * semimajor**3 / (constants.G * period**2)
         if body_mass is not None:
             mass -= body_mass
 
@@ -131,55 +123,49 @@ class Body(eqx.Module):
     Args:
         central (Optional[Central]): The Central object that this Body orbits
             [Central].
-        time_transit (Optional[Quantity]): The epoch of a reference transit
+        time_transit (Optional[Scalar]): The epoch of a reference transit
             [time unit].
-        time_peri (Optional[Quantity]): The epoch of a reference periastron passage
+        time_peri (Optional[Scalar]): The epoch of a reference periastron passage
             [time unit].
-        period (Optional[Quantity]): Orbital period [time unit].
-        semimajor (Optional[Quantity]): Semi-major axis in [length unit].
-        inclination (Optional[Quantity]): Inclination of orbital plane in
+        period (Optional[Scalar]): Orbital period [time unit].
+        semimajor (Optional[Scalar]): Semi-major axis in [length unit].
+        inclination (Optional[Scalar]): Inclination of orbital plane in
             [angular unit].
         impact_param (Optional): Impact parameter.
         eccentricity (Optional): Eccentricity, must be ``0 <= eccentricity < 1``
             where 0 = circular orbit.
-        omega_peri (Optional[Quantity]): Argument of periastron [angular unit].
+        omega_peri (Optional[Scalar]): Argument of periastron [angular unit].
         sin_omega_peri (Optional): sin(argument of periastron).
         cos_omega_peri (Optional): cos(argument of periastron).
-        asc_node (Optional[Quantity]): Longitude of ascending node [angular unit].
+        asc_node (Optional[Scalar]): Longitude of ascending node [angular unit].
         sin_asc_node (Optional): sin(longitude of ascending node).
         cos_asc_node (Optional): cos(longitude of ascending node).
-        mass (Optional[Quantity]): Mass of orbiting body [mass unit].
-        radius (Optional[Quantity]): Radius of orbiting body [length unit].
-        central_radius (Optional[Quantity]): Radius of central body [length unit].
-        radial_velocity_semiamplitude (Optional[Quantity]): The radial velocity
+        mass (Optional[Scalar]): Mass of orbiting body [mass unit].
+        radius (Optional[Scalar]): Radius of orbiting body [length unit].
+        central_radius (Optional[Scalar]): Radius of central body [length unit].
+        radial_velocity_semiamplitude (Optional[Scalar]): The radial velocity
             semi-amplitude [length/time unit].
-        parallax (Optional[Quantity]): Parallax (to convert position/velocity into
+        parallax (Optional[Scalar]): Parallax (to convert position/velocity into
             arcsec). [length unit].
     """
 
-    time_transit: Quantity | None = units.field(default=None, units=ureg.d)
-    time_peri: Quantity | None = units.field(default=None, units=ureg.d)
-    period: Quantity | None = units.field(default=None, units=ureg.d)
-    semimajor: Quantity | None = units.field(default=None, units=ureg.R_sun)
-    inclination: Quantity | None = units.field(default=None, units=ureg.radian)
-    impact_param: Quantity | None = units.field(default=None, units=ureg.dimensionless)
-    eccentricity: Quantity | None = units.field(default=None, units=ureg.dimensionless)
-    omega_peri: Quantity | None = units.field(default=None, units=ureg.radian)
-    sin_omega_peri: Quantity | None = units.field(
-        default=None, units=ureg.dimensionless
-    )
-    cos_omega_peri: Quantity | None = units.field(
-        default=None, units=ureg.dimensionless
-    )
-    asc_node: Quantity | None = units.field(default=None, units=ureg.radian)
-    sin_asc_node: Quantity | None = units.field(default=None, units=ureg.dimensionless)
-    cos_asc_node: Quantity | None = units.field(default=None, units=ureg.dimensionless)
-    mass: Quantity | None = units.field(default=None, units=ureg.M_sun)
-    radius: Quantity | None = units.field(default=None, units=ureg.R_sun)
-    radial_velocity_semiamplitude: Quantity | None = units.field(
-        default=None, units=ureg.R_sun / ureg.d
-    )
-    parallax: Quantity | None = units.field(default=None, units=ureg.arcsec)
+    time_transit: Scalar | None = None
+    time_peri: Scalar | None = None
+    period: Scalar | None = None
+    semimajor: Scalar | None = None
+    inclination: Scalar | None = None
+    impact_param: Scalar | None = None
+    eccentricity: Scalar | None = None
+    omega_peri: Scalar | None = None
+    sin_omega_peri: Scalar | None = None
+    cos_omega_peri: Scalar | None = None
+    asc_node: Scalar | None = None
+    sin_asc_node: Scalar | None = None
+    cos_asc_node: Scalar | None = None
+    mass: Scalar | None = None
+    radius: Scalar | None = None
+    radial_velocity_semiamplitude: Scalar | None = None
+    parallax: Scalar | None = None
 
     def __check_init__(self) -> None:
         if not ((self.period is None) ^ (self.semimajor is None)):
@@ -256,24 +242,22 @@ class OrbitalBody(eqx.Module):
     """A computational tool"""
 
     central: Central
-    time_ref: Quantity = units.field(units=ureg.d)
-    time_transit: Quantity = units.field(units=ureg.d)
-    period: Quantity = units.field(units=ureg.d)
-    semimajor: Quantity = units.field(units=ureg.R_sun)
-    sin_inclination: Quantity = units.field(units=ureg.dimensionless)
-    cos_inclination: Quantity = units.field(units=ureg.dimensionless)
-    impact_param: Quantity = units.field(units=ureg.dimensionless)
-    mass: Quantity | None = units.field(units=ureg.M_sun)
-    radius: Quantity | None = units.field(units=ureg.R_sun)
-    eccentricity: Quantity | None = units.field(units=ureg.dimensionless)
-    sin_omega_peri: Quantity | None = units.field(units=ureg.dimensionless)
-    cos_omega_peri: Quantity | None = units.field(units=ureg.dimensionless)
-    sin_asc_node: Quantity | None = units.field(units=ureg.dimensionless)
-    cos_asc_node: Quantity | None = units.field(units=ureg.dimensionless)
-    radial_velocity_semiamplitude: Quantity | None = units.field(
-        units=ureg.R_sun / ureg.d
-    )
-    parallax: Quantity | None = units.field(units=ureg.arcsec)
+    time_ref: Scalar
+    time_transit: Scalar
+    period: Scalar
+    semimajor: Scalar
+    sin_inclination: Scalar
+    cos_inclination: Scalar
+    impact_param: Scalar
+    mass: Scalar | None
+    radius: Scalar | None
+    eccentricity: Scalar | None
+    sin_omega_peri: Scalar | None
+    cos_omega_peri: Scalar | None
+    sin_asc_node: Scalar | None
+    cos_asc_node: Scalar | None
+    radial_velocity_semiamplitude: Scalar | None
+    parallax: Scalar | None
 
     def __init__(self, central: Central, body: Body):
         self.central = central
@@ -285,29 +269,29 @@ class OrbitalBody(eqx.Module):
         self.parallax = body.parallax
 
         # Work out the period and semimajor axis to be consistent
-        mass_factor = ureg.gravitational_constant * self.total_mass
+        mass_factor = constants.G * self.total_mass
         if body.semimajor is None:
             assert body.period is not None
-            self.semimajor = jnpu.cbrt(mass_factor * body.period**2 / (4 * jnp.pi**2))
+            self.semimajor = jnp.cbrt(mass_factor * body.period**2 / (4 * jnp.pi**2))
             self.period = body.period
         elif body.period is None:
             assert body.semimajor is not None
             self.semimajor = body.semimajor
             self.period = (
-                2 * jnp.pi * body.semimajor * jnpu.sqrt(body.semimajor / mass_factor)
+                2 * jnp.pi * body.semimajor * jnp.sqrt(body.semimajor / mass_factor)
             )
 
         # Handle treatment and normalization of angles
         if body.omega_peri is not None:
-            self.sin_omega_peri = jnpu.sin(body.omega_peri)
-            self.cos_omega_peri = jnpu.cos(body.omega_peri)
+            self.sin_omega_peri = jnp.sin(body.omega_peri)
+            self.cos_omega_peri = jnp.cos(body.omega_peri)
         else:
             self.sin_omega_peri = body.sin_omega_peri
             self.cos_omega_peri = body.cos_omega_peri
 
         if body.asc_node is not None:
-            self.sin_asc_node = jnpu.sin(body.asc_node)
-            self.cos_asc_node = jnpu.cos(body.asc_node)
+            self.sin_asc_node = jnp.sin(body.asc_node)
+            self.cos_asc_node = jnp.cos(body.asc_node)
         else:
             self.sin_asc_node = body.sin_asc_node
             self.cos_asc_node = body.cos_asc_node
@@ -315,17 +299,17 @@ class OrbitalBody(eqx.Module):
         # Handle eccentric and circular orbits
         self.eccentricity = body.eccentricity
         if self.eccentricity is None:
-            M0 = jnpu.full_like(self.period, 0.5 * jnp.pi)  # type: ignore
+            M0 = jnp.full_like(self.period, 0.5 * jnp.pi)  # type: ignore
             incl_factor = 1
         else:
             assert self.sin_omega_peri is not None
             assert self.cos_omega_peri is not None
             opsw = 1 + self.sin_omega_peri
-            E0 = 2 * jnpu.arctan2(
-                jnpu.sqrt(1 - self.eccentricity) * self.cos_omega_peri,
-                jnpu.sqrt(1 + self.eccentricity) * opsw,
+            E0 = 2 * jnp.arctan2(
+                jnp.sqrt(1 - self.eccentricity) * self.cos_omega_peri,
+                jnp.sqrt(1 + self.eccentricity) * opsw,
             )
-            M0 = E0 - self.eccentricity * jnpu.sin(E0)
+            M0 = E0 - self.eccentricity * jnp.sin(E0)
 
             ome2 = 1 - self.eccentricity**2
             incl_factor = (1 + self.eccentricity * self.sin_omega_peri) / ome2
@@ -335,18 +319,16 @@ class OrbitalBody(eqx.Module):
         if body.impact_param is not None:
             self.impact_param = body.impact_param
             self.cos_inclination = dcosidb * body.impact_param
-            self.sin_inclination = jnpu.sqrt(1 - self.cos_inclination**2)
+            self.sin_inclination = jnp.sqrt(1 - self.cos_inclination**2)
         elif body.inclination is not None:
-            self.cos_inclination = jnpu.cos(body.inclination)
-            self.sin_inclination = jnpu.sin(body.inclination)
+            self.cos_inclination = jnp.cos(body.inclination)
+            self.sin_inclination = jnp.sin(body.inclination)
             self.impact_param = self.cos_inclination / dcosidb
         else:
-            z = jnp.zeros_like(self.period.magnitude) * ureg.dimensionless
+            z = jnp.zeros_like(self.period)
             self.impact_param = z
             self.cos_inclination = z
-            self.sin_inclination = (
-                jnp.ones_like(self.period.magnitude) * ureg.dimensionless
-            )
+            self.sin_inclination = jnp.ones_like(self.period)
 
         # Work out all the relevant reference times
         self.time_ref = -M0 * self.period / (2 * jnp.pi)
@@ -355,39 +337,35 @@ class OrbitalBody(eqx.Module):
         elif body.time_peri is not None:
             self.time_transit = body.time_peri - self.time_ref
         else:
-            self.time_transit = jnpu.zeros_like(self.time_ref)
+            self.time_transit = jnp.zeros_like(self.time_ref)
 
     @property
-    def shape(self) -> tuple[int, ...]:
-        return self.period.shape
-
-    @property
-    def central_radius(self) -> Quantity:
+    def central_radius(self) -> Scalar:
         return self.central.radius
 
     @property
-    def time_peri(self) -> Quantity:
+    def time_peri(self) -> Scalar:
         return self.time_transit + self.time_ref  # type: ignore
 
     @property
-    def inclination(self) -> Quantity:
-        return jnpu.arctan2(self.sin_inclination, self.cos_inclination)
+    def inclination(self) -> Scalar:
+        return jnp.arctan2(self.sin_inclination, self.cos_inclination)
 
     @property
-    def omega_peri(self) -> Quantity | None:
+    def omega_peri(self) -> Scalar | None:
         if self.eccentricity is None:
             return None
         assert self.sin_omega_peri is not None
         assert self.cos_omega_peri is not None
-        return jnpu.arctan2(self.sin_omega_peri, self.cos_omega_peri)
+        return jnp.arctan2(self.sin_omega_peri, self.cos_omega_peri)
 
     @property
-    def total_mass(self) -> Quantity:
+    def total_mass(self) -> Scalar:
         return self.central.mass if self.mass is None else self.mass + self.central.mass
 
     def position(
-        self, t: Quantity, parallax: Quantity | None = None
-    ) -> tuple[Quantity, Quantity, Quantity]:
+        self, t: Scalar, parallax: Scalar | None = None
+    ) -> tuple[Scalar, Scalar, Scalar]:
         """This body's position in the barycentric frame
 
         Args:
@@ -403,8 +381,8 @@ class OrbitalBody(eqx.Module):
         )[0]
 
     def central_position(
-        self, t: Quantity, parallax: Quantity | None = None
-    ) -> tuple[Quantity, Quantity, Quantity]:
+        self, t: Scalar, parallax: Scalar | None = None
+    ) -> tuple[Scalar, Scalar, Scalar]:
         """The central's position in the barycentric frame
 
         Args:
@@ -420,8 +398,8 @@ class OrbitalBody(eqx.Module):
         )[0]
 
     def relative_position(
-        self, t: Quantity, parallax: Quantity | None = None
-    ) -> tuple[Quantity, Quantity, Quantity]:
+        self, t: Scalar, parallax: Scalar | None = None
+    ) -> tuple[Scalar, Scalar, Scalar]:
         """This body's position relative to the central in the X,Y,Z frame
 
         Args:
@@ -438,8 +416,8 @@ class OrbitalBody(eqx.Module):
         )[0]
 
     def relative_angles(
-        self, t: Quantity, parallax: Quantity | None = None
-    ) -> tuple[Quantity, Quantity]:
+        self, t: Scalar, parallax: Scalar | None = None
+    ) -> tuple[Scalar, Scalar]:
         """This body's relative position to the central in the sky plane, in
         separation, position angle coordinates
 
@@ -451,13 +429,13 @@ class OrbitalBody(eqx.Module):
             east of north) of the planet relative to the star.
         """
         X, Y, _ = self.relative_position(t, parallax=parallax)
-        rho = jnpu.sqrt(X**2 + Y**2)
-        theta = jnpu.arctan2(Y, X)
+        rho = jnp.sqrt(X**2 + Y**2)
+        theta = jnp.arctan2(Y, X)
         return rho, theta
 
     def velocity(
-        self, t: Quantity, semiamplitude: Quantity | None = None
-    ) -> tuple[Quantity, Quantity, Quantity]:
+        self, t: Scalar, semiamplitude: Scalar | None = None
+    ) -> tuple[Scalar, Scalar, Scalar]:
         """This body's velocity in the barycentric frame
 
         Args:
@@ -472,14 +450,14 @@ class OrbitalBody(eqx.Module):
             ``R_sun/day``.
         """
         if semiamplitude is None:
-            mass: Quantity = -self.central.mass  # type: ignore
+            mass: Scalar = -self.central.mass  # type: ignore
             return self._get_position_and_velocity(t, mass=mass)[1]
         k = -semiamplitude * self.central.mass / self.mass
         return self._get_position_and_velocity(t, semiamplitude=k)[1]
 
     def central_velocity(
-        self, t: Quantity, semiamplitude: Quantity | None = None
-    ) -> tuple[Quantity, Quantity, Quantity]:
+        self, t: Scalar, semiamplitude: Scalar | None = None
+    ) -> tuple[Scalar, Scalar, Scalar]:
         """The central's velocity in the barycentric frame
 
         Args:
@@ -499,8 +477,8 @@ class OrbitalBody(eqx.Module):
         return v
 
     def relative_velocity(
-        self, t: Quantity, semiamplitude: Quantity | None = None
-    ) -> tuple[Quantity, Quantity, Quantity]:
+        self, t: Scalar, semiamplitude: Scalar | None = None
+    ) -> tuple[Scalar, Scalar, Scalar]:
         """This body's velocity relative to the central
 
         Args:
@@ -515,15 +493,13 @@ class OrbitalBody(eqx.Module):
             ``M_sun/day``.
         """
         if semiamplitude is None:
-            mass: Quantity = -self.total_mass  # type: ignore
+            mass: Scalar = -self.total_mass  # type: ignore
             return self._get_position_and_velocity(t, mass=mass)[1]
         k = -semiamplitude * self.total_mass / self.mass
         _, v = self._get_position_and_velocity(t, semiamplitude=k)
         return v
 
-    def radial_velocity(
-        self, t: Quantity, semiamplitude: Quantity | None = None
-    ) -> Quantity:
+    def radial_velocity(self, t: Scalar, semiamplitude: Scalar | None = None) -> Scalar:
         """Get the radial velocity of the central
 
         .. note:: The convention is that positive `z` points *towards* the
@@ -542,19 +518,18 @@ class OrbitalBody(eqx.Module):
         """
         return -self.central_velocity(t, semiamplitude=semiamplitude)[2]  # type: ignore
 
-    def _warp_times(self, t: Quantity) -> Quantity:
+    def _warp_times(self, t: Scalar) -> Scalar:
         return t - self.time_transit  # type: ignore
 
-    @units.quantity_input(t=ureg.d)
-    def _get_true_anomaly(self, t: Quantity) -> tuple[Quantity, Quantity]:
+    def _get_true_anomaly(self, t: Scalar) -> tuple[Scalar, Scalar]:
         M = 2 * jnp.pi * (self._warp_times(t) - self.time_ref) / self.period
         if self.eccentricity is None:
-            return jnpu.sin(M), jnpu.cos(M)
-        return kepler(M.magnitude, self.eccentricity.magnitude)
+            return jnp.sin(M), jnp.cos(M)
+        return kepler(M, self.eccentricity)
 
     def _rotate_vector(
-        self, x: Quantity, y: Quantity, *, include_inclination: bool = True
-    ) -> tuple[Quantity, Quantity, Quantity]:
+        self, x: Scalar, y: Scalar, *, include_inclination: bool = True
+    ) -> tuple[Scalar, Scalar, Scalar]:
         """Apply the rotation matrices to go from orbit to observer frame
 
         In order,
@@ -599,28 +574,14 @@ class OrbitalBody(eqx.Module):
         Y = self.sin_asc_node * x2 + self.cos_asc_node * y2
         return X, Y, Z  # type: ignore
 
-    @units.quantity_input(
-        t=ureg.d,
-        semimajor=ureg.R_sun,
-        mass=ureg.M_sun,
-        parallax=ureg.arcsec,
-    )
     def _get_position_and_velocity(
         self,
-        t: Quantity,
-        semimajor: Quantity | None = None,
-        mass: Quantity | None = None,
-        semiamplitude: Quantity | None = None,
-        parallax: Quantity | None = None,
-    ) -> tuple[
-        tuple[Quantity, Quantity, Quantity], tuple[Quantity, Quantity, Quantity]
-    ]:
-        if self.shape != ():
-            raise ValueError(
-                "Cannot evaluate the position or velocity of a Keplerian 'Body' "
-                "with multiple planets. Use 'jax.vmap' instead."
-            )
-
+        t: Scalar,
+        semimajor: Scalar | None = None,
+        mass: Scalar | None = None,
+        semiamplitude: Scalar | None = None,
+        parallax: Scalar | None = None,
+    ) -> tuple[tuple[Scalar, Scalar, Scalar], tuple[Scalar, Scalar, Scalar]]:
         if semiamplitude is None:
             semiamplitude = self.radial_velocity_semiamplitude
 
@@ -629,15 +590,15 @@ class OrbitalBody(eqx.Module):
 
         if semiamplitude is None:
             if self.radial_velocity_semiamplitude is None:
-                m = 1 * ureg.M_sun if mass is None else mass
+                m = 1.0 if mass is None else mass
                 k0 = 2 * jnp.pi * self.semimajor * m / (self.total_mass * self.period)
                 if self.eccentricity is not None:
-                    k0 /= jnpu.sqrt(1 - self.eccentricity**2)
+                    k0 /= jnp.sqrt(1 - self.eccentricity**2)
             else:
                 k0 = self.radial_velocity_semiamplitude
 
             if parallax is not None:
-                k0 = k0.to(ureg.au / ureg.d).magnitude * parallax / ureg.day
+                k0 = k0 * constants.au * parallax
         else:
             k0 = semiamplitude
 
@@ -646,7 +607,8 @@ class OrbitalBody(eqx.Module):
             if parallax is None:
                 r0 = semimajor
             else:
-                r0 = semimajor.to(ureg.au).magnitude * parallax
+                # TODO
+                r0 = semimajor * constants.au * parallax
 
         sinf, cosf = self._get_true_anomaly(t)
         if self.eccentricity is None:
@@ -659,15 +621,6 @@ class OrbitalBody(eqx.Module):
         vx, vy, vz = self._rotate_vector(
             v1, v2, include_inclination=semiamplitude is None
         )
-
-        # In the case a semiamplitude was passed without units, we strip the
-        # units of the output
-        if semiamplitude is not None and not (
-            hasattr(semiamplitude, "_magnitude") and hasattr(semiamplitude, "_units")
-        ):
-            vx = vx.magnitude
-            vy = vy.magnitude
-            vz = vz.magnitude
 
         return (x, y, z), (vx, vy, vz)
 
@@ -706,11 +659,11 @@ class System(eqx.Module):
         return self._body_stack.objects
 
     @property
-    def radius(self) -> Quantity:
+    def radius(self) -> Scalar:
         return self.body_vmap(lambda body: body.radius)()
 
     @property
-    def central_radius(self) -> Quantity:
+    def central_radius(self) -> Scalar:
         return self.body_vmap(lambda body: body.central_radius)()
 
     def add_body(
@@ -771,27 +724,27 @@ class System(eqx.Module):
         ...     in_axes=None,
         ... )
         >>> pos(0.2)
-        <Quantity([40.0231   19.632687], 'dimensionless')>
+        <Scalar([40.0231   19.632687], 'dimensionless')>
         """
         return self._body_stack.vmap(func, in_axes=in_axes, out_axes=out_axes)
 
-    def position(self, t: Quantity) -> tuple[Quantity, Quantity, Quantity]:
+    def position(self, t: Scalar) -> tuple[Scalar, Scalar, Scalar]:
         return self.body_vmap(OrbitalBody.position, in_axes=None)(t)
 
-    def central_position(self, t: Quantity) -> tuple[Quantity, Quantity, Quantity]:
+    def central_position(self, t: Scalar) -> tuple[Scalar, Scalar, Scalar]:
         return self.body_vmap(OrbitalBody.central_position, in_axes=None)(t)
 
-    def relative_position(self, t: Quantity) -> tuple[Quantity, Quantity, Quantity]:
+    def relative_position(self, t: Scalar) -> tuple[Scalar, Scalar, Scalar]:
         return self.body_vmap(OrbitalBody.relative_position, in_axes=None)(t)
 
-    def velocity(self, t: Quantity) -> tuple[Quantity, Quantity, Quantity]:
+    def velocity(self, t: Scalar) -> tuple[Scalar, Scalar, Scalar]:
         return self.body_vmap(OrbitalBody.velocity, in_axes=None)(t)
 
-    def central_velocity(self, t: Quantity) -> tuple[Quantity, Quantity, Quantity]:
+    def central_velocity(self, t: Scalar) -> tuple[Scalar, Scalar, Scalar]:
         return self.body_vmap(OrbitalBody.central_velocity, in_axes=None)(t)
 
-    def relative_velocity(self, t: Quantity) -> tuple[Quantity, Quantity, Quantity]:
+    def relative_velocity(self, t: Scalar) -> tuple[Scalar, Scalar, Scalar]:
         return self.body_vmap(OrbitalBody.relative_velocity, in_axes=None)(t)
 
-    def radial_velocity(self, t: Quantity) -> Quantity:
+    def radial_velocity(self, t: Scalar) -> Scalar:
         return self.body_vmap(OrbitalBody.radial_velocity, in_axes=None)(t)

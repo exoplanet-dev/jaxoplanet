@@ -3,20 +3,17 @@ __all__ = ["light_curve"]
 from collections.abc import Callable
 from functools import partial
 
+import jax
 import jax.numpy as jnp
-import jpu.numpy as jnpu
 
-from jaxoplanet import units
 from jaxoplanet.core.limb_dark import light_curve as _limb_dark_light_curve
-from jaxoplanet.light_curves.utils import vectorize
 from jaxoplanet.proto import LightCurveOrbit
-from jaxoplanet.types import Array, Quantity
-from jaxoplanet.units import unit_registry as ureg
+from jaxoplanet.types import Array, Scalar
 
 
 def light_curve(
     orbit: LightCurveOrbit, *u: Array, order: int = 10
-) -> Callable[[Quantity], Array]:
+) -> Callable[[Scalar], Array]:
     """Compute the light curve for arbitrary polynomial limb darkening
 
     See `Agol et al. (2020) <https://arxiv.org/abs/1908.03222>`_ and
@@ -38,13 +35,11 @@ def light_curve(
     else:
         ld_u = jnp.array([])
 
-    @units.quantity_input(time=ureg.d)
-    @vectorize
-    def light_curve_impl(time: Quantity) -> Array:
-        if jnpu.ndim(time) != 0:
+    def light_curve_impl(time: Scalar) -> Array:
+        if jnp.ndim(time) != 0:
             raise ValueError(
                 "The time passed to 'light_curve' has shape "
-                f"{jnpu.shape(time)}, but a scalar was expected; "
+                f"{jnp.shape(time)}, but a scalar was expected; "
                 "this shouldn't typically happen so please open an issue "
                 "on GitHub demonstrating the problem"
             )
@@ -53,15 +48,13 @@ def light_curve(
         r_star = orbit.central_radius
         x, y, z = orbit.relative_position(time)
 
-        b = jnpu.sqrt(x**2 + y**2) / r_star
-        assert b.units == ureg.dimensionless
+        b = jnp.sqrt(x**2 + y**2) / r_star
         r = orbit.radius / r_star
-        assert r.units == ureg.dimensionless
 
         lc_func = partial(_limb_dark_light_curve, ld_u, order=order)
-        lc = lc_func(b.magnitude, r.magnitude)
+        lc = lc_func(b, r)
         lc = jnp.where(z > 0, lc, 0)
 
         return lc
 
-    return light_curve_impl
+    return jax.vmap(light_curve_impl)
