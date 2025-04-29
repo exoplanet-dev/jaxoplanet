@@ -7,6 +7,7 @@ import jax
 import jax.numpy as jnp
 
 from jaxoplanet.core.limb_dark import light_curve as _limb_dark_light_curve
+from jaxoplanet.light_curves.utils import vectorize
 from jaxoplanet.proto import LightCurveOrbit
 from jaxoplanet.types import Array, Scalar
 
@@ -35,6 +36,7 @@ def light_curve(
     else:
         ld_u = jnp.array([])
 
+    @vectorize
     def light_curve_impl(time: Scalar) -> Array:
         if jnp.ndim(time) != 0:
             raise ValueError(
@@ -57,4 +59,4 @@ def light_curve(
 
         return lc
 
-    return jax.vmap(light_curve_impl)
+    return jax.jit(light_curve_impl)
