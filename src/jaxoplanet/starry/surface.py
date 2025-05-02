@@ -11,7 +11,7 @@ from jaxoplanet.starry.core.polynomials import Pijk
 from jaxoplanet.starry.core.rotation import full_rotation_axis_angle, left_project
 from jaxoplanet.starry.utils import ortho_grid
 from jaxoplanet.starry.ylm import Ylm
-from jaxoplanet.types import Array, Quantity
+from jaxoplanet.types import Array, Scalar
 
 
 class Surface(eqx.Module):
@@ -21,13 +21,13 @@ class Surface(eqx.Module):
         y (Optional(:py:class:`~jaxoplanet.starry.ylm.Ylm`)) Ylm object containing the
             spherical harmonic expansion of the map. Defaults to a uniform map with
             amplitude 1.0.
-        inc (Optional[Quantity]): inclination of the map relative to line of sight.
+        inc (Optional[Scalar]): inclination of the map relative to line of sight.
             Defaults to pi/2 [angular unit].
-        obl (Optional[Quantity]): obliquity of the map [angular unit]. Defaults to None.
+        obl (Optional[Scalar]): obliquity of the map [angular unit]. Defaults to None.
         u (Optional[Array]): polynomial limb-darkening coefficients of the map.
-        period (Optional[Quantity]): rotation period of the map [time unit]. Defaults to
+        period (Optional[Scalar]): rotation period of the map [time unit]. Defaults to
             None.
-        amplitude (Optional[float]): amplitude of the map; this quantity is proportional
+        amplitude (Optional[float]): amplitude of the map; this Scalar is proportional
             to the luminosity of the map and multiplies all flux-related observables.
             Defaults to 1.0.
         normalize (Optional(bool)): whether to normalize the coefficients of the
@@ -72,7 +72,7 @@ class Surface(eqx.Module):
     rotating."""
 
     amplitude: Array
-    """Amplitude of the map, a quantity proportional to map luminosity."""
+    """Amplitude of the map, a Scalar proportional to map luminosity."""
 
     normalize: bool
     """Boolean to specify whether the Ylm coefficients should be normalized"""
@@ -90,10 +90,10 @@ class Surface(eqx.Module):
         self,
         *,
         y: Ylm | None = None,
-        inc: Quantity | None = 0.5 * jnp.pi,
-        obl: Quantity | None = None,
+        inc: Scalar | None = 0.5 * jnp.pi,
+        obl: Scalar | None = None,
         u: Iterable[Array] = (),
-        period: Quantity | None = None,
+        period: Scalar | None = None,
         amplitude: Array = 1.0,
         normalize: bool = True,
         phase: Array = 0.0,

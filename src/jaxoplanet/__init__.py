@@ -5,6 +5,6 @@ from jaxoplanet import (
     experimental as experimental,
     light_curves as light_curves,
     orbits as orbits,
-    units as units,
 )
+
 from jaxoplanet.jaxoplanet_version import __version__ as __version__
