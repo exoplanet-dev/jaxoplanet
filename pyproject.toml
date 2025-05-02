@@ -15,13 +15,10 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dynamic = ["version"]
-dependencies = [
-    "jax",
-    "jaxlib",
-    "jpu @ git+https://github.com/dfm/jpu.git",
-    "equinox",
-    "pint",
-]
+dependencies = ["jax",
+                "jaxlib",
+                "equinox",
+                ]
 
 [project.urls]
 "Homepage" = "https://jax.exoplanet.codes"
@@ -38,6 +35,7 @@ dev = [
     "sympy",
     "mpmath",
     "gmpy2",
+    "astropy"
 ]
 test = ["pytest", "pytest-xdist", "exoplanet-core", "batman-package"]
 test-math = ["mpmath", "gmpy2"]
@@ -54,6 +52,7 @@ docs = [
     "sphinx-design",
     "sphinx-autoapi<3.2.0",
     "ipywidgets",
+    "astropy"
 ]
 
 [build-system]
