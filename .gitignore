@@ -18,3 +18,4 @@ poetry.lock
 .jupyter
 .vscode
 jupyter_execute
+uv.lock
