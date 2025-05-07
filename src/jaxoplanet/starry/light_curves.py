@@ -91,7 +91,7 @@ def surface_light_curve(
 
             lc_func = partial(_limb_dark_light_curve, ld_u, order=order)
             lc = lc_func(b, r)
-            return 1.0 + jnp.where(b_occ, lc, 0)
+            return surface.amplitude * (1.0 + jnp.where(b_occ, lc, 0))
 
         else:
             theta_z = jnp.arctan2(x, y)
