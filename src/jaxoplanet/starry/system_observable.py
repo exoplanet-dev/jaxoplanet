@@ -38,7 +38,7 @@ def system_observable(surface_observable, **kwargs):
                 )
 
         @partial(jnp.vectorize, signature="()->(n)")
-        def obsrvable_impl(time: Scalar) -> Array:
+        def observable_impl(time: Scalar) -> Array:
             # a function that give the array of observables for all bodies, starting
             # with the central
             if system.central_surface is None:
@@ -46,7 +46,7 @@ def system_observable(surface_observable, **kwargs):
             else:
                 theta = system.central_surface.rotational_phase(time)
                 central_radius = system.central.radius
-                central_phase_curve = surface_observable(
+                central_phase_curve = _surface_observable(
                     system.central_surface, theta=theta
                 )
                 if len(system.bodies) > 0:
@@ -75,6 +75,6 @@ def system_observable(surface_observable, **kwargs):
                 else:
                     return jnp.array([central_phase_curve])
 
-        return obsrvable_impl
+        return observable_impl
 
     return observable_fun
