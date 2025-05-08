@@ -324,7 +324,6 @@ def test_compare_starry_rot(deg):
     assert_allclose(calc, expected)
 
 
-@pytest.mark.xfail(reason="see issue #268")
 def test_EB():
 
     params = {
