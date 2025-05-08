@@ -65,10 +65,6 @@ source = "vcs"
 [tool.hatch.build.hooks.vcs]
 version-file = "src/jaxoplanet/jaxoplanet_version.py"
 
-#TODO (So) Remove once jpu dependency is not directly pointing to the jpu github repo
-[tool.hatch.metadata]
-allow-direct-references = true
-
 [tool.black]
 target-version = ["py310"]
 line-length = 88
