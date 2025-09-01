@@ -369,7 +369,7 @@ def poly_basis(deg):
 
         p = jnp.array(xarr) * jnp.array(yarr)
         if len(inds):
-            return p.at[np.array(inds)].multiply(z)
+            return p.at[np.array(inds)].multiply(z, unique_indices=True)
         else:
             return p
 
