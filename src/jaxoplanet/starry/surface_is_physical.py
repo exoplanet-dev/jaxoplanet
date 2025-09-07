@@ -1,19 +1,21 @@
+from functools import partial
+
 import jax
 import jax.numpy as jnp
-from jaxoplanet.starry.surface import Surface
 
-from functools import partial
+from jaxoplanet.starry.surface import Surface
 
 
 # -------- Grid (equal-area-ish Fibonacci; tiny + deterministic) --------
 def fibonacci_grid(oversample: int, lmax: int):
-    n = oversample * (lmax ** 2)
+    n = oversample * (lmax**2)
     i = jnp.arange(n)
     phi = (1.0 + jnp.sqrt(5.0)) / 2.0
-    theta = jnp.arccos(1.0 - 2.0 * (i + 0.5) / n)        # colatitude in [0, pi]
-    lon = (2.0 * jnp.pi) * ((i / phi) % 1.0)             # [0, 2pi)
-    lat = (jnp.pi / 2.0) - theta                         # latitude in [-pi/2, pi/2]
-    return jnp.stack([lat, lon], axis=-1)                # (n, 2)
+    theta = jnp.arccos(1.0 - 2.0 * (i + 0.5) / n)  # colatitude in [0, pi]
+    lon = (2.0 * jnp.pi) * ((i / phi) % 1.0)  # [0, 2pi)
+    lat = (jnp.pi / 2.0) - theta  # latitude in [-pi/2, pi/2]
+    return jnp.stack([lat, lon], axis=-1)  # (n, 2)
+
 
 # -------- Helpers to keep angles in-range (differentiable) -------------
 def _wrap_lon(lon):
@@ -21,19 +23,30 @@ def _wrap_lon(lon):
     two_pi = 2.0 * jnp.pi
     return lon - two_pi * jnp.floor(lon / two_pi)
 
+
 def _clip_lat(lat, eps=1e-6):
     # Clip to (-pi/2, pi/2) by tiny epsilon to avoid singularities
-    return jnp.clip(lat, -jnp.pi/2 + eps, jnp.pi/2 - eps)
+    return jnp.clip(lat, -jnp.pi / 2 + eps, jnp.pi / 2 - eps)
+
 
 def _project_coord(x):
     lat = _clip_lat(x[0])
     lon = _wrap_lon(x[1])
     return jnp.array([lat, lon])
 
+
 # -------- Fixed-iteration damped Newton in 2D (lat, lon) --------------
-@partial(jax.jit, static_argnames=("oversample", "lmax", "newton_iters", "damping", "step"))
-def surface_min_intensity(surface: Surface, oversample: int, lmax: int,
-                         newton_iters: int = 12, damping: float = 1e-3, step: float = 1.0):
+@partial(
+    jax.jit, static_argnames=("oversample", "lmax", "newton_iters", "damping", "step")
+)
+def surface_min_intensity(
+    surface: Surface,
+    oversample: int,
+    lmax: int,
+    newton_iters: int = 12,
+    damping: float = 1e-3,
+    step: float = 1.0,
+):
     """
     Fully JAX, end-to-end differentiable approximate global min:
       1) seed from tiny equal-area grid
@@ -62,8 +75,8 @@ def surface_min_intensity(surface: Surface, oversample: int, lmax: int,
 
     def newton_one_seed(x0):
         def body(_, x):
-            g = grad_f(x)                                # (2,)
-            H = hess_f(x)                                # (2,2)
+            g = grad_f(x)  # (2,)
+            H = hess_f(x)  # (2,2)
             H_damped = H + damping * jnp.eye(2, dtype=x.dtype)
 
             # Solve H p = g  (Newton step uses p = H^{-1} g)
