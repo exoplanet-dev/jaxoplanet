@@ -38,7 +38,13 @@ def scipy_surface_min_intensity(surface: Surface, oversample: int = 4, lmax: int
 
     for coord in grid:
         try:
-            res = minimize(objective, np.array(coord), method="L-BFGS-B", bounds=[(-np.pi/2 + 1e-6, np.pi/2 - 1e-6), (0, 2*np.pi)], tol=1e-10)
+            res = minimize(
+                objective,
+                np.array(coord),
+                method="L-BFGS-B",
+                bounds=[(-np.pi / 2 + 1e-6, np.pi / 2 - 1e-6), (0, 2 * np.pi)],
+                tol=1e-10,
+            )
             if res.success and res.fun < min_val:
                 min_val = res.fun
                 min_coord = res.x
