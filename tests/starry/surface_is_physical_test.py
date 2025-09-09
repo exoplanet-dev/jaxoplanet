@@ -45,8 +45,11 @@ def scipy_surface_min_intensity(surface: Surface, oversample: int = 4, lmax: int
         except Exception as e:
             print(f"Minimization failed at {coord} with error: {e}")
             continue
-
-    return min_coord, min_val
+        
+    lat, lon = min_coord
+    lat = np.arctan2(np.sin(lat), np.cos(lat))
+    lon = lon%(2*np.pi)
+    return (lat, lon), min_val
 
 
 # create a test surface with an arbitrary map
