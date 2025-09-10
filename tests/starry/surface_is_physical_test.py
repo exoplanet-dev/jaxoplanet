@@ -1,7 +1,4 @@
 import jax
-from jax import config
-
-config.update("jax_enable_x64", True)
 
 import jax.numpy as jnp
 import numpy as np
@@ -14,7 +11,10 @@ from jaxoplanet.starry.ylm import Ylm
 
 
 def mollweide_grid(oversample, lmax):
-    """Create an approximately uniform grid on the sphere using the Mollweide projection."""
+    """
+    Create an approximately uniform grid on the sphere 
+    using the Mollweide projection.
+    """
     npts = oversample * lmax**2
     nlat = int(jnp.sqrt(npts))
     nlon = int(npts / nlat)
@@ -37,7 +37,7 @@ def scipy_surface_min_intensity(surface: Surface, oversample: int = 4, lmax: int
     min_coord = None
     for coord in grid:
         try:
-            if jax.config.jax_enable_x64 == True:
+            if jax.config.jax_enable_x64:
                 res = minimize(
                     objective,
                     np.array(coord),
@@ -78,7 +78,10 @@ surface = Surface(
 
 @pytest.mark.parametrize(("surface"), [surface])
 def test_surface_min_intensity(surface):
-    """Test that the surface_min_intensity function returns the same result as the scipy version"""
+    """
+    Test that the surface_min_intensity function 
+    returns the same result as the scipy version
+    """
 
     oversample = 4
     lmax = 4
@@ -86,7 +89,7 @@ def test_surface_min_intensity(surface):
     (scipy_lat, scipy_lon), scipy_min = scipy_surface_min_intensity(
         surface, oversample, lmax
     )
-    if jax.config.jax_enable_x64 == True:
+    if jax.config.jax_enable_x64:
         assert (
             jnp.allclose(jax_lat, scipy_lat, rtol=1e-8)
             & jnp.allclose(jax_lon, scipy_lon, rtol=1e-8)
