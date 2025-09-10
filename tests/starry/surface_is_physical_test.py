@@ -1,13 +1,12 @@
 import jax
 from jax import config
-config.update("jax_enable_x64", True)  
-import jax.numpy as jnp
 
+config.update("jax_enable_x64", True)
+
+import jax.numpy as jnp
 import numpy as np
 import pytest
 from scipy.optimize import minimize
-
-from functools import partial
 
 from jaxoplanet.starry.surface import Surface
 from jaxoplanet.starry.surface_is_physical import surface_min_intensity
@@ -28,10 +27,12 @@ def mollweide_grid(oversample, lmax):
 def scipy_surface_min_intensity(surface: Surface, oversample: int = 4, lmax: int = 4):
     """Find global minimum intensity on the surface."""
     grid = mollweide_grid(oversample, lmax)
+
     @jax.jit
     def objective(coord):
         lat, lon = coord
         return surface.intensity(lat, lon)
+
     min_val = jnp.inf
     min_coord = None
     for coord in grid:
@@ -74,10 +75,11 @@ surface = Surface(
     normalize=True,
 )
 
+
 @pytest.mark.parametrize(("surface"), [surface])
 def test_surface_min_intensity(surface):
     """Test that the surface_min_intensity function returns the same result as the scipy version"""
-    
+
     oversample = 4
     lmax = 4
     (jax_lat, jax_lon), jax_min = surface_min_intensity(surface, oversample, lmax)
