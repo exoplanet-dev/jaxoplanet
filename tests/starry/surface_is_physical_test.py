@@ -1,5 +1,4 @@
 import jax
-
 import jax.numpy as jnp
 import numpy as np
 import pytest
@@ -12,7 +11,7 @@ from jaxoplanet.starry.ylm import Ylm
 
 def mollweide_grid(oversample, lmax):
     """
-    Create an approximately uniform grid on the sphere 
+    Create an approximately uniform grid on the sphere
     using the Mollweide projection.
     """
     npts = oversample * lmax**2
@@ -79,7 +78,7 @@ surface = Surface(
 @pytest.mark.parametrize(("surface"), [surface])
 def test_surface_min_intensity(surface):
     """
-    Test that the surface_min_intensity function 
+    Test that the surface_min_intensity function
     returns the same result as the scipy version
     """
 
