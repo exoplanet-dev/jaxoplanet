@@ -1,4 +1,4 @@
-from jaxoplanet.starry import doppler as doppler
+from jaxoplanet.starry import doppler as doppler, light_curves as light_curves
 from jaxoplanet.starry.core.solution import (
     solution_vector as solution_vector,
 )
