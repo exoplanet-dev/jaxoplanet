@@ -1,7 +1,8 @@
-from jaxoplanet.starry import doppler as doppler, light_curves
+from jaxoplanet.starry import doppler as doppler
 from jaxoplanet.starry.core.solution import (
     solution_vector as solution_vector,
 )
 from jaxoplanet.starry.surface import Surface as Surface
 from jaxoplanet.starry.visualization import show_surface as show_surface
 from jaxoplanet.starry.ylm import Ylm as Ylm
+from jaxoplanet.starry import light_curves as light_curves
