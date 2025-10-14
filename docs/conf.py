@@ -1,5 +1,6 @@
 import os
 import jaxoplanet
+from pathlib import Path
 
 html_baseurl = os.environ.get("READTHEDOCS_CANONICAL_URL", "")
 if os.environ.get("READTHEDOCS", "") == "True":
@@ -7,6 +8,7 @@ if os.environ.get("READTHEDOCS", "") == "True":
 
 language = "en"
 master_doc = "index"
+root_doc = "index"
 
 extensions = [
     "sphinx.ext.mathjax",
@@ -19,6 +21,10 @@ extensions = [
 ]
 
 autoapi_dirs = ["../src"]
+AUTOAPI_ROOT = Path(__file__).parent / "autoapi"
+AUTOAPI_ROOT.mkdir(parents=True, exist_ok=True)
+autoapi_root = str(AUTOAPI_ROOT)
+
 autoapi_ignore = ["*_version*", "*/types*"]
 autoapi_options = [
     "members",
