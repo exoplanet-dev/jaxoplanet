@@ -39,6 +39,9 @@ autoapi_options = [
 # autoapi_add_toctree_entry = False
 autoapi_template_dir = "_autoapi_templates"
 
+extensions += ["sphinx.ext.duration"]
+duration_show_keys = True
+
 suppress_warnings = ["autoapi.python_import_resolution"]
 
 myst_enable_extensions = ["dollarmath", "colon_fence"]
