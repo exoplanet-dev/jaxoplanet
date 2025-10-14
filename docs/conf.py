@@ -21,9 +21,10 @@ extensions = [
 ]
 
 autoapi_dirs = ["../src"]
-AUTOAPI_ROOT = Path(__file__).parent / "autoapi"
-AUTOAPI_ROOT.mkdir(parents=True, exist_ok=True)
-autoapi_root = str(AUTOAPI_ROOT)
+
+_AUTOAPI_DIRNAME = "autoapi"
+(Path(__file__).parent / _AUTOAPI_DIRNAME).mkdir(parents=True, exist_ok=True)
+autoapi_root = _AUTOAPI_DIRNAME
 
 autoapi_ignore = ["*_version*", "*/types*"]
 autoapi_options = [
