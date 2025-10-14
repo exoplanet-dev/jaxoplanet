@@ -79,6 +79,18 @@ html_theme_options = {
     "use_download_button": True,
     "use_sidenotes": True,
 }
-nb_execution_mode = "cache"
-nb_execution_excludepatterns = []
-nb_execution_timeout = -1
+
+IN_RTD = os.environ.get("READTHEDOCS") == "True"
+IN_CI = os.environ.get("CI", "").lower() == "true"
+
+if IN_RTD:
+    nb_execution_mode = "off"
+    nb_execution_excludepatterns = []
+    nb_execution_timeout = 0
+    # # Optional RTD-only speedups
+    # html_use_index = False
+    # html_copy_source = False
+else:
+    nb_execution_mode = "cache"
+    nb_execution_excludepatterns = []
+    nb_execution_timeout = -1
