@@ -85,7 +85,9 @@ def test_surface_min_intensity(surface):
     oversample = 4
     lmax = 4
     (jax_lat, jax_lon), jax_min = surface_min_intensity(surface, oversample, lmax)
-    (scipy_lat, scipy_lon), scipy_min = scipy_surface_min_intensity(surface, oversample, lmax)
+    (scipy_lat, scipy_lon), scipy_min = scipy_surface_min_intensity(
+        surface, oversample, lmax
+    )
     if jax.config.jax_enable_x64:
         assert (
             jnp.allclose(jax_lat, scipy_lat, rtol=1e-8)
@@ -94,7 +96,9 @@ def test_surface_min_intensity(surface):
         )
     else:
         assert (
-            jnp.allclose(jax_lat, scipy_lat, rtol=2e-4)  # TODO: figure out why error is >1e-4
+            jnp.allclose(
+                jax_lat, scipy_lat, rtol=2e-4
+            )  # TODO: figure out why error is >1e-4
             & jnp.allclose(jax_lon, scipy_lon, rtol=1e-4)
             & jnp.allclose(jax_min, scipy_min, rtol=1e-4)
         )
