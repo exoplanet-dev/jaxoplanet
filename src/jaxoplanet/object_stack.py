@@ -7,7 +7,6 @@ from typing import Any, Generic, TypeVar
 import equinox as eqx
 import jax
 import jax.numpy as jnp
-from jax.interpreters import batching
 from jax.tree_util import tree_flatten
 
 try:
@@ -93,7 +92,7 @@ class ObjectStack(eqx.Module, Generic[Obj]):
 
             # Here we flatten the input arguments and `in_axes` so that we don't have
             # to deal with Pytree logic for the `in_axes` ourselves below.
-            args_flat, in_tree = tree_flatten(args, is_leaf=batching.is_vmappable)
+            args_flat, in_tree = tree_flatten(args)
             in_axes_flat = jax.api_util.flatten_axes(  # type: ignore
                 "body_vmap in_axes", in_tree, in_axes_
             )
@@ -140,4 +139,4 @@ def flatten_func_for_object_vmap(in_tree, in_axes_flat, index, body, *args_flat)
         for args in zip(args_flat, in_axes_flat, strict=False)
     )
     ans = yield (body,) + in_tree.unflatten(args_indexed), {}
-    yield tree_flatten(ans, is_leaf=batching.is_vmappable)
+    yield tree_flatten(ans)
