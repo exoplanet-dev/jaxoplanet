@@ -14,10 +14,7 @@ try:
 except ImportError:
     from jax import linear_util as lu  # type: ignore
 
-try:
-    from jax._src.interpreters.batching import is_vmappable
-except ImportError:
-    from jax.interpreters.batching import is_vmappable  # type: ignore
+from jax._src.interpreters.batching import is_vmappable
 
 Obj = TypeVar("Obj")
 
