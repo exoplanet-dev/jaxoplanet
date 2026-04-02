@@ -109,7 +109,7 @@ def test_keplerian_body_impact_parameter(system):
 def test_keplerian_body_coordinates_match_batman(time, system):
     _rsky = pytest.importorskip("batman._rsky")
     body = system.bodies[0]
-    with jax.experimental.enable_x64(True):
+    with jax.enable_x64(True):
         r_batman = _rsky._rsky(
             np.array(time, dtype=np.float64),
             float(body.time_transit),
@@ -141,7 +141,7 @@ def test_keplerian_body_coordinates_match_batman(time, system):
 
 def test_keplerian_body_positions_small_star(time):
     _rsky = pytest.importorskip("batman._rsky")
-    with jax.experimental.enable_x64(True):
+    with jax.enable_x64(True):
         body = (
             System(
                 Central(radius=0.189, mass=0.151),
