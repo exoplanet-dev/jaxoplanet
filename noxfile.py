@@ -22,7 +22,7 @@ def test_x64(session):
 
 @nox.session(python=["3.10"])
 def comparison(session):
-    session.install(".[test,comparison]", "numpy<1.22")
+    session.install(".[test,comparison]", "numpy>=1.22,<1.24", "jaxlib==0.4.30")
     session.run("python", "-c", "import starry")
     session.run("python", "-c", "import theano")
     session.run("pip", "freeze")
