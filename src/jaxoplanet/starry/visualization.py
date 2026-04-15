@@ -93,6 +93,7 @@ def show_surface(
             radius=radius,
             n=n,
             white_contour=white_contour,
+            ax=ax,
         )
     ax.set_xlim(-1.02, 1.02)
     ax.set_ylim(-1.02, 1.02)
