@@ -15,8 +15,8 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dynamic = ["version"]
-dependencies = ["jax",
-                "jaxlib",
+dependencies = ["jax<0.10",
+                "jaxlib<0.10",
                 "equinox",
                 ]
 
