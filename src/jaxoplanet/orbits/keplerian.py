@@ -607,8 +607,7 @@ class OrbitalBody(eqx.Module):
             if parallax is None:
                 r0 = semimajor
             else:
-                # TODO
-                r0 = semimajor * constants.au * parallax
+                r0 = semimajor * parallax / constants.au
 
         sinf, cosf = self._get_true_anomaly(t)
         if self.eccentricity is None:
