@@ -138,6 +138,7 @@ def test_keplerian_body_coordinates_match_batman(time, system):
         no_transit |= r[~m] > 2
         assert np.all(no_transit)
 
+
 def test_keplerian_body_coordinates_parallax(time, system):
     body = system.bodies[0]
     plx = 25e-3
