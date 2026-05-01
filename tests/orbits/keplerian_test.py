@@ -139,6 +139,17 @@ def test_keplerian_body_coordinates_match_batman(time, system):
         assert np.all(no_transit)
 
 
+def test_keplerian_body_coordinates_parallax(time, system):
+    body = system.bodies[0]
+    plx = 25e-3
+    with jax.enable_x64(True):
+        x, y, _z = body.relative_position(time)
+        r = jnp.sqrt(x**2 + y**2)
+        x_plx, y_plx, _z_plx = body.relative_position(time, parallax=plx)
+        r_plx = jnp.sqrt(x_plx**2 + y_plx**2)
+        assert_allclose(r * plx / constants.au, r_plx)
+
+
 def test_keplerian_body_positions_small_star(time):
     _rsky = pytest.importorskip("batman._rsky")
     with jax.enable_x64(True):
