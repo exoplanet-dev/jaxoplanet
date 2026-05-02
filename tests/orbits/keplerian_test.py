@@ -1,3 +1,4 @@
+import equinox as eqx
 import jax
 import jax.experimental
 import jax.numpy as jnp
@@ -148,6 +149,38 @@ def test_keplerian_body_coordinates_parallax(time, system):
         x_plx, y_plx, _z_plx = body.relative_position(time, parallax=plx)
         r_plx = jnp.sqrt(x_plx**2 + y_plx**2)
         assert_allclose(r * plx / constants.au, r_plx)
+
+
+@pytest.mark.parametrize("plx", [None, 25e-3])
+def test_keplerian_rv(time, system, plx):
+    kepler = pytest.importorskip("radvel.kepler")
+    radvel_utils = pytest.importorskip("radvel.utils")
+    if plx is not None:
+        body = eqx.tree_at(
+            lambda b: b.parallax, system.bodies[0], plx, is_leaf=lambda x: x is None
+        )
+        system = System(central=system.central, bodies=[body])
+    with jax.enable_x64(True):
+        rv = system.radial_velocity(time)[0] * constants.R_sun_per_day
+        rv_radvel = 0
+        for body in system.bodies:
+            Msini = float(body.mass * np.sin(body.inclination)) / constants.M_jup
+            P = float(body.period)
+            e = float(body.eccentricity if body.eccentricity else 0.0)
+            K = radvel_utils.semi_amplitude(
+                Msini, P, float(body.total_mass), e, Msini_units="jupiter"
+            )
+            orbel_synth = np.array(
+                [
+                    P,
+                    float(body.time_peri),
+                    e,
+                    float(body.omega_peri if body.omega_peri else 0.0),
+                    K,
+                ]
+            )
+            rv_radvel += kepler.rv_drive(np.array(time, dtype=np.float64), orbel_synth)
+        assert_allclose(rv, rv_radvel)
 
 
 def test_keplerian_body_positions_small_star(time):
