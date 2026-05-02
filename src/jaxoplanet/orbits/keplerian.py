@@ -597,8 +597,6 @@ class OrbitalBody(eqx.Module):
             else:
                 k0 = self.radial_velocity_semiamplitude
 
-            if parallax is not None:
-                k0 = k0 * constants.au * parallax
         else:
             k0 = semiamplitude
 
