@@ -469,7 +469,7 @@ class OrbitalBody(eqx.Module):
 
         Returns:
             The components of the velocity vector at ``t`` in units of
-            ``M_sun/day``.
+            ``R_sun/day``.
         """
         if semiamplitude is None:
             return self._get_position_and_velocity(t, mass=self.mass)[1]
@@ -490,7 +490,7 @@ class OrbitalBody(eqx.Module):
 
         Returns:
             The components of the velocity vector at ``t`` in units of
-            ``M_sun/day``.
+            ``R_sun/day``.
         """
         if semiamplitude is None:
             mass: Scalar = -self.total_mass  # type: ignore
@@ -514,7 +514,7 @@ class OrbitalBody(eqx.Module):
                 this amplitude will be used instead.
 
         Returns:
-            The reflex radial velocity evaluated at ``t``.
+            The reflex radial velocity evaluated at ``t`` in units of ``R_sun/day``.
         """
         return -self.central_velocity(t, semiamplitude=semiamplitude)[2]  # type: ignore
 
