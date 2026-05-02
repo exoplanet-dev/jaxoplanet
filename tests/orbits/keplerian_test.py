@@ -37,6 +37,21 @@ from jaxoplanet.test_utils import assert_allclose, assert_pytree_allclose
                 )
             ],
         },
+        {
+            "central": Central(mass=1.3, radius=1.1),
+            "bodies": [
+                Body(
+                    mass=0.1,
+                    time_transit=0.1,
+                    period=12.5,
+                    inclination=0.3,
+                    eccentricity=0.3,
+                    omega_peri=-1.5,
+                    asc_node=0.3,
+                    parallax=25e-3,
+                )
+            ],
+        },
     ]
 )
 def system(request):
@@ -146,9 +161,10 @@ def test_keplerian_body_coordinates_parallax(time, system):
     with jax.enable_x64(True):
         x, y, _z = body.relative_position(time)
         r = jnp.sqrt(x**2 + y**2)
+        conv_factor = plx / constants.au if body.parallax is None else 1.0
         x_plx, y_plx, _z_plx = body.relative_position(time, parallax=plx)
         r_plx = jnp.sqrt(x_plx**2 + y_plx**2)
-        assert_allclose(r * plx / constants.au, r_plx)
+        assert_allclose(r * conv_factor, r_plx)
 
 
 @pytest.mark.parametrize("plx", [None, 25e-3])
