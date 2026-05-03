@@ -169,7 +169,40 @@ def test_keplerian_body_coordinates_parallax(time, system):
         assert_allclose(r * conv_factor, r_plx)
 
 
-def test_keplerian_rv(time, system):
+def test_keplerian_body_coordinates_orbitize(time, system):
+    kepler = pytest.importorskip("orbitize.kepler")
+    rv = system.radial_velocity(time)[0]
+    rv_orb = 0
+    time_np = np.array(time, dtype=np.float64)
+    with jax.enable_x64(True):
+        for body in system.bodies:
+            P = float(body.period)
+            T0 = float(body.time_peri)
+            ref_epoch = 0.0
+            tau = ((T0 - ref_epoch) / P) % 1
+            ra_orb, dec_orb, rv_orb_body = kepler.calc_orbit(
+                time_np,
+                float(body.semimajor) / constants.au,
+                float(body.eccentricity if body.eccentricity else 0.0),
+                float(body.inclination),
+                float(body.omega_peri if body.omega_peri else 0.0) + np.pi,
+                float(jnp.arccos(body.cos_asc_node) if body.cos_asc_node else 0.0),
+                tau,
+                float(body.parallax * 1e3 if body.parallax else 1.0),
+                float(body.total_mass),
+                float(body.mass),
+                tau_ref_epoch=ref_epoch,
+            )
+            rv_orb += rv_orb_body
+
+            x, y, _z = body.relative_position(time)
+            pos_factor = constants.au**-1 if body.parallax is None else 1e3
+            assert_allclose(y * pos_factor, ra_orb)
+            assert_allclose(x * pos_factor, dec_orb)
+        assert_allclose(rv * 1e-3, -rv_orb)
+
+
+def test_keplerian_rv_match_radvel(time, system):
     kepler = pytest.importorskip("radvel.kepler")
     radvel_utils = pytest.importorskip("radvel.utils")
     with jax.enable_x64(True):

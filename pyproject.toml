@@ -37,7 +37,7 @@ dev = [
     "gmpy2",
     "astropy"
 ]
-test = ["pytest", "pytest-xdist", "exoplanet-core", "batman-package", "radvel"]
+test = ["pytest", "pytest-xdist", "exoplanet-core", "batman-package", "radvel", "orbitize"]
 test-math = ["mpmath", "gmpy2"]
 docs = [
     "matplotlib",
