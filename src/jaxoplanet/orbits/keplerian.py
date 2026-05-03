@@ -373,7 +373,8 @@ class OrbitalBody(eqx.Module):
 
         Returns:
             The components of the position vector at ``t`` in units of
-            ``R_sun``.
+            ``R_sun``, but if parallax is provided or ``self.parallax`` is not None,
+            then in units of arcseconds.
         """
         semimajor = -self.semimajor * self.central.mass / self.total_mass
         return self._get_position_and_velocity(
@@ -390,7 +391,8 @@ class OrbitalBody(eqx.Module):
 
         Returns:
             The components of the position vector at ``t`` in units of
-            ``R_sun``.
+            ``R_sun``, but if parallax is provided or ``self.parallax`` is not None,
+            then in units of arcseconds.
         """
         semimajor = self.semimajor * self.mass / self.total_mass
         return self._get_position_and_velocity(
@@ -407,7 +409,8 @@ class OrbitalBody(eqx.Module):
 
         Returns:
             The components of the position vector at ``t`` in units of
-            ``R_sun``.
+            ``R_sun``, but if parallax is provided or ``self.parallax`` is not None,
+            then in units of arcseconds.
         """
         return self._get_position_and_velocity(
             t,
@@ -447,7 +450,8 @@ class OrbitalBody(eqx.Module):
 
         Returns:
             The components of the velocity vector at ``t`` in units of
-            ``R_sun/day``.
+            ``R_sun/day``, but if parallax is provided or ``self.parallax`` is not None,
+            then in units of arcseconds/day.
         """
         if semiamplitude is None:
             mass: Scalar = -self.central.mass  # type: ignore
@@ -469,7 +473,8 @@ class OrbitalBody(eqx.Module):
 
         Returns:
             The components of the velocity vector at ``t`` in units of
-            ``R_sun/day``.
+            ``R_sun/day``, but if parallax is provided or ``self.parallax`` is not None,
+            then in units of arcseconds/day.
         """
         if semiamplitude is None:
             return self._get_position_and_velocity(t, mass=self.mass)[1]
@@ -490,7 +495,8 @@ class OrbitalBody(eqx.Module):
 
         Returns:
             The components of the velocity vector at ``t`` in units of
-            ``R_sun/day``.
+            ``R_sun/day``, but if parallax is provided or ``self.parallax`` is not None,
+            then in units of arcseconds/day.
         """
         if semiamplitude is None:
             mass: Scalar = -self.total_mass  # type: ignore
@@ -514,9 +520,12 @@ class OrbitalBody(eqx.Module):
                 this amplitude will be used instead.
 
         Returns:
-            The reflex radial velocity evaluated at ``t`` in units of ``R_sun/day``.
+            The reflex radial velocity evaluated at ``t`` in units of ``m/s``.
         """
-        return -self.central_velocity(t, semiamplitude=semiamplitude)[2]  # type: ignore
+        rv_rsun_d = -self.central_velocity(t, semiamplitude=semiamplitude)[2]
+        if self.parallax is not None:
+            rv_rsun_d = rv_rsun_d / self.parallax * constants.au
+        return rv_rsun_d * constants.R_sun_per_day  # type: ignore
 
     def _warp_times(self, t: Scalar) -> Scalar:
         return t - self.time_transit  # type: ignore
@@ -597,6 +606,8 @@ class OrbitalBody(eqx.Module):
             else:
                 k0 = self.radial_velocity_semiamplitude
 
+            if parallax is not None:
+                k0 = k0 * parallax / constants.au
         else:
             k0 = semiamplitude
 

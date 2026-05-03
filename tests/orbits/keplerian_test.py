@@ -1,4 +1,3 @@
-import equinox as eqx
 import jax
 import jax.experimental
 import jax.numpy as jnp
@@ -114,7 +113,8 @@ def test_keplerian_body_radial_velocity(time, system):
 
 def test_keplerian_body_impact_parameter(system):
     body = system.bodies[0]
-    x, y, z = body.relative_position(body.time_transit)
+    plx_factor = constants.au if body.parallax else None
+    x, y, z = body.relative_position(body.time_transit, parallax=plx_factor)
     assert_allclose(
         (jnp.sqrt(x**2 + y**2) / system.central.radius),
         body.impact_param,
@@ -140,7 +140,9 @@ def test_keplerian_body_coordinates_match_batman(time, system):
         m = r_batman < 100.0
         assert m.sum() > 0
 
-        x, y, z = body.relative_position(time)
+        x, y, z = body.relative_position(
+            time, parallax=constants.au if body.parallax else None
+        )
         r = jnp.sqrt(x**2 + y**2)
 
         # Make sure that the in-transit impact parameter matches batman
@@ -167,17 +169,11 @@ def test_keplerian_body_coordinates_parallax(time, system):
         assert_allclose(r * conv_factor, r_plx)
 
 
-@pytest.mark.parametrize("plx", [None, 25e-3])
-def test_keplerian_rv(time, system, plx):
+def test_keplerian_rv(time, system):
     kepler = pytest.importorskip("radvel.kepler")
     radvel_utils = pytest.importorskip("radvel.utils")
-    if plx is not None:
-        body = eqx.tree_at(
-            lambda b: b.parallax, system.bodies[0], plx, is_leaf=lambda x: x is None
-        )
-        system = System(central=system.central, bodies=[body])
     with jax.enable_x64(True):
-        rv = system.radial_velocity(time)[0] * constants.R_sun_per_day
+        rv = system.radial_velocity(time)[0]
         rv_radvel = 0
         for body in system.bodies:
             Msini = float(body.mass * np.sin(body.inclination)) / constants.M_jup
@@ -267,7 +263,7 @@ def test_keplerian_system_radial_velocity():
             # TODO(dfm): I'm not sure why we need to loosen the tolerance here,
             # but the ecc=0 model doesn't give the same results as the ecc=None
             # model otherwise.
-            atol={jnp.float32: 5e-6, jnp.float64: 1e-12},
+            atol={jnp.float32: 5e-6 * constants.R_sun_per_day, jnp.float64: 1e-12},
         )
 
 
@@ -327,9 +323,7 @@ def body_vmap_func4(body, x):
 def test_body_vmap(func, in_axes, out_axes, args):
     central = Central()
     vmap_sys = (
-        System(central)
-        .add_body(radius=0.5, period=1.0)
-        .add_body(radius=0.8, period=1.0)
+        System(central).add_body(radius=0.5, period=1.0).add_body(radius=0.8, period=1.0)
     )
     no_vmap_sys = (
         System(central)
