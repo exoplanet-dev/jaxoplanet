@@ -103,7 +103,10 @@ class ObjectStack(eqx.Module, Generic[Obj]):
             results = []
             out_tree = None
             for n, body in enumerate(self.objects):
-                f = lu.wrap_init(func)
+                debug_info = jax.api_util.debug_info(
+                    "ObjectStack.vmap", func, (body,) + tuple(args), {}
+                )
+                f = lu.wrap_init(func, debug_info=debug_info)
                 f, out_tree_ = flatten_func_for_object_vmap(f, in_tree, in_axes_flat, n)
                 results.append(f.call_wrapped(body, *args_flat))  # type: ignore
                 out_tree_ = out_tree_()  # type: ignore
