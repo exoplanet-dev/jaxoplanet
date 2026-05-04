@@ -296,7 +296,10 @@ def test_keplerian_system_radial_velocity():
             # TODO(dfm): I'm not sure why we need to loosen the tolerance here,
             # but the ecc=0 model doesn't give the same results as the ecc=None
             # model otherwise.
-            atol={jnp.float32: 5e-6 * constants.R_sun_per_day, jnp.float64: 1e-12},
+            atol={
+                jnp.float32: 5e-6 * constants.R_sun_per_day,
+                jnp.float64: 1e-12 * constants.R_sun_per_day,
+            },
         )
 
 
