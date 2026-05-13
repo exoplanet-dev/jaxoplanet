@@ -41,7 +41,9 @@ class Central(eqx.Module):
 
         # Check that all the input values are scalars; we don't support Scalars
         # here
-        if any(jnp.ndim(arg) != 0 for arg in (mass, radius, density) if arg is not None):
+        if any(
+            jnp.ndim(arg) != 0 for arg in (mass, radius, density) if arg is not None
+        ):
             raise ValueError("All parameters of a KeplerianCentral must be scalars")
 
         # Compute all three parameters based on the input values
@@ -228,7 +230,9 @@ class Body(eqx.Module):
             )
 
         if self.impact_param is not None and self.inclination is not None:
-            raise ValueError("Only one of impact_param and inclination can be specified")
+            raise ValueError(
+                "Only one of impact_param and inclination can be specified"
+            )
 
         if self.time_transit is not None and self.time_peri is not None:
             raise ValueError("Only one of time_transit or time_peri can be specified")
