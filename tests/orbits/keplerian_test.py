@@ -51,6 +51,21 @@ from jaxoplanet.test_utils import assert_allclose, assert_pytree_allclose
                 )
             ],
         },
+        {
+            "central": Central(mass=1.3, radius=1.1),
+            "bodies": [
+                Body(
+                    radial_velocity_semiamplitude=10 / constants.R_sun_per_day,
+                    time_transit=0.1,
+                    period=12.5,
+                    inclination=0.3,
+                    eccentricity=0.3,
+                    omega_peri=-1.5,
+                    asc_node=0.3,
+                    parallax=25e-3,
+                )
+            ],
+        },
     ]
 )
 def system(request):
@@ -96,6 +111,11 @@ def test_keplerian_body_keplers_law():
 @pytest.mark.parametrize("prefix", ["", "central_", "relative_"])
 def test_keplerian_body_velocity(time, system, prefix):
     body = system.bodies[0]
+    if body.radial_velocity_semiamplitude is not None:
+        pytest.skip(
+            "velocity will not be the derivative of position when "
+            "radial_velocity_semiamplitude is set"
+        )
     v = getattr(body, f"{prefix}velocity")(time)
     for i, v_ in enumerate(v):
         pos_func = getattr(body, f"{prefix}position")
@@ -171,6 +191,7 @@ def test_keplerian_body_coordinates_parallax(time, system):
 
 def test_keplerian_body_coordinates_orbitize(time, system):
     kepler = pytest.importorskip("orbitize.kepler")
+
     rv = system.radial_velocity(time)[0]
     rv_orb = 0
     time_np = np.array(time, dtype=np.float64)
@@ -180,17 +201,39 @@ def test_keplerian_body_coordinates_orbitize(time, system):
             T0 = float(body.time_peri)
             ref_epoch = 0.0
             tau = ((T0 - ref_epoch) / P) % 1
+            e = float(body.eccentricity if body.eccentricity else 0.0)
+            Mstar = float(body.total_mass)
+            # Normalization.
+            # RV m/s of a 1.0 Jupiter mass planet tugging on a 1.0
+            # solar mass star on a 1.0 year orbital period
+            K_0 = 28.4329
+            inc = float(body.inclination)
+
+            # TODO: Double check unites and varialbe names
+            if body.mass is None:
+                Msini = (
+                    body.radial_velocity_semiamplitude
+                    * constants.R_sun_per_day
+                    / K_0
+                    * np.sqrt(1.0 - e**2.0)
+                    * (Mstar) ** (2.0 / 3.0)
+                    * (P / 365.25) ** (1 / 3.0)
+                )
+                mass = float(Msini / jnp.sin(inc)) * constants.M_jup
+            else:
+                mass = float(body.mass)
+
             ra_orb, dec_orb, rv_orb_body = kepler.calc_orbit(
                 time_np,
                 float(body.semimajor) / constants.au,
-                float(body.eccentricity if body.eccentricity else 0.0),
-                float(body.inclination),
+                e,
+                inc,
                 float(body.omega_peri if body.omega_peri else 0.0) + np.pi,
                 float(jnp.arccos(body.cos_asc_node) if body.cos_asc_node else 0.0),
                 tau,
                 float(body.parallax * 1e3 if body.parallax else 1.0),
-                float(body.total_mass),
-                float(body.mass),
+                Mstar,
+                mass,
                 tau_ref_epoch=ref_epoch,
             )
             rv_orb += rv_orb_body
@@ -209,12 +252,15 @@ def test_keplerian_rv_match_radvel(time, system):
         rv = system.radial_velocity(time)[0]
         rv_radvel = 0
         for body in system.bodies:
-            Msini = float(body.mass * np.sin(body.inclination)) / constants.M_jup
             P = float(body.period)
             e = float(body.eccentricity if body.eccentricity else 0.0)
-            K = radvel_utils.semi_amplitude(
-                Msini, P, float(body.total_mass), e, Msini_units="jupiter"
-            )
+            if body.mass is not None:
+                Msini = float(body.mass * np.sin(body.inclination)) / constants.M_jup
+                K = radvel_utils.semi_amplitude(
+                    Msini, P, float(body.total_mass), e, Msini_units="jupiter"
+                )
+            else:
+                K = body.radial_velocity_semiamplitude * constants.R_sun_per_day
             orbel_synth = np.array(
                 [
                     P,
@@ -359,9 +405,7 @@ def body_vmap_func4(body, x):
 def test_body_vmap(func, in_axes, out_axes, args):
     central = Central()
     vmap_sys = (
-        System(central)
-        .add_body(radius=0.5, period=1.0)
-        .add_body(radius=0.8, period=1.0)
+        System(central).add_body(radius=0.5, period=1.0).add_body(radius=0.8, period=1.0)
     )
     no_vmap_sys = (
         System(central)
