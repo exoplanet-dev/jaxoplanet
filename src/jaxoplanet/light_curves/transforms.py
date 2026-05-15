@@ -99,7 +99,11 @@ def integrate(
                 "on GitHub demonstrating the problem"
             )
 
-        f = lu.wrap_init(jax.vmap(func, in_axes=(0,) + (None,) * len(args)))
+        vmapped_func = jax.vmap(func, in_axes=(0,) + (None,) * len(args))
+        debug_info = jax.api_util.debug_info(
+            "integrate", vmapped_func, (time,) + tuple(args), kwargs
+        )
+        f = lu.wrap_init(vmapped_func, debug_info=debug_info)
         f = apply_exposure_time_integration(f, stencil, dt)  # type: ignore
         return f.call_wrapped(time, args, kwargs)  # type: ignore
 

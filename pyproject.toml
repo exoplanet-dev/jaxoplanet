@@ -15,8 +15,8 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dynamic = ["version"]
-dependencies = ["jax<0.10",
-                "jaxlib<0.10",
+dependencies = ["jax",
+                "jaxlib",
                 "equinox",
                 ]
 
@@ -43,7 +43,7 @@ docs = [
     "matplotlib",
     "arviz<1.0",
     "corner",
-    "numpyro",
+    "numpyro>=0.21",
     "numpyro-ext",
     "jaxopt",
     "myst-nb",
