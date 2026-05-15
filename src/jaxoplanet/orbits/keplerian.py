@@ -520,16 +520,16 @@ class OrbitalBody(eqx.Module):
                 this amplitude will be used instead.
 
         Returns:
-            The reflex radial velocity evaluated at ``t`` in units of ``m/s``.
+            The reflex radial velocity evaluated at ``t`` in units of ``R_sun/day``.
         """
-        rv_rsun_d = -self.central_velocity(t, semiamplitude=semiamplitude)[2]
+        rv = -self.central_velocity(t, semiamplitude=semiamplitude)[2]
         if (
             self.parallax is not None
             and semiamplitude is None
             and self.radial_velocity_semiamplitude is None
         ):
-            rv_rsun_d = rv_rsun_d / self.parallax * constants.au
-        return rv_rsun_d * constants.R_sun_per_day  # type: ignore
+            rv = rv / self.parallax * constants.au
+        return rv
 
     def _warp_times(self, t: Scalar) -> Scalar:
         return t - self.time_transit  # type: ignore

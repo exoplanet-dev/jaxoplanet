@@ -55,7 +55,7 @@ from jaxoplanet.test_utils import assert_allclose, assert_pytree_allclose
             "central": Central(mass=1.3, radius=1.1),
             "bodies": [
                 Body(
-                    radial_velocity_semiamplitude=10 / constants.R_sun_per_day,
+                    radial_velocity_semiamplitude=10 * constants.m_per_s,
                     time_transit=0.1,
                     period=12.5,
                     inclination=0.3,
@@ -192,7 +192,7 @@ def test_keplerian_body_coordinates_parallax(time, system):
 def test_keplerian_body_coordinates_orbitize(time, system):
     kepler = pytest.importorskip("orbitize.kepler")
 
-    rv = system.radial_velocity(time)[0]
+    rv = system.radial_velocity(time)[0] / constants.m_per_s
     rv_orb = 0
     time_np = np.array(time, dtype=np.float64)
     with jax.enable_x64(True):
@@ -213,7 +213,7 @@ def test_keplerian_body_coordinates_orbitize(time, system):
             if body.mass is None:
                 Msini = (
                     body.radial_velocity_semiamplitude
-                    * constants.R_sun_per_day
+                    / constants.m_per_s
                     / K_0
                     * np.sqrt(1.0 - e**2.0)
                     * (Mstar) ** (2.0 / 3.0)
@@ -249,7 +249,7 @@ def test_keplerian_rv_match_radvel(time, system):
     kepler = pytest.importorskip("radvel.kepler")
     radvel_utils = pytest.importorskip("radvel.utils")
     with jax.enable_x64(True):
-        rv = system.radial_velocity(time)[0]
+        rv = system.radial_velocity(time)[0] / constants.m_per_s
         rv_radvel = 0
         for body in system.bodies:
             P = float(body.period)
@@ -260,7 +260,7 @@ def test_keplerian_rv_match_radvel(time, system):
                     Msini, P, float(body.total_mass), e, Msini_units="jupiter"
                 )
             else:
-                K = body.radial_velocity_semiamplitude * constants.R_sun_per_day
+                K = body.radial_velocity_semiamplitude / constants.m_per_s
             orbel_synth = np.array(
                 [
                     P,
@@ -343,8 +343,8 @@ def test_keplerian_system_radial_velocity():
             # but the ecc=0 model doesn't give the same results as the ecc=None
             # model otherwise.
             atol={
-                jnp.float32: 5e-6 * constants.R_sun_per_day,
-                jnp.float64: 1e-12 * constants.R_sun_per_day,
+                jnp.float32: 5e-6,
+                jnp.float64: 1e-12,
             },
         )
 
