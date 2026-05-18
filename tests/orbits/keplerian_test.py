@@ -36,6 +36,36 @@ from jaxoplanet.test_utils import assert_allclose, assert_pytree_allclose
                 )
             ],
         },
+        {
+            "central": Central(mass=1.3, radius=1.1),
+            "bodies": [
+                Body(
+                    mass=0.1,
+                    time_transit=0.1,
+                    period=12.5,
+                    inclination=0.3,
+                    eccentricity=0.3,
+                    omega_peri=-1.5,
+                    asc_node=0.3,
+                    parallax=25e-3,
+                )
+            ],
+        },
+        {
+            "central": Central(mass=1.3, radius=1.1),
+            "bodies": [
+                Body(
+                    radial_velocity_semiamplitude=10 * constants.m_per_s,
+                    time_transit=0.1,
+                    period=12.5,
+                    inclination=0.3,
+                    eccentricity=0.3,
+                    omega_peri=-1.5,
+                    asc_node=0.3,
+                    parallax=25e-3,
+                )
+            ],
+        },
     ]
 )
 def system(request):
@@ -81,6 +111,11 @@ def test_keplerian_body_keplers_law():
 @pytest.mark.parametrize("prefix", ["", "central_", "relative_"])
 def test_keplerian_body_velocity(time, system, prefix):
     body = system.bodies[0]
+    if body.radial_velocity_semiamplitude is not None:
+        pytest.skip(
+            "velocity will not be the derivative of position when "
+            "radial_velocity_semiamplitude is set"
+        )
     v = getattr(body, f"{prefix}velocity")(time)
     for i, v_ in enumerate(v):
         pos_func = getattr(body, f"{prefix}position")
@@ -98,7 +133,8 @@ def test_keplerian_body_radial_velocity(time, system):
 
 def test_keplerian_body_impact_parameter(system):
     body = system.bodies[0]
-    x, y, z = body.relative_position(body.time_transit)
+    plx_factor = constants.au if body.parallax else None
+    x, y, z = body.relative_position(body.time_transit, parallax=plx_factor)
     assert_allclose(
         (jnp.sqrt(x**2 + y**2) / system.central.radius),
         body.impact_param,
@@ -124,7 +160,9 @@ def test_keplerian_body_coordinates_match_batman(time, system):
         m = r_batman < 100.0
         assert m.sum() > 0
 
-        x, y, z = body.relative_position(time)
+        x, y, z = body.relative_position(
+            time, parallax=constants.au if body.parallax else None
+        )
         r = jnp.sqrt(x**2 + y**2)
 
         # Make sure that the in-transit impact parameter matches batman
@@ -145,9 +183,95 @@ def test_keplerian_body_coordinates_parallax(time, system):
     with jax.enable_x64(True):
         x, y, _z = body.relative_position(time)
         r = jnp.sqrt(x**2 + y**2)
+        conv_factor = plx / constants.au if body.parallax is None else 1.0
         x_plx, y_plx, _z_plx = body.relative_position(time, parallax=plx)
         r_plx = jnp.sqrt(x_plx**2 + y_plx**2)
-        assert_allclose(r * plx / constants.au, r_plx)
+        assert_allclose(r * conv_factor, r_plx)
+
+
+def test_keplerian_body_coordinates_orbitize(time, system):
+    kepler = pytest.importorskip("orbitize.kepler")
+
+    rv = system.radial_velocity(time)[0] / constants.m_per_s
+    rv_orb = 0
+    time_np = np.array(time, dtype=np.float64)
+    with jax.enable_x64(True):
+        for body in system.bodies:
+            P = float(body.period)
+            T0 = float(body.time_peri)
+            ref_epoch = 0.0
+            tau = ((T0 - ref_epoch) / P) % 1
+            e = float(body.eccentricity if body.eccentricity else 0.0)
+            Mstar = float(body.total_mass)
+            # Normalization.
+            # RV m/s of a 1.0 Jupiter mass planet tugging on a 1.0
+            # solar mass star on a 1.0 year orbital period
+            K_0 = 28.4329
+            inc = float(body.inclination)
+
+            # TODO: Double check unites and varialbe names
+            if body.mass is None:
+                Msini = (
+                    body.radial_velocity_semiamplitude
+                    / constants.m_per_s
+                    / K_0
+                    * np.sqrt(1.0 - e**2.0)
+                    * (Mstar) ** (2.0 / 3.0)
+                    * (P / 365.25) ** (1 / 3.0)
+                )
+                mass = float(Msini / jnp.sin(inc)) * constants.M_jup
+            else:
+                mass = float(body.mass)
+
+            ra_orb, dec_orb, rv_orb_body = kepler.calc_orbit(
+                time_np,
+                float(body.semimajor) / constants.au,
+                e,
+                inc,
+                float(body.omega_peri if body.omega_peri else 0.0) + np.pi,
+                float(jnp.arccos(body.cos_asc_node) if body.cos_asc_node else 0.0),
+                tau,
+                float(body.parallax * 1e3 if body.parallax else 1.0),
+                Mstar,
+                mass,
+                tau_ref_epoch=ref_epoch,
+            )
+            rv_orb += rv_orb_body
+
+            x, y, _z = body.relative_position(time)
+            pos_factor = constants.au**-1 if body.parallax is None else 1e3
+            assert_allclose(y * pos_factor, ra_orb)
+            assert_allclose(x * pos_factor, dec_orb)
+        assert_allclose(rv * 1e-3, -rv_orb)
+
+
+def test_keplerian_rv_match_radvel(time, system):
+    kepler = pytest.importorskip("radvel.kepler")
+    radvel_utils = pytest.importorskip("radvel.utils")
+    with jax.enable_x64(True):
+        rv = system.radial_velocity(time)[0] / constants.m_per_s
+        rv_radvel = 0
+        for body in system.bodies:
+            P = float(body.period)
+            e = float(body.eccentricity if body.eccentricity else 0.0)
+            if body.mass is not None:
+                Msini = float(body.mass * np.sin(body.inclination)) / constants.M_jup
+                K = radvel_utils.semi_amplitude(
+                    Msini, P, float(body.total_mass), e, Msini_units="jupiter"
+                )
+            else:
+                K = body.radial_velocity_semiamplitude / constants.m_per_s
+            orbel_synth = np.array(
+                [
+                    P,
+                    float(body.time_peri),
+                    e,
+                    float(body.omega_peri if body.omega_peri else 0.0),
+                    K,
+                ]
+            )
+            rv_radvel += kepler.rv_drive(np.array(time, dtype=np.float64), orbel_synth)
+        assert_allclose(rv, rv_radvel)
 
 
 def test_keplerian_body_positions_small_star(time):
@@ -218,7 +342,10 @@ def test_keplerian_system_radial_velocity():
             # TODO(dfm): I'm not sure why we need to loosen the tolerance here,
             # but the ecc=0 model doesn't give the same results as the ecc=None
             # model otherwise.
-            atol={jnp.float32: 5e-6, jnp.float64: 1e-12},
+            atol={
+                jnp.float32: 5e-6,
+                jnp.float64: 1e-12,
+            },
         )
 
 
