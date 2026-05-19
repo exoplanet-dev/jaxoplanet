@@ -23,6 +23,7 @@ tutorials/mw_transit.ipynb
 tutorials/ttv.ipynb
 tutorials/rv.ipynb
 tutorials/rossiter.ipynb
+tutorials/relative-astrometry.ipynb
 ```
 
 ```{toctree}
