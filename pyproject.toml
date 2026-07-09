@@ -41,7 +41,7 @@ test = ["pytest", "pytest-xdist", "exoplanet-core", "batman-package", "radvel", 
 test-math = ["mpmath", "gmpy2"]
 docs = [
     "matplotlib",
-    "arviz<1.0",
+    "arviz[matplotlib]>=1.0",
     "corner",
     "numpyro>=0.21",
     "numpyro-ext",
