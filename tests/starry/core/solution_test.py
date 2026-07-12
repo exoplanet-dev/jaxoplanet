@@ -39,7 +39,7 @@ def test_kappas():
 
 
 @pytest.mark.parametrize("r", [0.01, 0.1, 1.0, 10.0, 100.0])
-def test_solution(r, l_max=5, order=500):
+def test_solution(r, l_max=5, order=20):
     pytest.importorskip("mpmath")
     from jaxoplanet.starry.multiprecision import (
         solution as mp_solution,
@@ -80,7 +80,7 @@ def test_solution(r, l_max=5, order=500):
 
 
 @pytest.mark.parametrize("r", [0.1, 1.1])
-def test_solution_compare_starry(r, l_max=10, order=500):
+def test_solution_compare_starry(r, l_max=10, order=20):
     starry = pytest.importorskip("starry")
     theano = pytest.importorskip("theano")
     theano.config.gcc__cxxflags += " -fexceptions"

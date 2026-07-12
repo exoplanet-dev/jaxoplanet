@@ -13,7 +13,7 @@ from jaxoplanet.types import Array, Scalar
 
 
 def light_curve(
-    orbit: LightCurveOrbit, *u: Array, order: int = 10
+    orbit: LightCurveOrbit, *u: Array, order: int = 50
 ) -> Callable[[Scalar], Array]:
     """Compute the light curve for arbitrary polynomial limb darkening
 

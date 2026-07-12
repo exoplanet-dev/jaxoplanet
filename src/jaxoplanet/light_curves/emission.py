@@ -8,7 +8,7 @@ from jaxoplanet.starry.orbit import SurfaceSystem
 from jaxoplanet.types import Array, Scalar
 
 
-def light_curve(system: SurfaceSystem, order: int = 10) -> Callable[[Scalar], Array]:
+def light_curve(system: SurfaceSystem, order: int = 50) -> Callable[[Scalar], Array]:
 
     assert isinstance(
         system, SurfaceSystem
