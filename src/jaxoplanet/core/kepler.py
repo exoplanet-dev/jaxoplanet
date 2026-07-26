@@ -100,9 +100,7 @@ def _kepler(M: Array, ecc: Array) -> tuple[Array, Array]:
     num = jnp.where(use_first, sinE, 1 - cosE)
     den = jnp.where(use_first, 1 + cosE, sinE)
     safe = den != 0
-    tan_half_f = (
-        jnp.sqrt((1 + ecc) / (1 - ecc)) * num / jnp.where(safe, den, 1.0)
-    )
+    tan_half_f = jnp.sqrt((1 + ecc) / (1 - ecc)) * num / jnp.where(safe, den, 1.0)
     tan2_half_f = jnp.square(tan_half_f)
 
     # Then we compute sin(f) and cos(f) using:
