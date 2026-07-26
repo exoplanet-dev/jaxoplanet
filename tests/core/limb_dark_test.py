@@ -23,6 +23,60 @@ def test_compare_exoplanet(r):
     assert_allclose(calc, expect)
 
 
+@pytest.mark.parametrize("r", [0.01, 0.1, 0.5, 0.9, 1.0, 1.5])
+def test_compare_exoplanet_precise(r):
+    """The light curve should match exoplanet-core to near machine precision
+    relative to the transit depth; the worst case is a narrow sliver around the
+    interior contact point where the quadrature is only accurate to ~1e-7 of
+    the depth."""
+    if not jax.config.jax_enable_x64:  # type: ignore
+        pytest.skip("requires float64")
+    u1 = 0.2
+    u2 = 0.3
+    b = np.sort(
+        np.concatenate(
+            [
+                np.linspace(0, 1 + r, 1001),
+                np.abs(1 - r) + np.linspace(-1e-3, 1e-3, 1001),
+                np.abs(1 - r) + np.logspace(-15, -4, 100),
+                np.abs(1 - r) - np.logspace(-15, -4, 100),
+                r + np.linspace(-1e-3, 1e-3, 1001),
+                1 + r - np.logspace(-15, -4, 100),
+            ]
+        )
+    )
+    b = b[(0 <= b) & (b <= 1 + r)]
+    expect = exoplanet_core.quad_limbdark_light_curve(u1, u2, b, r)
+    calc = jax.jit(light_curve)(np.array([u1, u2]), b, r)
+    depth = np.max(np.abs(expect))
+    np.testing.assert_allclose(calc, expect, atol=1e-12 + 1e-7 * depth, rtol=0)
+
+
+@pytest.mark.parametrize("r", [0.1, 0.5, 1.0])
+def test_deficit_relative_precision_f32(r):
+    """The light curve is computed as a flux deficit, so even in single
+    precision it should be accurate relative to the transit depth, not just
+    relative to the out-of-transit flux."""
+    if jax.config.jax_enable_x64:  # type: ignore
+        pytest.skip("requires float32")
+    u1 = 0.3
+    u2 = 0.2
+    b = np.sort(
+        np.concatenate(
+            [
+                np.linspace(0, 1 + r, 3001),
+                np.abs(1 - r) + np.linspace(-2e-2, 2e-2, 2001),
+                r + np.linspace(-1e-3, 1e-3, 501),
+            ]
+        )
+    ).astype(np.float32)
+    b = b[(0 <= b) & (b <= np.float32(1 + r))]
+    expect = exoplanet_core.quad_limbdark_light_curve(u1, u2, b.astype(np.float64), r)
+    depth = np.max(np.abs(expect))
+    calc = jax.jit(light_curve)(np.array([u1, u2], dtype=np.float32), b, np.float32(r))
+    assert np.max(np.abs(np.asarray(calc, dtype=np.float64) - expect)) < 5e-5 * depth
+
+
 @pytest.mark.parametrize("u", [[0.2], [0.2, 0.3], [0.2, 0.3, 0.1, 0.5, 0.02]])
 @pytest.mark.parametrize("r", [0.01, 0.1, 0.5, 1.1, 2.0])
 def test_edge_cases(u, r):
