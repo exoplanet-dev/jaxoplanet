@@ -12,6 +12,7 @@ import jax.numpy as jnp
 import numpy as np
 from scipy.special import binom, roots_legendre
 
+from jaxoplanet.core.cel import cel
 from jaxoplanet.types import Array
 from jaxoplanet.utils import get_dtype_eps, zero_safe_sqrt
 
@@ -115,16 +116,26 @@ def deficit_vector(l_max: int, order: int = 60) -> Callable[[Array, Array], Arra
 
 
 def solution_vector(l_max: int, order: int = 60) -> Callable[[Array, Array], Array]:
-    """The limb darkening solution vector, computed as the deficit vector plus
-    its no-occultation limit"""
-    free = np.zeros(l_max + 1)
-    free[0] = np.pi
-    if l_max >= 1:
-        free[1] = 2 * np.pi / 3
-    deficit = deficit_vector(l_max, order=order)
+    n_max = l_max + 1
 
+    @partial(jnp.vectorize, signature=f"(),()->({n_max})")
     def impl(b: Array, r: Array) -> Array:
-        return deficit(b, r) + free
+        b = jnp.abs(b)
+        r = jnp.abs(r)
+        s0, s1, s2 = s0s1s2(b, r)
+        s = [s0[None]]
+        if l_max >= 1:
+            s.append(s1[None])
+        if l_max >= 2:
+            s.append(s2[None])
+        if l_max >= 3:
+            no_occ = jnp.logical_or(jnp.greater_equal(b, 1 + r), jnp.less_equal(r, 0))
+            full_occ = jnp.less_equal(1 + b, r)
+            cond = jnp.logical_or(no_occ, full_occ)
+            b_ = jnp.where(cond, jnp.ones_like(b), b)
+            P = p_integral(order, l_max, b_, r)
+            s.append(jnp.where(cond, jnp.zeros_like(P), -P))
+        return jnp.concatenate(s, axis=0)
 
     return impl
 
@@ -142,6 +153,207 @@ def greens_basis_transform(u: Array) -> Array:
     g[1] = p[1] + 3 * g[3]
     g[0] = p[0] + 2 * g[2]
     return jnp.stack(g[:-2])
+
+
+@jax.custom_jvp
+def s0s1s2(b: Array, r: Array) -> tuple[Array, Array, Array]:
+    """The first three terms of the solution vector, in closed form"""
+    s, _, _ = _s0s1s2_impl(b, r)
+    return s
+
+
+@s0s1s2.defjvp
+def _s0s1s2_jvp(primals, tangents):
+    b, r = primals
+    bt, rt = tangents
+    s, dsdb, dsdr = _s0s1s2_impl(b, r)
+    return s, tuple(db * bt + dr * rt for db, dr in zip(dsdb, dsdr, strict=True))
+
+
+def _s0s1s2_impl(
+    b: Array, r: Array
+) -> tuple[tuple[Array, ...], tuple[Array, ...], tuple[Array, ...]]:
+    """Closed form (s0, s1, s2) and their partials with respect to b and r, as a
+    branch-free port of ``quad_solution_vector`` from ``exoplanet-core``; under
+    JIT the partials are eliminated as dead code when only the values are used
+    """
+    eps = get_dtype_eps(b)
+    tiny = jnp.finfo(jnp.result_type(b)).tiny
+
+    # Fix an instability that exists really close to b = r = 0.5
+    hack = jnp.logical_and(jnp.abs(b - r) <= 5 * eps, jnp.abs(r - 0.5) <= 5 * eps)
+    b = jnp.where(hack, 0.5 + 5 * eps, b)
+
+    full_occ = b < r - 1
+    no_occ = jnp.logical_or(r <= eps, b > r + 1)
+    occ = jnp.logical_not(jnp.logical_or(full_occ, no_occ))
+
+    # Placeholder coordinates for the masked-out points, so that every branch
+    # below stays finite
+    b_ = jnp.where(occ, b, 0.5)
+    r_ = jnp.where(occ, r, 0.25)
+
+    b2 = jnp.square(b_)
+    r2 = jnp.square(r_)
+    invr = 1.0 / r_
+    invb = 1.0 / jnp.maximum(b_, tiny)
+    bmr = b_ - r_
+    bpr = b_ + r_
+    fourbr = 4 * b_ * r_
+    invfourbr = 0.25 * invr * invb
+    # Stable groupings of (1 - (b -/+ r)^2); see p_integral
+    onembmr2 = (b_ + (1 - r_)) * ((1 + r_) - b_)
+    onembmr2inv = 1.0 / jnp.maximum(onembmr2, tiny)
+    onembpr2 = ((1 - r_) - b_) * ((1 + r_) + b_)
+    sqonembmr2 = jnp.sqrt(jnp.maximum(onembmr2, 0.0))
+    sqbr = jnp.sqrt(b_ * r_)
+
+    area, kap0, kap1 = kappas(b_, r_)
+
+    ksq = onembpr2 * invfourbr + 1.0
+    # Accurate complementary modulus on each side of ksq = 1
+    kcsq_lt = -onembpr2 * invfourbr
+    kcsq_gt = onembpr2 * onembmr2inv
+    invksq = fourbr * onembmr2inv
+
+    cb0 = b_ <= eps
+    cbr = jnp.abs(bmr) <= eps
+    cr_half = jnp.abs(r_ - 0.5) <= eps
+    case6 = jnp.logical_and(cbr, cr_half)
+    case5 = jnp.logical_and(cbr, jnp.logical_and(~cr_half, r_ < 0.5))
+    case7 = jnp.logical_and(cbr, jnp.logical_and(~cr_half, r_ >= 0.5))
+    generic = jnp.logical_not(jnp.logical_or(cb0, cbr))
+    case2 = jnp.logical_and(generic, ksq < 1)
+    case3 = jnp.logical_and(generic, ksq > 1)
+
+    # A single fused cel evaluation covers every case: the modulus is
+    # case-dependent, but the second and third integrals are always E(k) and
+    # (E(k) - (1 - k^2) K(k)) / k^2 for the selected modulus
+    m = 4 * r2
+    minv = 1.0 / jnp.maximum(m, tiny)
+
+    def sel(v2, v3, v5, v7, default):
+        out = jnp.where(case2, v2, default)
+        out = jnp.where(case3, v3, out)
+        out = jnp.where(case5, v5, out)
+        return jnp.where(case7, v7, out)
+
+    k2_sel = sel(ksq, invksq, m, minv, jnp.full_like(b_, 0.5))
+    kcsq_sel = sel(kcsq_lt, kcsq_gt, 1 - m, 1 - minv, jnp.full_like(b_, 0.5))
+    kcsq_sel = jnp.maximum(kcsq_sel, 0.0)
+    kc_sel = jnp.sqrt(kcsq_sel)
+
+    # The first (Pi-like) integral is only used in cases 2 and 3
+    bmrdbpr = bmr / bpr
+    mu = 3 * bmrdbpr * onembmr2inv
+    p3 = jnp.square(bmrdbpr) * onembpr2 * onembmr2inv
+    p_sel = jnp.maximum(
+        jnp.where(case2, jnp.square(bmr) * kcsq_lt, jnp.where(case3, p3, 1.0)), tiny
+    )
+    a1_sel = jnp.where(case3, 1 + mu, 0.0)
+    b1_sel = jnp.where(case2, 3 * kcsq_lt * bmr * bpr, jnp.where(case3, p3 + mu, 0.0))
+
+    ones = jnp.ones_like(b_)
+    Piofk, Eofk, Em1mKdm = cel(
+        k2_sel, kc_sel, p_sel, a1_sel, b1_sel, ones, kcsq_sel, ones, jnp.zeros_like(b_)
+    )
+
+    # S0 and S2 (the "eta" form), from Agol et al. (2020) Section 3
+    big = jnp.logical_or(ksq > 1, cb0)
+    s0 = jnp.where(big, jnp.pi * (1 - r2), jnp.pi - (kap1 + r2 * kap0 - 0.5 * area))
+    ds0db = jnp.where(big, 0.0, area * invb)
+    ds0dr = jnp.where(big, -2 * jnp.pi * r_, -2 * r_ * kap0)
+
+    r2pb2 = r2 + b2
+    eta2 = 0.5 * r2 * (r2pb2 + b2)
+    four_pi_eta = jnp.where(
+        big,
+        4 * jnp.pi * (eta2 - 0.5),
+        2 * (-(jnp.pi - kap1) + 2 * eta2 * kap0 - 0.25 * area * (1 + 5 * r2 + b2)),
+    )
+    detadr = jnp.where(big, 8 * jnp.pi * r_ * r2pb2, 8 * r_ * (r2pb2 * kap0 - area))
+    detadb = jnp.where(
+        big,
+        8 * jnp.pi * b_ * r2,
+        2 * invb * (4 * b2 * r2 * kap0 - (1 + r2pb2) * area),
+    )
+    s2 = 2 * s0 + four_pi_eta
+    ds2db = 2 * ds0db + detadb
+    ds2dr = 2 * ds0dr + detadr
+
+    # S1, via Lambda_1 from Agol et al. (2020) Section 4; the case numbering
+    # follows Table 1 of that paper
+    sqbrinv = 1.0 / jnp.maximum(sqbr, tiny)
+
+    # Case 2 / Case 8: generic ksq < 1
+    lam2 = (
+        onembmr2
+        * (Piofk + (-3 + 6 * r2 + 2 * b_ * r_) * Em1mKdm - fourbr * Eofk)
+        * sqbrinv
+        / 3.0
+    )
+    ds1db_2 = 2 * r_ * onembmr2 * (-Em1mKdm + 2 * Eofk) * sqbrinv / 3.0
+    ds1dr_2 = -2 * r_ * onembmr2 * Em1mKdm * sqbrinv
+
+    # Case 3 / Case 9: generic ksq > 1
+    lam3 = 2 * sqonembmr2 * (onembpr2 * Piofk - (4 - 7 * r2 - b2) * Eofk) / 3.0
+    ds1db_3 = -4 * r_ * sqonembmr2 * (Eofk - 2 * Em1mKdm) / 3.0
+    ds1dr_3 = -4 * r_ * sqonembmr2 * Eofk
+
+    # Case 4: ksq == 1 (b + r == 1)
+    rootr1mr = jnp.sqrt(jnp.maximum(r_ * (1 - r_), 0.0))
+    lam4 = (
+        2 * jnp.arccos(jnp.clip(1 - 2 * r_, -1.0, 1.0))
+        - 4.0 / 3.0 * (3 + 2 * r_ - 8 * r2) * rootr1mr
+        - 2 * jnp.pi * (r_ > 0.5)
+    )
+    ds1dr_4 = -8 * r_ * rootr1mr
+    ds1db_4 = -ds1dr_4 / 3.0
+
+    # Case 5: b == r < 1/2
+    lam5 = jnp.pi + 2.0 / 3.0 * ((2 * m - 3) * Eofk - m * Em1mKdm)
+    ds1db_5 = -4.0 / 3.0 * r_ * (Eofk - 2 * Em1mKdm)
+    ds1dr_5 = -4 * r_ * Eofk
+
+    # Case 6: b == r == 1/2
+    lam6 = jnp.full_like(b_, jnp.pi - 4.0 / 3.0)
+    ds1db_6 = jnp.full_like(b_, 2.0 / 3.0)
+    ds1dr_6 = jnp.full_like(b_, -2.0)
+
+    # Case 7: b == r > 1/2
+    lam7 = jnp.pi + invr / 3.0 * (-m * Eofk + (2 * m - 3) * Em1mKdm)
+    ds1db_7 = 2.0 / 3.0 * (2 * Eofk - Em1mKdm)
+    ds1dr_7 = -2 * Em1mKdm
+
+    # Case 10: b == 0
+    sqrt1mr2 = jnp.sqrt(jnp.maximum(1 - r2, 0.0))
+    lam10 = -2 * jnp.pi * sqrt1mr2 * sqrt1mr2 * sqrt1mr2
+    ds1db_10 = jnp.zeros_like(b_)
+    ds1dr_10 = -2 * jnp.pi * r_ * sqrt1mr2
+
+    def select(v10, v6, v5, v7, v2, v3, v4):
+        out = jnp.where(case2, v2, jnp.where(case3, v3, v4))
+        out = jnp.where(case5, v5, out)
+        out = jnp.where(case6, v6, out)
+        out = jnp.where(case7, v7, out)
+        return jnp.where(cb0, v10, out)
+
+    lam = select(lam10, lam6, lam5, lam7, lam2, lam3, lam4)
+    ds1db = select(ds1db_10, ds1db_6, ds1db_5, ds1db_7, ds1db_2, ds1db_3, ds1db_4)
+    ds1dr = select(ds1dr_10, ds1dr_6, ds1dr_5, ds1dr_7, ds1dr_2, ds1dr_3, ds1dr_4)
+
+    s1 = (jnp.where(r_ > b_, 0.0, 2 * jnp.pi) - lam) / 3.0
+
+    # Handle the complete occultation and no occultation limits
+    def mask(value, no_occ_value, ds):
+        v = jnp.where(no_occ, no_occ_value, jnp.where(full_occ, 0.0, value))
+        return v, jnp.where(occ, ds[0], 0.0), jnp.where(occ, ds[1], 0.0)
+
+    s0, ds0db, ds0dr = mask(s0, jnp.pi, (ds0db, ds0dr))
+    s1, ds1db, ds1dr = mask(s1, 2 * jnp.pi / 3.0, (ds1db, ds1dr))
+    s2, ds2db, ds2dr = mask(s2, 0.0, (ds2db, ds2dr))
+
+    return (s0, s1, s2), (ds0db, ds1db, ds2db), (ds0dr, ds1dr, ds2dr)
 
 
 def kappas(b: Array, r: Array) -> tuple[Array, Array, Array]:

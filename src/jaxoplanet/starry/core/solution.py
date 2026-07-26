@@ -6,9 +6,9 @@ import jax.numpy as jnp
 import numpy as np
 from scipy.special import roots_legendre
 
-from jaxoplanet.core.limb_dark import kite_area
+from jaxoplanet.core.limb_dark import kite_area, quad_nodes, s0s1s2
 from jaxoplanet.types import Array
-from jaxoplanet.utils import zero_safe_sqrt
+from jaxoplanet.utils import get_dtype_eps, zero_safe_sqrt
 
 
 def solution_vector(l_max: int, order: int = 20) -> Callable[[Array, Array], Array]:
@@ -20,9 +20,16 @@ def solution_vector(l_max: int, order: int = 20) -> Callable[[Array, Array], Arr
         b = jnp.abs(b)
         r = jnp.abs(r)
         kappa0, kappa1 = kappas(b, r)
+        s0, s1, _ = s0s1s2(b, r)
         P = p_integral(order, l_max, b, r, kappa0)
         Q = q_integral(l_max, 0.5 * jnp.pi - kappa1)
-        return Q - P
+        s = Q - P
+        # The first term and the linear limb darkening term ((l, m) = (1, 0))
+        # have closed form solutions
+        s = s.at[0].set(s0)
+        if l_max >= 1:
+            s = s.at[2].set(s1)
+        return s
 
     return impl
 
@@ -80,12 +87,14 @@ def p_integral(order: int, l_max: int, b: Array, r: Array, kappa0: Array) -> Arr
     """Numerical integration of the P integral using the Gauss-Legendre quadrature.
 
     As described in Equation D32 of Luger et al. (2019), there are 6 cases to consider.
-    Empirically, we notice that the numerical integration of the first case (mu/2 even)
-    is precise at very low order. Hence ``low_order=30``is used for the first case. For
-    the other cases, we use the order specified by the user, renamed in the function
-    ``high_order``. We also note that outside the linear limb-darkening case (i.e.
-    (l,m)=(1, 0), or n=2) the integrand is symmetrical in phi, so we can evaluate the
-    integral over half the range and multiply by 2.
+    The first case (mu/2 even) is precise at very low order in the original angle
+    variable, so ``low_order = min(order, 20)`` is used there. The other cases
+    (except the linear limb darkening term, which is computed in closed form
+    elsewhere) carry a factor of ``(k^2 - sin^2(x))^(3/2)`` with an endpoint
+    singularity in the grazing regime (k^2 < 1), so for those terms we substitute
+    ``sin(x) = k sin(theta)``, which maps the integrals onto a fixed range with
+    smooth integrands. The integrands are symmetrical in phi, so we evaluate the
+    integrals over half the range and multiply by 2.
 
 
     Parameters
@@ -106,20 +115,28 @@ def p_integral(order: int, l_max: int, b: Array, r: Array, kappa0: Array) -> Arr
     Array
         The integral of the P function over the occultor surface.
     """
-    b2 = jnp.square(b)
-    r2 = jnp.square(r)
+    eps = 10 * get_dtype_eps(b)
+    tiny = jnp.finfo(jnp.result_type(b)).tiny
 
-    # This is a hack for when r -> 0 or b -> 0, so k2 -> inf
-    factor = 4 * b * r
-    k2_cond = jnp.less(factor, 10 * jnp.finfo(factor.dtype).eps)
-    factor = jnp.where(k2_cond, 1, factor)
-    k2 = jnp.maximum(0, (1 - r2 - b2 + 2 * b * r) / factor)
-    # And for when r -> 0
-    r_cond = jnp.less(r, 10 * jnp.finfo(r.dtype).eps)
+    fourbr = 4 * b * r
+    # Stable groupings of (1 - (b -/+ r)^2); see jaxoplanet.core.limb_dark
+    onembmr2 = (b + (1 - r)) * ((1 + r) - b)
+    onembpr2 = ((1 - r) - b) * ((1 + r) + b)
+
+    # k^2 >= 1 if and only if b + r <= 1; when b * r underflows we route those
+    # points through the "inside" branch, which never needs k^2
+    degenerate = jnp.less(fourbr, jnp.sqrt(tiny))
+    inside = jnp.logical_or(onembpr2 >= 0, degenerate)
+    k2 = jnp.where(degenerate, 2.0, onembmr2 / jnp.where(degenerate, 1.0, fourbr))
+    k2c = jnp.clip(k2, 0.0, 1.0)
+    k = zero_safe_sqrt(k2c)
+
+    # This is a hack for when r -> 0
+    r_cond = jnp.less(r, eps)
     delta = (b - r) / (2 * jnp.where(r_cond, 1, r))
     rng = 0.25 * kappa0
 
-    # low order variables
+    # low order variables, in the original angle variable over (0, kappa0 / 2)
     low_order = np.min([order, 20])
     roots, low_weights = roots_legendre(low_order)
     phi = rng * (roots + 1)
@@ -127,12 +144,17 @@ def p_integral(order: int, l_max: int, b: Array, r: Array, kappa0: Array) -> Arr
     low_a1 = low_s2 - jnp.square(low_s2)
     low_a2 = jnp.where(r_cond, 0, delta + low_s2)
 
-    # high order variables
-    high_order = order
-    high_roots, high_weights = roots_legendre(high_order)
-    phi = rng * (high_roots + 1)
-    high_s2 = jnp.square(jnp.sin(phi))
-    high_f0 = jnp.maximum(0, jnp.where(k2_cond, 1 - r2, factor * (k2 - high_s2))) ** 1.5
+    # high order variables, at theta nodes over the fixed range (0, pi / 2); the
+    # substitution contributes the extra Jacobian factor high_jac
+    theta, high_weights = quad_nodes(order)
+    st2 = np.square(np.sin(theta))
+    ct = np.cos(theta)
+    ct2 = np.square(ct)
+
+    high_s2 = jnp.where(inside, st2, k2c * st2)
+    f0 = jnp.maximum(jnp.where(inside, onembmr2 - fourbr * st2, onembmr2 * ct2), 0.0)
+    high_jac = jnp.where(inside, 1.0, k * ct / jnp.sqrt(1 - k2c * st2))
+    high_f0 = f0**1.5 * high_jac
     high_a1 = high_s2 - jnp.square(high_s2)
     high_a2 = jnp.where(r_cond, 0, delta + high_s2)
     high_a4 = 1 - 2 * high_s2
@@ -152,17 +174,9 @@ def p_integral(order: int, l_max: int, b: Array, r: Array, kappa0: Array) -> Arr
             nu = l + m
 
             if mu == 1 and l == 1:
-                phi = 2 * rng * high_roots
-                c = jnp.cos(phi + 0.5 * kappa0)
-                omz2 = r2 + b2 - 2 * b * r * c
-                cond = jnp.less(omz2, 10 * jnp.finfo(omz2.dtype).eps)
-                omz2 = jnp.where(cond, 1, omz2)
-                z2 = jnp.maximum(0, 1 - omz2)
-                result = (
-                    2 * r * (r - b * c) * (1 - z2 * zero_safe_sqrt(z2)) / (3 * omz2)
-                )
-                high_integrand.append(jnp.where(cond, 0, 2 * result))
-                high_indices.append(n)
+                # Computed in closed form and set directly in solution_vector
+                n += 1
+                continue
 
             elif mu % 2 == 0 and (mu // 2) % 2 == 0:
                 f = (
@@ -200,15 +214,17 @@ def p_integral(order: int, l_max: int, b: Array, r: Array, kappa0: Array) -> Arr
 
             n += 1
 
-    low_indices = np.stack(low_indices)
-    high_indices = np.stack(high_indices)
-
-    low_P0 = rng * jnp.sum(jnp.stack(low_integrand) * low_weights, axis=1)
-    high_P0 = rng * jnp.sum(jnp.stack(high_integrand) * high_weights, axis=1)
-
     P = jnp.zeros(l_max**2 + 2 * l_max + 1)
-    P = P.at[low_indices].set(low_P0)
-    P = P.at[high_indices].set(high_P0)
+
+    if low_integrand:
+        low_P0 = rng * jnp.sum(jnp.stack(low_integrand) * low_weights, axis=1)
+        P = P.at[np.stack(low_indices)].set(low_P0)
+
+    if high_integrand:
+        # The factor of 1/2 compensates the symmetry factor of 2 included in the
+        # integrands, which quad_nodes' weights already account for
+        high_P0 = 0.5 * jnp.sum(jnp.stack(high_integrand) * high_weights, axis=1)
+        P = P.at[np.stack(high_indices)].set(high_P0)
 
     return P
 
