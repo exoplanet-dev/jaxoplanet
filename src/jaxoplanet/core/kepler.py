@@ -10,6 +10,16 @@ from jax.interpreters import ad
 
 from jaxoplanet.types import Array
 
+# Cody-Waite style split of 2*pi used for extended-precision range reduction:
+# TWOPI_HI and TWOPI_MID each carry 24 significant bits, so n * TWOPI_HI and
+# n * TWOPI_MID are exact for |n| < 2**29 wraps, and TWOPI_LO carries the rest
+# of the true 2*pi, including the 2.449e-16 that the float64 representation of
+# 2*pi drops. The residual beyond TWOPI_LO is ~3.4e-31.
+TWOPI_HI = 6.2831854820251465
+TWOPI_MID = -1.7484555314695172e-07
+TWOPI_LO = -6.8604979977715316e-15
+INV_TWOPI = 0.15915494309189535
+
 
 @jax.jit
 def kepler(M: Array, ecc: Array) -> tuple[Array, Array]:
@@ -27,12 +37,9 @@ def kepler(M: Array, ecc: Array) -> tuple[Array, Array]:
 
 @jax.custom_jvp
 def _kepler(M: Array, ecc: Array) -> tuple[Array, Array]:
-    # Wrap into the right range
-    M = M % (2 * jnp.pi)
-
-    # We can restrict to the range [0, pi)
-    high = M > jnp.pi
-    M = jnp.where(high, 2 * jnp.pi - M, M)
+    # Wrap into the range [0, pi); 'high' records M in (pi, 2*pi), which maps
+    # to a sign flip of sin(E)
+    high, M = range_reduce(M)
 
     # Solve
     ome = 1 - ecc
@@ -77,6 +84,36 @@ def _(primals, tangents):
     f_dot += make_zero(e_dot) * (2 + ecosf) * sinf / ome2
 
     return (sinf, cosf), (cosf * f_dot, -sinf * f_dot)
+
+
+def range_reduce(M: Array) -> tuple[Array, Array]:
+    """Reduce M modulo 2*pi to the range [0, pi] in extended precision
+
+    A naive ``M % (2 * jnp.pi)`` pays the rounding error of the float64
+    representation of 2*pi once per wrap, so the phase error grows linearly
+    with the number of elapsed orbits (~2.4e-16 * M / (2 * pi)). Reducing
+    against a 3-term Cody-Waite split of 2*pi instead keeps the reduction
+    exact for any physically meaningful M.
+
+    Args:
+        M: Mean anomaly, unrestricted
+
+    Returns:
+        A tuple ``(high, M_reduced)`` where ``M_reduced`` is in ``[0, pi]``
+        and ``high`` flags points that came from ``(pi, 2*pi)`` mod 2*pi,
+        i.e. where ``sin(E)`` must be negated.
+    """
+    n = jnp.round(M * INV_TWOPI)
+    r = ((M - n * TWOPI_HI) - n * TWOPI_MID) - n * TWOPI_LO
+
+    # n can be off by one when M * INV_TWOPI rounds across a half-integer; a
+    # single correction step brings r back into [-pi, pi]. Since it undoes at
+    # most one wrap, a 2-term compensation (float64's 2*pi plus its rounding
+    # defect) is enough here
+    corr = jnp.where(jnp.abs(r) > jnp.pi, jnp.sign(r), 0.0)
+    r = (r - corr * (2 * jnp.pi)) - corr * 2.4492935982947064e-16
+
+    return r < 0, jnp.minimum(jnp.abs(r), jnp.pi)
 
 
 def starter(M: Array, ecc: Array, ome: Array) -> Array:
