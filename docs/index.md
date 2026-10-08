@@ -24,6 +24,7 @@ tutorials/ttv.ipynb
 tutorials/rv.ipynb
 tutorials/rossiter.ipynb
 tutorials/relative-astrometry.ipynb
+tutorials/relative-astrometry-rv-bpic.ipynb
 ```
 
 ```{toctree}
