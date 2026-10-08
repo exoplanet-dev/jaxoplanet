@@ -17,7 +17,7 @@ from jaxoplanet.utils import get_dtype_eps, zero_safe_sqrt
 
 
 @partial(jax.jit, static_argnames=("order",))
-def light_curve(u: Array, b: Array, r: Array, *, order: int = 60):
+def light_curve(u: Array, b: Array, r: Array, *, order: int = 40):
     """Compute the light curve for arbitrary polynomial limb darkening
 
     See `Agol et al. (2020) <https://arxiv.org/abs/1908.03222>`_ for more technical
@@ -34,7 +34,11 @@ def light_curve(u: Array, b: Array, r: Array, *, order: int = 60):
             body
         r (Array): The radius ratio between the occultor and the occulted body
         order (int): The quadrature order used for the linear term and the terms of
-            degree 3 and higher
+            degree 3 and higher. In float64, the default (40) is accurate to ~1e-12
+            of the transit depth for radius ratios r >~ 0.1 (~1e-10 for smaller r,
+            where rounding dominates). The error grows fastest near the contact
+            points as the order drops: worst cases are ~1e-9 of the depth at order
+            30, ~1e-6 at order 20 and ~1e-3 at order 10
     """
 
     u = jnp.asarray(u)
@@ -48,7 +52,7 @@ def light_curve(u: Array, b: Array, r: Array, *, order: int = 60):
     return ds @ g
 
 
-def deficit_vector(l_max: int, order: int = 60) -> Callable[[Array, Array], Array]:
+def deficit_vector(l_max: int, order: int = 40) -> Callable[[Array, Array], Array]:
     """The solution vector minus its no-occultation limit, ``(pi, 2 pi / 3, 0, ...)``,
     with every term built from deficit-sized quantities (no large-value
     cancellations); see ``light_curve``
@@ -62,7 +66,15 @@ def deficit_vector(l_max: int, order: int = 60) -> Callable[[Array, Array], Arra
         eps = get_dtype_eps(b)
 
         full_occ = 1 + b <= r
-        no_occ = jnp.logical_or(b >= 1 + r, r <= eps)
+        # Within ~eps / r of outer contact the derivative terms (each
+        # ~ 1 / sqrt(1 + r - b)) no longer cancel in floating point; the deficit
+        # there is negligible (~ (eps / r^2)^(3/2) of the depth), so treat those
+        # points as unocculted. The cap keeps the zeroed-out flux below ~1e-4 of
+        # the depth when that bound is loose (float32 with small r)
+        contact_tol = jnp.minimum(
+            10 * eps * (1 + r) / jnp.clip(r, eps, 1.0), 1e-3 * jnp.square(r)
+        )
+        no_occ = jnp.logical_or(b >= 1 + r - contact_tol, r <= eps)
         occ = jnp.logical_not(jnp.logical_or(full_occ, no_occ))
         b_ = jnp.where(occ, b, 0.5)
         r_ = jnp.where(occ, r, 0.25)
@@ -92,8 +104,14 @@ def deficit_vector(l_max: int, order: int = 60) -> Callable[[Array, Array], Arra
             # stays below the size of its terms
             onembmr2 = (b_ + (1 - r_)) * ((1 + r_) - b_)
             onembpr2 = ((1 - r_) - b_) * ((1 + r_) + b_)
+            # Guard the sqrt argument (not just the output) so that the
+            # discarded branch can't produce NaNs in second derivatives. The
+            # argument is strictly positive where it's used, so a plain sqrt keeps
+            # the (large but genuine) derivative within a few ulps of inner contact,
+            # which zero_safe_sqrt would truncate to zero
+            kap1_arg = jnp.where(onembpr2 < 0, -onembpr2 * onembmr2, 1.0)
             kap1_c = jnp.arctan2(
-                zero_safe_sqrt(jnp.maximum(-onembpr2 * onembmr2, 0.0)),
+                jnp.sqrt(jnp.maximum(kap1_arg, 0.0)),
                 b2 + (1 - r_) * (1 + r_),
             )
             kap1_c = jnp.where(onembpr2 < 0, kap1_c, 0.0)
@@ -114,7 +132,7 @@ def deficit_vector(l_max: int, order: int = 60) -> Callable[[Array, Array], Arra
     return impl
 
 
-def solution_vector(l_max: int, order: int = 60) -> Callable[[Array, Array], Array]:
+def solution_vector(l_max: int, order: int = 40) -> Callable[[Array, Array], Array]:
     """The limb darkening solution vector, computed as the deficit vector plus
     its no-occultation limit"""
     free = np.zeros(l_max + 1)
@@ -238,7 +256,7 @@ def _p_integral_impl(
     ds2x_db = dk2_db * st2
     ds2x_dr = dk2_dr * st2
 
-    omk2st2 = 1 - k2c * st2
+    omk2st2 = jnp.where(inside, 1.0, 1 - k2c * st2)
     jac = jnp.where(inside, 1.0, k * ct / jnp.sqrt(omk2st2))
     k_safe = jnp.where(k2_ok, k, 1.0)
     djac_fac = jnp.where(k2_ok, ct / (2 * k_safe * omk2st2 * jnp.sqrt(omk2st2)), 0.0)
@@ -258,13 +276,33 @@ def _p_integral_impl(
         z = zero_safe_sqrt(base)
         F = (1 + base / (1 + z)) / 3
         dF_dbase = (1 + 0.5 * z) / (3 * jnp.square(1 + z))
-        rows.append((AJ * F)[None, :])
-        drows_db.append((dAJ_db * F + AJ * dF_dbase * dbase_db)[None, :])
-        drows_dr.append((dAJ_dr * F + AJ * dF_dbase * dbase_dr)[None, :])
+        AF = A * F
+        dAF_db = dA_db * F + A * dF_dbase * dbase_db
+        dAF_dr = dA_dr * F + A * dF_dbase * dbase_dr
+        # Near inner contact (k -> 1) the Jacobian's k^2 derivative peaks like
+        # 1 / sqrt(1 - k^2) at theta = pi / 2, which the quadrature can't resolve.
+        # Subtract the integrand's value there, c = A(pi / 2) F(pi / 2) = A(pi / 2) / 3,
+        # and add back its exact integral, 2 * int_0^(pi / 2) jac = 2 arcsin(k)
+        sub = jnp.logical_and(k2_ok, k2c > 0.5)
+        c = jnp.where(sub, 2 * r * (r - b + 2 * b * k2c) / 3, 0.0)
+        dc_db = jnp.where(sub, 2 * r * (2 * k2c - 1 + 2 * b * dk2_db) / 3, 0.0)
+        dc_dr = jnp.where(
+            sub, (2 * (2 * r - b + 2 * b * k2c) + 4 * b * r * dk2_dr) / 3, 0.0
+        )
+        rows.append(((AF - c) * jac)[None, :])
+        drows_db.append(((dAF_db - dc_db) * jac + (AF - c) * djac_db)[None, :])
+        drows_dr.append(((dAF_dr - dc_dr) * jac + (AF - c) * djac_dr)[None, :])
     if l_max >= 3:
         n = jnp.arange(3, l_max + 1)
         pw = base[None, :] ** (0.5 * n[:, None])
-        dpw = 0.5 * n[:, None] * base[None, :] ** (0.5 * n[:, None] - 1)
+        # base is exactly 0 at the top node when b + r = 1; guard the n = 3 term's
+        # base ** 0.5 so that its (discarded) infinite derivative can't produce NaNs
+        # in second derivatives
+        base_pos = (base > 0)[None, :]
+        base_safe = jnp.where(base_pos, base[None, :], 1.0)
+        dpw = jnp.where(
+            base_pos, 0.5 * n[:, None] * base_safe ** (0.5 * n[:, None] - 1), 0.0
+        )
         rows.append(pw * AJ[None, :])
         drows_db.append(dAJ_db[None, :] * pw + AJ[None, :] * dpw * dbase_db[None, :])
         drows_dr.append(dAJ_dr[None, :] * pw + AJ[None, :] * dpw * dbase_dr[None, :])
@@ -272,6 +310,16 @@ def _p_integral_impl(
     P = jnp.concatenate(rows, axis=0) @ weights
     dPdb = jnp.concatenate(drows_db, axis=0) @ weights
     dPdr = jnp.concatenate(drows_dr, axis=0) @ weights
+    if include_s1:
+        # 1 - k^2 = -(1 - (b + r)^2) / (4 b r), without cancellation near k = 1
+        omk2 = jnp.where(sub, -onembpr2 / fourbr_safe, 1.0)
+        sqrt_omk2 = jnp.sqrt(omk2)
+        k_sub = jnp.where(sub, k, 1.0)
+        asin_k = jnp.where(sub, jnp.arctan2(k_sub, sqrt_omk2), 0.0)
+        dasin_dk2 = jnp.where(sub, 0.5 / (k_sub * sqrt_omk2), 0.0)
+        P = P.at[0].add(2 * c * asin_k)
+        dPdb = dPdb.at[0].add(2 * (dc_db * asin_k + c * dasin_dk2 * dk2_db))
+        dPdr = dPdr.at[0].add(2 * (dc_dr * asin_k + c * dasin_dk2 * dk2_dr))
     return P, dPdb, dPdr
 
 
@@ -305,4 +353,8 @@ def kite_area(a: Array, b: Array, c: Array) -> Array:
     a, b = sort2(a, b)
 
     square_area = (a + (b + c)) * (c - (a - b)) * (c + (a - b)) * (a + (b - c))
-    return zero_safe_sqrt(jnp.maximum(0, square_area))
+    square_area = jnp.maximum(0, square_area)
+    # Exact derivative for any positive area (zero_safe_sqrt zeroes it below 10 eps,
+    # e.g. for r = 1 and b < ~2e-8); the double where keeps exactly-zero areas safe
+    pos = square_area > 0
+    return jnp.where(pos, jnp.sqrt(jnp.where(pos, square_area, 1.0)), 0.0)
