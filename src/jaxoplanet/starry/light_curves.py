@@ -39,7 +39,10 @@ def surface_light_curve(
         theta (float):
             rotation angle of the map, in radians. By default 0.0
         order (int):
-            order of the P integral numerical approximation. By default 20
+            order of the P integral numerical approximation for maps with
+            ydeg > 0. Limb-darkened-only surfaces (ydeg = 0) are computed with
+            :func:`jaxoplanet.core.limb_dark.light_curve` at its default order.
+            By default 20
         higher_precision (bool): whether to compute change of basis matrix as hight
             precision. By default False (only used to testing).
 
@@ -89,7 +92,9 @@ def surface_light_curve(
                     [jnp.atleast_1d(jnp.asarray(u_)) for u_ in surface.u], axis=0
                 )
 
-            lc_func = partial(_limb_dark_light_curve, ld_u, order=order)
+            # `order` sets the quadrature of starry's own solution vector (below);
+            # core.limb_dark uses a different quadrature with its own default order
+            lc_func = partial(_limb_dark_light_curve, ld_u)
             lc = lc_func(b, r)
             return surface.amplitude * (1.0 + jnp.where(b_occ, lc, 0))
 
