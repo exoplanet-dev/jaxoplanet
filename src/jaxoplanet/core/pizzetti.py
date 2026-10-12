@@ -44,6 +44,10 @@ from jaxoplanet.types import Array
 #: Truncation order of the series (odd): a polynomial of degree M in 1 / (1 - z^2)
 M = 11
 
+#: Below this many samples gathering the limb points does not pay for itself (and
+#: costs extra compilation time), so the solution of Agol et al. is used directly
+MIN_POINTS = 1024
+
 #: The truncation bound needs M + 1 > g for every exponent g = a / 2, so the
 #: polynomial limb darkening law can have at most this many coefficients
 MAX_COEFFS = 2 * M
@@ -346,9 +350,11 @@ def light_curve(
     b = jnp.abs(jnp.asarray(b, dtype=dtype))
     r = jnp.abs(jnp.asarray(r, dtype=dtype))
     assert u.ndim == 1
-    # The uniform law is closed form already, and the bound is only proven for
-    # exponents smaller than M + 1
+    # The uniform law is closed form already, the bound is only proven for exponents
+    # smaller than M + 1, and short arrays are not worth gathering
     if u.shape[0] == 0 or u.shape[0] > MAX_COEFFS:
+        return _agol_light_curve(u, b, r, order=order)
+    if r.ndim == 0 and b.size < MIN_POINTS:
         return _agol_light_curve(u, b, r, order=order)
     tol = jnp.maximum(jnp.asarray(series_tol, dtype=dtype), 8 * jnp.finfo(dtype).eps)
 

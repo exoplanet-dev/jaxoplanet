@@ -11,6 +11,17 @@ from jaxoplanet.core.limb_dark import light_curve as agol_light_curve
 LAWS = [[0.6], [0.4, 0.25], [0.4, 0.25, 0.1], [0.3, 0.2, 0.1, -0.05]]
 
 
+def evaluate(u, z, r, **kwargs):
+    """The deficit through the series path: ``pizzetti.light_curve`` hands arrays
+    shorter than ``MIN_POINTS`` to the solution of Agol et al., so pad them with
+    samples far outside the transit"""
+    z = jnp.asarray(z)
+    n = z.shape[0]
+    pad = max(0, pizzetti.MIN_POINTS + 1 - n)
+    z_padded = jnp.concatenate([z, jnp.full(pad, 5.0, dtype=z.dtype)])
+    return pizzetti.light_curve(u, z_padded, r, **kwargs)[:n]
+
+
 def _x64() -> bool:
     return bool(jax.config.jax_enable_x64)  # type: ignore
 
@@ -37,7 +48,7 @@ def test_matches_agol(u, r):
     z = contact_points(r)
     u = jnp.asarray(u)
     expect = np.asarray(agol_light_curve(u, z, r))
-    calc = np.asarray(pizzetti.light_curve(u, z, r))
+    calc = np.asarray(evaluate(u, z, r))
     depth = np.max(np.abs(expect))
     if _x64():
         np.testing.assert_allclose(calc, expect, atol=2e-10 * depth + 1e-14, rtol=0)
@@ -53,7 +64,7 @@ def test_series_tol(tol):
     r = 0.05
     z = contact_points(r, 3001)
     expect = np.asarray(agol_light_curve(u, z, r))
-    calc = np.asarray(pizzetti.light_curve(u, z, r, series_tol=tol))
+    calc = np.asarray(evaluate(u, z, r, series_tol=tol))
     depth = np.max(np.abs(expect))
     assert np.max(np.abs(calc - expect)) <= 1.1 * tol * depth + 1e-13
 
@@ -72,7 +83,7 @@ def test_against_mpmath(u, r):
     c = np.asarray(pizzetti.mu_coefficients(jnp.asarray(u)))
     alphas = np.arange(c.shape[0])
     expect = np.array([flux_ref(zi, r, alphas, c) - 1.0 for zi in z])
-    calc = np.asarray(pizzetti.light_curve(jnp.asarray(u), z, r))
+    calc = np.asarray(evaluate(jnp.asarray(u), z, r))
     depth = np.max(np.abs(expect))
     assert mpmath is not None
     np.testing.assert_allclose(calc, expect, atol=2e-10 * depth + 1e-14, rtol=0)
@@ -143,7 +154,7 @@ def test_gradients_match_agol(u):
         return lambda u, z, r: jnp.sum(fn(u, z, r) * jnp.cos(3.0 * z))
 
     expect = jax.grad(loss(agol_light_curve), argnums=(0, 1, 2))(u, z, r)
-    calc = jax.grad(loss(pizzetti.light_curve), argnums=(0, 1, 2))(u, z, r)
+    calc = jax.grad(loss(evaluate), argnums=(0, 1, 2))(u, z, r)
     for a, b in zip(expect, calc, strict=True):
         a_, b_ = np.asarray(a), np.asarray(b)
         np.testing.assert_allclose(b_, a_, atol=1e-8 * np.max(np.abs(a_)), rtol=0)
@@ -151,7 +162,7 @@ def test_gradients_match_agol(u):
     # forward mode
     tangent = jnp.ones_like(u)
     _, jvp_expect = jax.jvp(lambda u: agol_light_curve(u, z, r), (u,), (tangent,))
-    _, jvp_calc = jax.jvp(lambda u: pizzetti.light_curve(u, z, r), (u,), (tangent,))
+    _, jvp_calc = jax.jvp(lambda u: evaluate(u, z, r), (u,), (tangent,))
     np.testing.assert_allclose(
         jvp_calc, jvp_expect, atol=1e-8 * np.max(np.abs(jvp_expect)), rtol=0
     )
@@ -160,7 +171,7 @@ def test_gradients_match_agol(u):
 def test_gradients_are_finite_f32_and_f64():
     u = jnp.asarray([0.4, 0.25])
     z = jnp.asarray(contact_points(0.1, 300))
-    grads = jax.grad(lambda u, z, r: jnp.sum(pizzetti.light_curve(u, z, r)), (0, 1, 2))(
+    grads = jax.grad(lambda u, z, r: jnp.sum(evaluate(u, z, r)), (0, 1, 2))(
         u, z, jnp.asarray(0.1)
     )
     assert all(np.all(np.isfinite(np.asarray(g))) for g in grads)
@@ -180,7 +191,9 @@ def test_order_independence():
     )
 
 
-@pytest.mark.parametrize("n", [1, 3, 17, 64, 65, 1000])
+@pytest.mark.parametrize(
+    "n", [1, 3, 17, 64, 65, 1000, pizzetti.MIN_POINTS, pizzetti.MIN_POINTS + 1, 5000]
+)
 def test_lengths(n):
     u = jnp.asarray([0.4, 0.25])
     z = np.linspace(0.0, 1.2, n)
@@ -196,7 +209,7 @@ def test_lengths(n):
 
 def test_shapes_and_broadcasting():
     u = jnp.asarray([0.4, 0.25])
-    z = np.abs(np.linspace(-1.2, 1.2, 600)).reshape(20, 30)
+    z = np.abs(np.linspace(-1.2, 1.2, 1600)).reshape(40, 40)
     out = pizzetti.light_curve(u, z, 0.1)
     assert out.shape == z.shape
     np.testing.assert_allclose(
@@ -204,7 +217,7 @@ def test_shapes_and_broadcasting():
     )
 
     # array of radii: elementwise evaluation, also under vmap
-    r = jnp.linspace(0.02, 0.2, 30)
+    r = jnp.linspace(0.02, 0.2, 40)
     out = pizzetti.light_curve(u, z, r)
     assert out.shape == z.shape
     expect = agol_light_curve(u, z, r)
@@ -213,7 +226,7 @@ def test_shapes_and_broadcasting():
         expect,
         atol=5e-5 * float(jnp.max(jnp.abs(expect))) if not _x64() else 2e-10,
     )
-    out = jax.vmap(lambda ri: pizzetti.light_curve(u, z[0], ri))(r)
+    out = jax.vmap(lambda ri: evaluate(u, z[0], ri))(r)
     np.testing.assert_allclose(
         out,
         jax.vmap(lambda ri: agol_light_curve(u, z[0], ri))(r),
@@ -224,15 +237,15 @@ def test_shapes_and_broadcasting():
 def test_edge_cases():
     u = jnp.asarray([0.4, 0.25])
     # no occultation, no occultor, full occultation
-    assert float(pizzetti.light_curve(u, jnp.asarray([2.0]), 0.1)[0]) == 0.0
-    assert float(pizzetti.light_curve(u, jnp.asarray([0.3]), 0.0)[0]) == 0.0
+    assert float(evaluate(u, jnp.asarray([2.0]), 0.1)[0]) == 0.0
+    assert float(evaluate(u, jnp.asarray([0.3]), 0.0)[0]) == 0.0
     np.testing.assert_allclose(
-        pizzetti.light_curve(u, jnp.asarray([0.1]), 1.5),
+        evaluate(u, jnp.asarray([0.1]), 1.5),
         agol_light_curve(u, jnp.asarray([0.1]), 1.5),
     )
     # centered occultor, negative separation and radius
     np.testing.assert_allclose(
-        pizzetti.light_curve(u, jnp.asarray([0.0, -0.3]), -0.1),
+        evaluate(u, jnp.asarray([0.0, -0.3]), -0.1),
         agol_light_curve(u, jnp.asarray([0.0, 0.3]), 0.1),
         atol=1e-5 if not _x64() else 2e-10,
     )
@@ -260,3 +273,14 @@ def test_method_dispatch():
     )
     with pytest.raises(ValueError, match="Unknown method"):
         agol_light_curve(u, z, 0.1, method="nope")
+
+
+def test_small_arrays_use_the_solution_of_agol():
+    u = jnp.asarray([0.4, 0.25])
+    small = jnp.linspace(0.0, 1.2, pizzetti.MIN_POINTS - 1)
+    large = jnp.linspace(0.0, 1.2, pizzetti.MIN_POINTS)
+    assert "cond" not in str(jax.make_jaxpr(pizzetti.light_curve)(u, small, 0.1))
+    assert "cond" in str(jax.make_jaxpr(pizzetti.light_curve)(u, large, 0.1))
+    np.testing.assert_array_equal(
+        pizzetti.light_curve(u, small, 0.1), agol_light_curve(u, small, 0.1)
+    )
