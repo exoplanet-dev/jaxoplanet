@@ -5,6 +5,8 @@ import pytest
 
 from jaxoplanet.light_curves import limb_dark_light_curve
 from jaxoplanet.orbits.keplerian import System
+from jaxoplanet.orbits.transit import TransitOrbit
+from jaxoplanet.orbits.ttv import TTVOrbit
 
 
 def test_light_curve():
@@ -33,10 +35,17 @@ def _systems():
     double = single.add_body(
         period=7.3, radius=0.03, impact_param=0.5, time_transit=1.1
     )
-    return {"one body": single, "two bodies": double}
+    transit = TransitOrbit(period=3.0, radius_ratio=0.1, duration=0.2, time_transit=1.5)
+    ttv = TTVOrbit(
+        period=3.0,
+        duration=0.2,
+        radius_ratio=0.1,
+        transit_times=(jnp.asarray([1.5, 4.52, 7.49]),),
+    )
+    return {"one body": single, "two bodies": double, "transit": transit, "ttv": ttv}
 
 
-@pytest.mark.parametrize("name", ["one body", "two bodies"])
+@pytest.mark.parametrize("name", ["one body", "two bodies", "transit", "ttv"])
 @pytest.mark.parametrize("u", [[0.3, 0.2], [0.3, 0.2, 0.05], []])
 def test_methods_agree(name, u):
     orbit = _systems()[name]
@@ -81,3 +90,13 @@ def test_pizzetti_grad_through_orbit():
 def test_unknown_method():
     with pytest.raises(ValueError, match="Unknown method"):
         limb_dark_light_curve(_systems()["one body"], jnp.asarray([0.1]), method="x")
+
+
+def test_default_method_is_pizzetti():
+    orbit = _systems()["one body"]
+    t = jnp.linspace(-0.3, 3.3, 500)
+    u = jnp.asarray([0.3, 0.2])
+    np.testing.assert_array_equal(
+        limb_dark_light_curve(orbit, u)(t),
+        limb_dark_light_curve(orbit, u, method="pizzetti")(t),
+    )

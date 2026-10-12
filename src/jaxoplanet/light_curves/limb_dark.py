@@ -18,7 +18,7 @@ def light_curve(
     orbit: LightCurveOrbit,
     *u: Array,
     order: int = 40,
-    method: str = "agol",
+    method: str = "pizzetti",
     series_tol: float = 1e-10,
 ) -> Callable[[Scalar], Array]:
     """Compute the light curve for arbitrary polynomial limb darkening
@@ -32,13 +32,15 @@ def light_curve(
         u (Array): The coefficients of the polynomial limb darkening
         order (int): The order of the numerical integration used by the backend; see
             :func:`jaxoplanet.core.limb_dark.light_curve`
-        method (str): Either ``"agol"`` (the solution of Agol et al. 2020 at every
-            time) or ``"pizzetti"`` (an elementary series with a rigorous error
-            bound while the transiting body is entirely inside the stellar disk,
-            and the former elsewhere); see :mod:`jaxoplanet.core.pizzetti`. The
-            latter evaluates all the times at once, one body at a time, and is
-            much faster for long, time-ordered arrays of times. If the returned
-            function is itself wrapped in ``jax.vmap`` the speed-up is lost.
+        method (str): Either ``"pizzetti"`` (the default) or ``"agol"``. The former
+            uses an elementary series with a rigorous error bound while the
+            transiting body is entirely inside the stellar disk, and the solution of
+            Agol et al. (2020) near the limb, which makes it several times faster
+            for long, time-ordered arrays of times. The latter evaluates the
+            solution of Agol et al. (2020) at every time. See
+            :mod:`jaxoplanet.core.pizzetti`. The ``"pizzetti"`` method evaluates all
+            the times at once, one body at a time, so if the returned function is
+            itself wrapped in ``jax.vmap`` the speed-up is lost.
         series_tol (float): Only for ``method="pizzetti"``: the bound on the
             truncation error of the series relative to the central depth of the
             transit
@@ -99,7 +101,12 @@ def _pizzetti_orbit_light_curve(
         t = time.reshape(-1)
 
         r_star = orbit.central_radius
-        x, y, z = jax.vmap(orbit.relative_position)(t)  # each (len(t), *orbit.shape)
+
+        def position(time: Scalar) -> tuple[Array, Array, Array]:
+            x, y, z = orbit.relative_position(time)
+            return x, y, z
+
+        x, y, z = jax.vmap(position)(t)  # each (len(t), *orbit.shape)
 
         b = jnp.sqrt(x**2 + y**2) / r_star
         r = orbit.radius / r_star

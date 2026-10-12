@@ -17,6 +17,7 @@ The modules to define orbital systems are:
 Given an orbital system, the following modules can be used to compute different kind of light curves:
 
 - [limb-darkened](jaxoplanet.light_curves.limb_dark) : a module to compute occultation light curve of a star with polynomial limb darkening.
+- [pizzetti](jaxoplanet.core.pizzetti) : the elementary series, with a rigorous error bound, that the default limb-darkened light curve uses while the transiting body is entirely inside the stellar disk (`method="pizzetti"`; use `method="agol"` for the solution of Agol et al. (2020) at every time).
 - [transforms](jaxoplanet.light_curves.transforms) : a module providing decorators to transform light curve functions.
 
 
