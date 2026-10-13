@@ -259,7 +259,12 @@ BLOCK_GROWTH = 4
 
 def _capacities(nb: int) -> tuple[int, ...]:
     """The static numbers of blocks of the compacted arrays, from which the smallest
-    that holds all the flagged blocks is selected at run time"""
+    that holds all the flagged blocks is selected at run time
+
+    The sizes are ``4, 16, 64, ...`` up to ``nb``. (Sizes counted down from ``nb`` have
+    a smaller sum, which is what matters under ``vmap``, but they fit the typical
+    number of flagged blocks worse: single calls were up to 30% slower.)
+    """
     caps = {min(nb, MIN_BLOCKS * BLOCK_GROWTH**k) for k in range(32)}
     return tuple(sorted(caps | {nb}))
 
@@ -275,8 +280,17 @@ def _compact_apply(fn: Callable[[Array], Array], z: Array, mask: Array) -> Array
     blocks, rather than single points, makes the search for the selected points
     ~100 times cheaper than ``jnp.nonzero`` on the individual samples. Without any
     clustering all the blocks are selected and the cost is that of evaluating
-    ``fn`` on every point. Under ``vmap`` the predicate is batched and
-    ``lax.switch`` evaluates all the branches, so there is no saving there either.
+    ``fn`` on every point.
+
+    Each branch is rematerialized in the backward pass (``jax.checkpoint``).
+    Otherwise reverse-mode differentiation of ``lax.switch`` stores the residuals of
+    every branch at the shape of the largest one, which made the gradient ~5x slower.
+
+    Under ``vmap`` the index of ``lax.switch`` becomes batched and all the branches
+    are evaluated, which costs ~1.5 times as much as not gathering at all. (A
+    ``custom_vmap`` rule that falls back to evaluating every point is not an option:
+    it cannot be differentiated in reverse mode.) Use ``lax.map`` over the batch
+    instead of ``vmap``, or ``method="agol"``.
 
     The result is only meaningful where ``mask`` is true.
     """
@@ -291,6 +305,7 @@ def _compact_apply(fn: Callable[[Array], Array], z: Array, mask: Array) -> Array
     caps = _capacities(nb)
 
     def make_branch(cap: int) -> Callable[[Array], Array]:
+        @jax.checkpoint
         def branch(zb: Array) -> Array:
             idx = jnp.nonzero(flag, size=cap, fill_value=nb)[0]
             zs = jnp.take(zb, idx, axis=0, mode="fill", fill_value=0.5)
@@ -302,6 +317,12 @@ def _compact_apply(fn: Callable[[Array], Array], z: Array, mask: Array) -> Array
     which = jnp.sum(jnp.sum(flag) > jnp.asarray(caps[:-1]))
     out = jax.lax.switch(which, [make_branch(cap) for cap in caps], zb)
     return out.reshape(-1)[:n]
+
+
+def _limb_masked(u: Array, r: Array, z: Array, on_limb: Array, order: int) -> Array:
+    """The limb solution at every point, zero where ``on_limb`` is false"""
+    safe = jnp.where(on_limb, z, 0.5)
+    return jnp.where(on_limb, _agol_light_curve(u, safe, r, order=order), 0.0)
 
 
 def _flat_deficit(
@@ -316,11 +337,12 @@ def _flat_deficit(
 
     # Points beyond the cut and inside the outer contact need the limb solution
     on_limb = jnp.logical_and(jnp.logical_not(in_series), z < 1 + r)
-    limb_fn = partial(_agol_light_curve, u, r=r, order=order)
     if compact:
-        limb = _compact_apply(lambda zs: limb_fn(b=zs), z, on_limb)
+        limb = _compact_apply(
+            lambda zs: _agol_light_curve(u, zs, r, order=order), z, on_limb
+        )
     else:
-        limb = jnp.where(on_limb, limb_fn(b=jnp.where(on_limb, z, 0.5)), 0.0)
+        limb = _limb_masked(u, r, z, on_limb, order)
     return jnp.where(in_series, series, limb)
 
 
@@ -344,6 +366,17 @@ def light_curve(
         series_tol (float): The bound on the truncation error of the series
             relative to the central depth of the transit. It is raised to a few
             times the machine precision of the working dtype if lower.
+
+    The speed-up comes from evaluating the limb solution on a short array that is
+    gathered at run time. It therefore needs ``b`` to be roughly ordered in time
+    (otherwise the cost is that of the solution of Agol et al.), a scalar ``r``,
+    and at least :data:`MIN_POINTS` samples (shorter arrays use the solution of
+    Agol et al. directly). Under ``jax.vmap`` it is *slower* than the solution of
+    Agol et al. (by ~1.5x) because all the sizes of the gathered array are
+    evaluated: use ``jax.lax.map`` over the batch instead (several times faster
+    than either), or ``method="agol"`` in ``jaxoplanet.core.limb_dark.light_curve``.
+    The first call compiles one copy of the limb solution per size (a few seconds
+    for long arrays).
     """
     dtype = jnp.result_type(float, u, b, r)
     u = jnp.asarray(u, dtype=dtype)

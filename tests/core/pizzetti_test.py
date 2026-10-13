@@ -284,3 +284,59 @@ def test_small_arrays_use_the_solution_of_agol():
     np.testing.assert_array_equal(
         pizzetti.light_curve(u, small, 0.1), agol_light_curve(u, small, 0.1)
     )
+
+
+def _separations(n=4096):
+    """Separations of a planet on a 3 day orbit over 10 transits, in time order"""
+    t = np.linspace(0.0, 30.0, n)
+    return jnp.asarray(np.abs(((t - 1.5) % 3.0) - 1.5) * 4.2)
+
+
+def _relative_difference(a, b):
+    return float(jnp.max(jnp.abs(a - b)) / jnp.max(jnp.abs(a)))
+
+
+def test_transformations_match_agol():
+    """The gathered limb points must not change the results of vmap, jvp or reverse
+    mode, nor their combinations (the arrays are long enough to use the series)"""
+    u = jnp.asarray([0.4, 0.25])
+    b = _separations()
+    radii = jnp.linspace(0.02, 0.1, 5)
+    tol = 1e-8 if _x64() else 2e-3
+
+    def agol(r):
+        return agol_light_curve(u, b, r)
+
+    def pz(r):
+        return pizzetti.light_curve(u, b, r)
+
+    assert _relative_difference(jax.vmap(agol)(radii), jax.vmap(pz)(radii)) < tol
+
+    def loss(f):
+        return lambda r: jnp.sum(f(r) * jnp.cos(3.0 * b))
+
+    expect = jax.vmap(jax.grad(loss(agol)))(radii)
+    assert _relative_difference(expect, jax.vmap(jax.grad(loss(pz)))(radii)) < tol
+
+    def total(f):
+        return lambda rs: jnp.sum(jax.vmap(f)(rs) * jnp.cos(3.0 * b))
+
+    expect = jax.grad(total(agol))(radii)
+    assert _relative_difference(expect, jax.grad(total(pz))(radii)) < tol
+
+    expect = jax.jvp(agol, (radii[0],), (1.0,))[1]
+    assert _relative_difference(expect, jax.jvp(pz, (radii[0],), (1.0,))[1]) < tol
+
+    # lax.map over the batch, which keeps the gathering
+    mapped = jax.lax.map(pz, radii)
+    assert _relative_difference(jax.vmap(agol)(radii), mapped) < tol
+
+
+def test_capacities():
+    for nb in (5, 17, 100, 6250, 100_000):
+        caps = pizzetti._capacities(nb)
+        assert caps == tuple(sorted(set(caps)))
+        assert caps[-1] == nb and caps[0] == min(nb, pizzetti.MIN_BLOCKS)
+        # the sizes grow geometrically, so the waste is bounded
+        for small, large in zip(caps[:-1], caps[1:], strict=True):
+            assert large <= pizzetti.BLOCK_GROWTH * small or large == nb

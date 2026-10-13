@@ -52,7 +52,8 @@ def light_curve(
             rigorous error bound while the occultor is entirely inside the stellar
             disk and the solution above elsewhere; see
             :mod:`jaxoplanet.core.pizzetti`. The latter is much faster for a long,
-            time-ordered ``b`` and a scalar ``r``.
+            time-ordered ``b`` and a scalar ``r``, but slower than ``"agol"`` under
+            ``jax.vmap`` (use ``jax.lax.map`` instead); see there for the caveats.
         series_tol (float): Only for ``method="pizzetti"``: the bound on the
             truncation error of the series relative to the central depth of the
             transit

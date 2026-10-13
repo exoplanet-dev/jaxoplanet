@@ -39,8 +39,11 @@ def light_curve(
             for long, time-ordered arrays of times. The latter evaluates the
             solution of Agol et al. (2020) at every time. See
             :mod:`jaxoplanet.core.pizzetti`. The ``"pizzetti"`` method evaluates all
-            the times at once, one body at a time, so if the returned function is
-            itself wrapped in ``jax.vmap`` the speed-up is lost.
+            the times at once, one body at a time. If the returned function is
+            itself wrapped in ``jax.vmap`` it is slower than ``"agol"`` (by ~1.5x
+            and with a longer first call): use ``jax.lax.map`` over the batch
+            instead, which keeps the speed-up, or ``method="agol"``. Short or
+            unordered arrays of times see no speed-up.
         series_tol (float): Only for ``method="pizzetti"``: the bound on the
             truncation error of the series relative to the central depth of the
             transit
