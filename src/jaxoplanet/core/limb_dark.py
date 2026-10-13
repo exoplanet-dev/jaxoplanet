@@ -16,8 +16,16 @@ from jaxoplanet.types import Array
 from jaxoplanet.utils import get_dtype_eps, zero_safe_sqrt
 
 
-@partial(jax.jit, static_argnames=("order",))
-def light_curve(u: Array, b: Array, r: Array, *, order: int = 40):
+@partial(jax.jit, static_argnames=("order", "method"))
+def light_curve(
+    u: Array,
+    b: Array,
+    r: Array,
+    *,
+    order: int = 40,
+    method: str = "agol",
+    series_tol: float = 1e-10,
+):
     """Compute the light curve for arbitrary polynomial limb darkening
 
     See `Agol et al. (2020) <https://arxiv.org/abs/1908.03222>`_ for more technical
@@ -39,7 +47,23 @@ def light_curve(u: Array, b: Array, r: Array, *, order: int = 40):
             where rounding dominates). The error grows fastest near the contact
             points as the order drops: worst cases are ~1e-9 of the depth at order
             30, ~1e-6 at order 20 and ~1e-3 at order 10
+        method (str): Either ``"agol"`` for the solution of Agol et al. (2020) at
+            every point, or ``"pizzetti"`` to use an elementary series with a
+            rigorous error bound while the occultor is entirely inside the stellar
+            disk and the solution above elsewhere; see
+            :mod:`jaxoplanet.core.pizzetti`. The latter is much faster for a long,
+            time-ordered ``b`` and a scalar ``r``, but slower than ``"agol"`` under
+            ``jax.vmap`` (use ``jax.lax.map`` instead); see there for the caveats.
+        series_tol (float): Only for ``method="pizzetti"``: the bound on the
+            truncation error of the series relative to the central depth of the
+            transit
     """
+    if method == "pizzetti":
+        from jaxoplanet.core.pizzetti import light_curve as _pizzetti_light_curve
+
+        return _pizzetti_light_curve(u, b, r, order=order, series_tol=series_tol)
+    elif method != "agol":
+        raise ValueError(f"Unknown method '{method}'; expected 'agol' or 'pizzetti'")
 
     u = jnp.asarray(u)
     assert u.ndim == 1
